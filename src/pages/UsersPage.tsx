@@ -1,4 +1,5 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
 import { useDrivers } from "@/services/drivers";
 import { useCompanies } from "@/services/companies";
 import { useProfiles } from "@/services/users";
