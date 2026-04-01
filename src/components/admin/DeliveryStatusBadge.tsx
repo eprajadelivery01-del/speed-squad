@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 const statusConfig: Record<DeliveryStatus, { label: string; className: string }> = {
   pending: { label: "Pendente", className: "bg-warning/10 text-warning" },
+  broadcasted: { label: "Enviada", className: "bg-info/10 text-info" },
   accepted: { label: "Aceita", className: "bg-primary/10 text-primary" },
   collecting: { label: "Em Coleta", className: "bg-accent/10 text-accent" },
   in_transit: { label: "Em Trânsito", className: "bg-violet-500/10 text-violet-600" },
