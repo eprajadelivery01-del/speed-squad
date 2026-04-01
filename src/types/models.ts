@@ -19,6 +19,9 @@ export interface Company {
   phone: string;
   address: string;
   region_id: string;
+  is_active?: boolean;
+  user_id?: string;
+  logo_url?: string;
 }
 
 export interface DeliveryDriver {
