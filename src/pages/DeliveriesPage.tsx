@@ -330,10 +330,15 @@ export default function DeliveriesPage() {
               <div className="flex items-center justify-between">
                 <DeliveryStatusBadge status={detailDelivery.status} />
                 <div className="flex items-center gap-2">
-                  {detailDelivery.status === "pending" && (
-                    <button onClick={() => { setDispatchDelivery(detailDelivery); setDetailDelivery(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors">
-                      <Send className="h-3.5 w-3.5" /> Direcionar
-                    </button>
+                 {(detailDelivery.status === "pending" || detailDelivery.status === ("broadcasted" as any)) && (
+                    <>
+                      <button onClick={() => { handleBroadcast(detailDelivery); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning/10 text-warning text-sm font-medium hover:bg-warning/20 transition-colors">
+                        <Radio className="h-3.5 w-3.5" /> Broadcast
+                      </button>
+                      <button onClick={() => { setDispatchDelivery(detailDelivery); setDetailDelivery(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors">
+                        <Send className="h-3.5 w-3.5" /> Direcionar
+                      </button>
+                    </>
                   )}
                   <button onClick={() => handlePrint(detailDelivery)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors">
                     <Printer className="h-3.5 w-3.5" /> Imprimir
