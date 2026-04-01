@@ -23,3 +23,19 @@ export function useAllRealtime() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 }
+
+export function useDeliveriesRealtime() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("deliveries-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+        queryClient.invalidateQueries({ queryKey: ["delivery-stats"] });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+}
