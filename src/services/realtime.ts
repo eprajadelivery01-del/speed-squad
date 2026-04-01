@@ -2,40 +2,50 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useAllRealtime() {
-  const queryClient = useQueryClient();
+export function useDeliveriesRealtime() {
+  const qc = useQueryClient();
 
   useEffect(() => {
     const channel = supabase
-      .channel("all-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["deliveries"] });
-        queryClient.invalidateQueries({ queryKey: ["delivery-stats"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "drivers" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["drivers"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "companies" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["companies"] });
-      })
+      .channel("deliveries-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "deliveries" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["deliveries"] });
+          qc.invalidateQueries({ queryKey: ["delivery-stats"] });
+        }
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 }
 
-export function useDeliveriesRealtime() {
-  const queryClient = useQueryClient();
+export function useDriversRealtime() {
+  const qc = useQueryClient();
 
   useEffect(() => {
     const channel = supabase
-      .channel("deliveries-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "deliveries" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["deliveries"] });
-        queryClient.invalidateQueries({ queryKey: ["delivery-stats"] });
-      })
+      .channel("drivers-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "delivery_drivers" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["drivers"] });
+        }
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+}
+
+export function useAllRealtime() {
+  useDeliveriesRealtime();
+  useDriversRealtime();
 }
