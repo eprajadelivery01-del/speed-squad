@@ -7,7 +7,7 @@ import { useDrivers } from "@/services/drivers";
 import { useDeliveriesRealtime } from "@/services/realtime";
 import {
   Search, Filter, Eye, MoreHorizontal, X as XIcon, ChevronLeft, ChevronRight,
-  Loader2, Printer, UserCheck, Package, Send, MapPin
+  Loader2, Printer, UserCheck, Package, Send, MapPin, Radio
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -21,6 +21,7 @@ import type { DeliveryStatus } from "@/types/models";
 const statusFilters = [
   { label: "Todas", value: "all" },
   { label: "Pendentes", value: "pending" },
+  { label: "Enviadas", value: "broadcasted" },
   { label: "Aceitas", value: "accepted" },
   { label: "Em Coleta", value: "collecting" },
   { label: "Em Trânsito", value: "in_transit" },
@@ -110,6 +111,15 @@ export default function DeliveriesPage() {
       toast({ title: "OS enviada!", description: "Entrega direcionada ao entregador selecionado" });
       setDispatchDelivery(null);
       setSelectedDriverId("");
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleBroadcast = async (delivery: DeliveryWithRelations) => {
+    try {
+      await updateStatus.mutateAsync({ id: delivery.id, status: "broadcasted" as DeliveryStatus });
+      toast({ title: "📡 OS Enviada!", description: `OS #${delivery.id.slice(0, 8).toUpperCase()} compartilhada com ${onlineDrivers.length} entregadores online` });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
@@ -225,10 +235,15 @@ export default function DeliveriesPage() {
                       <td className="px-4 py-3"><span className="text-muted-foreground text-xs">{format(new Date(delivery.created_at), "dd/MM HH:mm")}</span></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {delivery.status === "pending" && (
-                            <button onClick={() => { setDispatchDelivery(delivery); setSelectedDriverId(""); }} className="p-2 rounded-lg hover:bg-info/10 transition-colors" title="Enviar para entregador">
-                              <Send className="h-4 w-4 text-info" />
-                            </button>
+                          {(delivery.status === "pending" || delivery.status === ("broadcasted" as any)) && (
+                            <>
+                              <button onClick={() => handleBroadcast(delivery)} className="p-2 rounded-lg hover:bg-warning/10 transition-colors" title="Broadcast para todos">
+                                <Radio className="h-4 w-4 text-warning" />
+                              </button>
+                              <button onClick={() => { setDispatchDelivery(delivery); setSelectedDriverId(""); }} className="p-2 rounded-lg hover:bg-info/10 transition-colors" title="Enviar para entregador">
+                                <Send className="h-4 w-4 text-info" />
+                              </button>
+                            </>
                           )}
                           <button onClick={() => setDetailDelivery(delivery)} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Ver detalhes">
                             <Eye className="h-4 w-4 text-muted-foreground" />
@@ -240,9 +255,10 @@ export default function DeliveriesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => setDetailDelivery(delivery)}><Eye className="h-4 w-4 mr-2" /> Ver detalhes</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handlePrint(delivery)}><Printer className="h-4 w-4 mr-2" /> Imprimir OS</DropdownMenuItem>
-                              {delivery.status === "pending" && (
+                              {(delivery.status === "pending" || delivery.status === ("broadcasted" as any)) && (
                                 <>
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleBroadcast(delivery)}><Radio className="h-4 w-4 mr-2" /> Broadcast (todos)</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => { setDispatchDelivery(delivery); setSelectedDriverId(""); }}><Send className="h-4 w-4 mr-2" /> Enviar para entregador</DropdownMenuItem>
                                 </>
                               )}
@@ -314,10 +330,15 @@ export default function DeliveriesPage() {
               <div className="flex items-center justify-between">
                 <DeliveryStatusBadge status={detailDelivery.status} />
                 <div className="flex items-center gap-2">
-                  {detailDelivery.status === "pending" && (
-                    <button onClick={() => { setDispatchDelivery(detailDelivery); setDetailDelivery(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors">
-                      <Send className="h-3.5 w-3.5" /> Direcionar
-                    </button>
+                 {(detailDelivery.status === "pending" || detailDelivery.status === ("broadcasted" as any)) && (
+                    <>
+                      <button onClick={() => { handleBroadcast(detailDelivery); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning/10 text-warning text-sm font-medium hover:bg-warning/20 transition-colors">
+                        <Radio className="h-3.5 w-3.5" /> Broadcast
+                      </button>
+                      <button onClick={() => { setDispatchDelivery(detailDelivery); setDetailDelivery(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors">
+                        <Send className="h-3.5 w-3.5" /> Direcionar
+                      </button>
+                    </>
                   )}
                   <button onClick={() => handlePrint(detailDelivery)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors">
                     <Printer className="h-3.5 w-3.5" /> Imprimir
