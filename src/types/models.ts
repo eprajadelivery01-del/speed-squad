@@ -9,6 +9,8 @@ export interface Region {
   name: string;
   color: string;
   price: number;
+  geometry?: any;
+  is_active?: boolean;
 }
 
 export interface Company {
