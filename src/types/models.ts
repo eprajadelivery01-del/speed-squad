@@ -1,78 +1,66 @@
-export type DeliveryStatus = "pending" | "broadcasted" | "accepted" | "collecting" | "in_route" | "completed" | "cancelled";
+export type DeliveryStatus = "pending" | "accepted" | "collecting" | "in_transit" | "delivered" | "cancelled" | "returned";
 
-export type OccurrenceType = "motorcycle_issue" | "accident" | "robbery";
+export type OccurrenceType = "delay" | "damage" | "absence" | "other";
 
 export type UserRole = "admin" | "company" | "driver" | "customer";
-
-export interface Region {
-  id: string;
-  name: string;
-  color: string;
-  price: number;
-  geometry?: any;
-  is_active?: boolean;
-}
 
 export interface Company {
   id: string;
   name: string;
-  phone: string;
-  address: string;
-  region_id: string;
-  is_active?: boolean;
-  user_id?: string;
-  logo_url?: string;
+  phone: string | null;
+  address: string | null;
+  active: boolean;
+  document: string | null;
+  email: string | null;
+  logo_url: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
 }
 
 export interface DeliveryDriver {
   id: string;
-  name: string;
-  phone: string;
-  vehicle: string;
-  is_online: boolean;
+  user_id: string;
+  full_name: string;
+  phone: string | null;
+  document: string | null;
+  vehicle_type: string;
+  vehicle_plate: string | null;
+  online: boolean;
   rating: number;
-}
-
-export interface Customer {
-  id: string;
-  name: string;
-  cpf: string;
-  phone: string;
+  total_deliveries: number;
+  current_latitude: number | null;
+  current_longitude: number | null;
+  avatar_url: string | null;
+  status: "pending" | "active" | "rejected" | "suspended";
 }
 
 export interface Delivery {
   id: string;
-  company_id: string;
-  company_name: string;
+  company_id: string | null;
   driver_id: string | null;
-  driver_name: string | null;
-  customer_name: string;
-  address: string;
-  region_id: string;
-  region_name: string;
+  customer_name: string | null;
+  customer_phone: string | null;
+  pickup_address: string;
+  dropoff_address: string;
+  pickup_latitude: number | null;
+  pickup_longitude: number | null;
+  dropoff_latitude: number | null;
+  dropoff_longitude: number | null;
   status: DeliveryStatus;
-  value: number;
-  commission: number;
+  price: number | null;
+  distance_km: number | null;
+  estimated_time_minutes: number | null;
+  notes: string | null;
+  proof_photo_url: string | null;
+  signature_url: string | null;
+  accepted_at: string | null;
+  collected_at: string | null;
+  delivered_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface Order {
-  id: string;
-  customer_id: string;
-  company_id: string;
-  items: OrderItem[];
-  total: number;
-  delivery_id?: string;
-  status: "pending" | "preparing" | "ready" | "delivered" | "cancelled";
-  created_at: string;
-}
-
-export interface OrderItem {
-  product_id: string;
-  product_name: string;
-  quantity: number;
-  price: number;
 }
 
 export interface Review {
@@ -87,10 +75,12 @@ export interface Review {
 export interface Occurrence {
   id: string;
   driver_id: string;
-  driver_name: string;
+  delivery_id: string;
   type: OccurrenceType;
   description: string;
-  delivery_id: string | null;
+  photo_url: string | null;
+  resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: string | null;
   created_at: string;
-  status: "open" | "resolved";
 }

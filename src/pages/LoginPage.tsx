@@ -32,31 +32,16 @@ export default function LoginPage() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status")
-      .eq("user_id", user.id)
+      .select("role")
+      .eq("id", user.id)
       .single();
 
-    if (profile?.status === "pending") {
-      await supabase.auth.signOut();
-      setLoading(false);
-      toast({ title: "Aguardando aprovação", description: "Seu cadastro está pendente de aprovação pelo administrador.", variant: "destructive" });
-      return;
-    }
-
-    if (profile?.status === "rejected") {
-      await supabase.auth.signOut();
-      setLoading(false);
-      toast({ title: "Acesso negado", description: "Seu cadastro foi recusado pelo administrador.", variant: "destructive" });
-      return;
-    }
-
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-    const userRoles = roles?.map(r => r.role) || [];
+    const userRole = profile?.role || "customer";
     setLoading(false);
 
-    if (userRoles.includes("admin")) navigate("/admin");
-    else if (userRoles.includes("company")) navigate("/business");
-    else if (userRoles.includes("driver")) navigate("/driver");
+    if (userRole === "admin") navigate("/admin");
+    else if (userRole === "company") navigate("/business");
+    else if (userRole === "driver") navigate("/driver");
     else navigate("/admin");
   };
 

@@ -10,8 +10,8 @@ function useReviews() {
     queryKey: ["reviews"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("reviews")
-        .select("*, delivery_drivers!reviews_driver_id_fkey(user_id, profiles:user_id(full_name))")
+        .from("delivery_ratings")
+        .select("*, delivery_drivers(id, full_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -31,7 +31,7 @@ export default function ReviewsPage() {
       ) : (
         <div className="space-y-3">
           {(reviews ?? []).map((review: any) => {
-            const driverName = review.delivery_drivers?.profiles?.full_name || "—";
+            const driverName = review.delivery_drivers?.full_name || "—";
             return (
               <div key={review.id} className="rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex items-start justify-between">

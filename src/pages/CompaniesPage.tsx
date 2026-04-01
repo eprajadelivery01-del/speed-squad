@@ -29,8 +29,8 @@ export default function CompaniesPage() {
                     <td className="px-4 py-3">{c.phone || "—"}</td>
                     <td className="px-4 py-3">{c.address || "—"}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${c.is_active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                        {c.is_active ? "Ativa" : "Inativa"}
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${c.active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                        {c.active ? "Ativa" : "Inativa"}
                       </span>
                     </td>
                   </tr>
