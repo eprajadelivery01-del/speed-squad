@@ -47,7 +47,7 @@ function useResolveOccurrence() {
 function useCreateOccurrence() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (occ: { type: string; description: string; driver_id: string; delivery_id: string }) => {
+    mutationFn: async (occ: { type: "delay" | "damage" | "absence" | "other"; description: string; driver_id: string; delivery_id: string }) => {
       const { error } = await supabase.from("delivery_occurrences").insert([occ]);
       if (error) throw error;
     },
