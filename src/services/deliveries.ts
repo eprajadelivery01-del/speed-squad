@@ -36,24 +36,33 @@ export function useDeliveryStats() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const { data, error } = await supabase
-        .from("deliveries")
-        .select("status, value")
-        .gte("created_at", today.toISOString());
+      const [todayRes, totalRes] = await Promise.all([
+        supabase
+          .from("deliveries")
+          .select("status, value")
+          .gte("created_at", today.toISOString()),
+        supabase
+          .from("deliveries")
+          .select("id", { count: "exact", head: true }),
+      ]);
 
-      if (error) throw error;
+      if (todayRes.error) throw todayRes.error;
+      const data = todayRes.data;
 
-      const stats = {
-        total: data.length,
+      return {
+        today: data.length,
+        total: totalRes.count ?? 0,
         pending: data.filter((d) => d.status === "pending").length,
         inRoute: data.filter((d) => d.status === "in_route").length,
         completed: data.filter((d) => d.status === "completed").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
+        todayRevenue: data
+          .filter((d) => d.status === "completed")
+          .reduce((sum, d) => sum + Number(d.value), 0),
         revenue: data
           .filter((d) => d.status === "completed")
           .reduce((sum, d) => sum + Number(d.value), 0),
       };
-      return stats;
     },
     refetchInterval: 30000,
   });
