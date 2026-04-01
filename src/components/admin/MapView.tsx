@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useOnlineDrivers } from "@/services/drivers";
-import { useRegions } from "@/services/regions";
 
 interface MapViewProps {
   centerCity?: { name: string; lat: number; lng: number } | null;
@@ -14,7 +13,6 @@ export function MapView({ centerCity }: MapViewProps) {
   const markersRef = useRef<maplibregl.Marker[]>([]);
 
   const { data: drivers } = useOnlineDrivers();
-  const { data: regions } = useRegions();
 
   const defaultCenter: [number, number] = centerCity
     ? [centerCity.lng, centerCity.lat]
@@ -42,43 +40,18 @@ export function MapView({ centerCity }: MapViewProps) {
 
   useEffect(() => {
     const m = map.current;
-    if (!m || !regions) return;
-
-    const render = () => {
-      regions.forEach((region) => {
-        const fillId = `region-fill-${region.id}`;
-        const lineId = `region-line-${region.id}`;
-        const srcId = `region-${region.id}`;
-        if (m.getLayer(fillId)) m.removeLayer(fillId);
-        if (m.getLayer(lineId)) m.removeLayer(lineId);
-        if (m.getSource(srcId)) m.removeSource(srcId);
-        if (!region.geometry) return;
-        const geojson = region.geometry as any;
-        if (geojson.type !== "Polygon") return;
-
-        m.addSource(srcId, { type: "geojson", data: { type: "Feature", properties: {}, geometry: geojson } });
-        m.addLayer({ id: fillId, type: "fill", source: srcId, paint: { "fill-color": region.color, "fill-opacity": 0.15 } });
-        m.addLayer({ id: lineId, type: "line", source: srcId, paint: { "line-color": region.color, "line-width": 2 } });
-      });
-    };
-    if (m.isStyleLoaded()) render();
-    else m.on("load", render);
-  }, [regions]);
-
-  useEffect(() => {
-    const m = map.current;
     if (!m) return;
     markersRef.current.forEach((mk) => mk.remove());
     markersRef.current = [];
 
     (drivers ?? []).forEach((driver) => {
-      if (!driver.latitude || !driver.longitude) return;
+      if (!driver.current_latitude || !driver.current_longitude) return;
       const el = document.createElement("div");
       el.innerHTML = `<div style="background:hsl(217,91%,50%);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.2)">🏍️</div>`;
       const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([driver.longitude, driver.latitude])
+        .setLngLat([driver.current_longitude, driver.current_latitude])
         .setPopup(new maplibregl.Popup({ offset: 20 }).setHTML(`
-          <div style="padding:8px"><strong>${driver.profiles?.full_name || "Entregador"}</strong><br/><span style="color:green">● Online</span><br/>${driver.vehicle} • ⭐ ${Number(driver.rating).toFixed(1)}</div>
+          <div style="padding:8px"><strong>${driver.full_name || "Entregador"}</strong><br/><span style="color:green">● Online</span><br/>${driver.vehicle_type} • ⭐ ${Number(driver.rating).toFixed(1)}</div>
         `))
         .addTo(m);
       markersRef.current.push(marker);

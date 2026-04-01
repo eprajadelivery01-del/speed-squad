@@ -26,13 +26,13 @@ export default function DriversPage() {
               ) : (
                 (drivers ?? []).map((d) => (
                   <tr key={d.id} className="border-b border-border hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{d.profiles?.full_name || "—"}</td>
-                    <td className="px-4 py-3">{d.vehicle}</td>
-                    <td className="px-4 py-3">{d.license_plate || "—"}</td>
+                    <td className="px-4 py-3 font-medium">{d.full_name || "—"}</td>
+                    <td className="px-4 py-3">{d.vehicle_type || "—"}</td>
+                    <td className="px-4 py-3">{d.vehicle_plate || "—"}</td>
                     <td className="px-4 py-3">⭐ {Number(d.rating).toFixed(1)}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${d.is_online ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                        {d.is_online ? "Online" : "Offline"}
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${d.online ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                        {d.online ? "Online" : "Offline"}
                       </span>
                     </td>
                   </tr>

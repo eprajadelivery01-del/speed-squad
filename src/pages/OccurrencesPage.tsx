@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle, Clock, Loader2, Plus, X } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,9 +10,9 @@ import { useDrivers } from "@/services/drivers";
 import { useToast } from "@/hooks/use-toast";
 
 const typeLabels: Record<string, string> = {
-  motorcycle_issue: "Problema na Moto",
-  accident: "Acidente",
-  robbery: "Assalto",
+  delay: "Atraso",
+  damage: "Dano",
+  absence: "Ausência",
   other: "Outro",
 };
 
@@ -21,8 +21,8 @@ function useOccurrences() {
     queryKey: ["occurrences"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("occurrences")
-        .select("*, delivery_drivers!occurrences_driver_id_fkey(id, user_id, profiles:user_id(full_name))")
+        .from("delivery_occurrences")
+        .select("*, delivery_drivers(id, full_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -30,11 +30,14 @@ function useOccurrences() {
   });
 }
 
-function useUpdateOccurrenceStatus() {
+function useResolveOccurrence() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("occurrences").update({ status }).eq("id", id);
+    mutationFn: async ({ id, resolved }: { id: string; resolved: boolean }) => {
+      const { error } = await supabase
+        .from("delivery_occurrences")
+        .update({ resolved, resolved_at: resolved ? new Date().toISOString() : null })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["occurrences"] }),
@@ -44,8 +47,8 @@ function useUpdateOccurrenceStatus() {
 function useCreateOccurrence() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (occ: { type: string; description: string; driver_id: string; delivery_id?: string }) => {
-      const { error } = await supabase.from("occurrences").insert([occ]);
+    mutationFn: async (occ: { type: "delay" | "damage" | "absence" | "other"; description: string; driver_id: string; delivery_id: string }) => {
+      const { error } = await supabase.from("delivery_occurrences").insert([occ]);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["occurrences"] }),
@@ -54,34 +57,33 @@ function useCreateOccurrence() {
 
 export default function OccurrencesPage() {
   const { data: occurrences, isLoading } = useOccurrences();
-  const updateStatus = useUpdateOccurrenceStatus();
+  const resolveOcc = useResolveOccurrence();
   const createOcc = useCreateOccurrence();
   const { data: drivers } = useDrivers();
   const { toast } = useToast();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ type: "other", description: "", driver_id: "" });
+  const [form, setForm] = useState<{ type: "delay" | "damage" | "absence" | "other"; description: string; driver_id: string; delivery_id: string }>({ type: "other", description: "", driver_id: "", delivery_id: "" });
 
   const handleCreate = async () => {
-    if (!form.driver_id || !form.description) {
+    if (!form.driver_id || !form.description || !form.delivery_id) {
       toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
     try {
-      await createOcc.mutateAsync({ type: form.type, description: form.description, driver_id: form.driver_id });
+      await createOcc.mutateAsync({ type: form.type, description: form.description, driver_id: form.driver_id, delivery_id: form.delivery_id });
       toast({ title: "Ocorrência registrada!" });
       setCreateOpen(false);
-      setForm({ type: "other", description: "", driver_id: "" });
+      setForm({ type: "other", description: "", driver_id: "", delivery_id: "" });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
   };
 
-  const toggleStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "open" ? "resolved" : "open";
+  const toggleResolved = async (id: string, currentResolved: boolean) => {
     try {
-      await updateStatus.mutateAsync({ id, status: newStatus });
-      toast({ title: `Ocorrência ${newStatus === "resolved" ? "resolvida" : "reaberta"}!` });
+      await resolveOcc.mutateAsync({ id, resolved: !currentResolved });
+      toast({ title: `Ocorrência ${!currentResolved ? "resolvida" : "reaberta"}!` });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
@@ -106,27 +108,27 @@ export default function OccurrencesPage() {
       ) : (
         <div className="space-y-3">
           {(occurrences ?? []).map((occ: any) => {
-            const driverName = occ.delivery_drivers?.profiles?.full_name || "—";
+            const driverName = occ.delivery_drivers?.full_name || "—";
             return (
               <div key={occ.id} className="rounded-2xl bg-card p-4 shadow-card">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl shrink-0", occ.status === "open" ? "bg-destructive/10" : "bg-success/10")}>
-                      <AlertTriangle className={cn("h-5 w-5", occ.status === "open" ? "text-destructive" : "text-success")} />
+                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl shrink-0", !occ.resolved ? "bg-destructive/10" : "bg-success/10")}>
+                      <AlertTriangle className={cn("h-5 w-5", !occ.resolved ? "text-destructive" : "text-success")} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">{typeLabels[occ.type] || occ.type}</span>
                         <button
-                          onClick={() => toggleStatus(occ.id, occ.status)}
-                          disabled={updateStatus.isPending}
+                          onClick={() => toggleResolved(occ.id, occ.resolved)}
+                          disabled={resolveOcc.isPending}
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity",
-                            occ.status === "open" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
+                            !occ.resolved ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
                           )}
                         >
-                          {occ.status === "open" ? <Clock className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
-                          {occ.status === "open" ? "Aberta" : "Resolvida"}
+                          {!occ.resolved ? <Clock className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                          {!occ.resolved ? "Aberta" : "Resolvida"}
                         </button>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{occ.description}</p>
@@ -155,10 +157,10 @@ export default function OccurrencesPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Tipo *</label>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary">
-                <option value="motorcycle_issue">Problema na Moto</option>
-                <option value="accident">Acidente</option>
-                <option value="robbery">Assalto</option>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "delay" | "damage" | "absence" | "other" })} className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary">
+                <option value="delay">Atraso</option>
+                <option value="damage">Dano</option>
+                <option value="absence">Ausência</option>
                 <option value="other">Outro</option>
               </select>
             </div>
@@ -167,9 +169,18 @@ export default function OccurrencesPage() {
               <select value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary">
                 <option value="">Selecione...</option>
                 {(drivers ?? []).map((d) => (
-                  <option key={d.id} value={d.id}>{d.profiles?.full_name || "—"}</option>
+                  <option key={d.id} value={d.id}>{d.full_name || "—"}</option>
                 ))}
               </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">ID da Entrega *</label>
+              <input
+                value={form.delivery_id}
+                onChange={(e) => setForm({ ...form, delivery_id: e.target.value })}
+                placeholder="ID da entrega..."
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Descrição *</label>

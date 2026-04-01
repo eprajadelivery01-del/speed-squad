@@ -1,33 +1,38 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-export type DriverWithProfile = {
+export type DriverRow = {
   id: string;
   user_id: string;
-  vehicle: string;
-  is_online: boolean;
+  full_name: string;
+  phone: string | null;
+  document: string | null;
+  avatar_url: string | null;
+  vehicle_type: string | null;
+  vehicle_plate: string | null;
+  online: boolean;
   rating: number;
-  latitude: number | null;
-  longitude: number | null;
-  license_plate: string | null;
-  commission_rate: number;
+  total_deliveries: number;
+  current_latitude: number | null;
+  current_longitude: number | null;
+  status: string | null;
+  company_id: string | null;
   created_at: string;
-  profiles?: { full_name: string; phone: string | null; avatar_url: string | null } | null;
 };
 
 export async function fetchDrivers() {
   const { data, error } = await supabase
     .from("delivery_drivers")
-    .select("*, profiles:user_id(full_name, phone, avatar_url)")
+    .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as DriverWithProfile[];
+  return (data ?? []) as DriverRow[];
 }
 
-export async function toggleDriverOnline(driverId: string, isOnline: boolean) {
+export async function toggleDriverOnline(driverId: string, online: boolean) {
   const { error } = await supabase
     .from("delivery_drivers")
-    .update({ is_online: isOnline })
+    .update({ online })
     .eq("id", driverId);
   if (error) throw error;
 }
@@ -35,7 +40,7 @@ export async function toggleDriverOnline(driverId: string, isOnline: boolean) {
 export async function updateDriverLocation(driverId: string, lat: number, lng: number) {
   const { error } = await supabase
     .from("delivery_drivers")
-    .update({ latitude: lat, longitude: lng })
+    .update({ current_latitude: lat, current_longitude: lng, last_location_update: new Date().toISOString() })
     .eq("id", driverId);
   if (error) throw error;
 }
@@ -53,10 +58,10 @@ export function useOnlineDrivers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("delivery_drivers")
-        .select("*, profiles:user_id(full_name, phone, avatar_url)")
-        .eq("is_online", true);
+        .select("*")
+        .eq("online", true);
       if (error) throw error;
-      return (data ?? []) as unknown as DriverWithProfile[];
+      return (data ?? []) as DriverRow[];
     },
   });
 }
@@ -64,8 +69,8 @@ export function useOnlineDrivers() {
 export function useToggleDriverOnline() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ driverId, isOnline }: { driverId: string; isOnline: boolean }) =>
-      toggleDriverOnline(driverId, isOnline),
+    mutationFn: ({ driverId, online }: { driverId: string; online: boolean }) =>
+      toggleDriverOnline(driverId, online),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drivers"] });
     },

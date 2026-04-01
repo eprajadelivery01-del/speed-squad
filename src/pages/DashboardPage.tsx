@@ -19,11 +19,11 @@ export default function DashboardPage() {
   const { data: stats } = useDeliveryStats();
   const { data: onlineDrivers } = useOnlineDrivers();
   const { data: companies } = useCompanies();
-  const { data: inRouteData } = useDeliveries({ status: "in_route" });
-  const { data: completedData } = useDeliveries({ status: "completed" });
+  const { data: inTransitData } = useDeliveries({ status: "in_transit" });
+  const { data: deliveredData } = useDeliveries({ status: "delivered" });
 
-  const inRouteCount = inRouteData?.count ?? 0;
-  const completedCount = completedData?.count ?? 0;
+  const inTransitCount = inTransitData?.count ?? 0;
+  const deliveredCount = deliveredData?.count ?? 0;
 
   const [cityQuery, setCityQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState<{ name: string; lat: number; lng: number } | null>(null);
@@ -66,14 +66,11 @@ export default function DashboardPage() {
   return (
     <AdminLayout title="Dashboard" subtitle="Visão geral do sistema">
       <div className="flex gap-4 h-[calc(100vh-130px)]">
-        {/* Left Panel */}
         <div className="hidden xl:block w-72 flex-shrink-0">
           <MotoboysSidebar />
         </div>
 
-        {/* Center */}
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-          {/* City Selector */}
           <div className="relative">
             <div className="rounded-2xl bg-card shadow-card overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3">
@@ -120,54 +117,24 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard
-              icon={<Package className="h-5 w-5" />}
-              label="Corridas Hoje"
-              value={stats?.today ?? 0}
-              iconBg="bg-warning/10"
-              iconColor="text-warning"
-            />
-            <StatCard
-              icon={<Clock className="h-5 w-5" />}
-              label="Em Andamento"
-              value={inRouteCount}
-              iconBg="bg-primary/10"
-              iconColor="text-primary"
-              pulse
-            />
-            <StatCard
-              icon={<Bike className="h-5 w-5" />}
-              label="Motoboys Online"
-              value={onlineDrivers?.length ?? 0}
-              iconBg="bg-success/10"
-              iconColor="text-success"
-              pulse
-            />
-            <StatCard
-              icon={<DollarSign className="h-5 w-5" />}
-              label="Faturamento"
-              value={`R$ ${(stats?.todayRevenue ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-              iconBg="bg-info/10"
-              iconColor="text-info"
-            />
+            <StatCard icon={<Package className="h-5 w-5" />} label="Corridas Hoje" value={stats?.today ?? 0} iconBg="bg-warning/10" iconColor="text-warning" />
+            <StatCard icon={<Clock className="h-5 w-5" />} label="Em Trânsito" value={inTransitCount} iconBg="bg-primary/10" iconColor="text-primary" pulse />
+            <StatCard icon={<Bike className="h-5 w-5" />} label="Motoboys Online" value={onlineDrivers?.length ?? 0} iconBg="bg-success/10" iconColor="text-success" pulse />
+            <StatCard icon={<DollarSign className="h-5 w-5" />} label="Faturamento" value={`R$ ${(stats?.todayRevenue ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} iconBg="bg-info/10" iconColor="text-info" />
           </div>
 
-          {/* Secondary stats */}
           <div className="flex gap-3 flex-wrap">
-            <MiniStat icon={<CheckCircle className="h-3.5 w-3.5 text-success" />} label="Finalizadas" value={completedCount} />
+            <MiniStat icon={<CheckCircle className="h-3.5 w-3.5 text-success" />} label="Entregues" value={deliveredCount} />
             <MiniStat icon={<Building2 className="h-3.5 w-3.5 text-primary" />} label="Empresas" value={companies?.length ?? 0} />
             <MiniStat icon={<TrendingUp className="h-3.5 w-3.5 text-accent" />} label="Total Geral" value={stats?.total ?? 0} />
           </div>
 
-          {/* Map */}
           <div className="flex-1 rounded-2xl overflow-hidden shadow-card min-h-[300px]">
             <MapView centerCity={selectedCity} />
           </div>
         </div>
 
-        {/* Right Panel */}
         <div className="hidden xl:block w-80 flex-shrink-0">
           <NotificationsPanel />
         </div>
@@ -176,9 +143,7 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({
-  icon, label, value, iconBg, iconColor, pulse,
-}: {
+function StatCard({ icon, label, value, iconBg, iconColor, pulse }: {
   icon: React.ReactNode; label: string; value: string | number;
   iconBg: string; iconColor: string; pulse?: boolean;
 }) {

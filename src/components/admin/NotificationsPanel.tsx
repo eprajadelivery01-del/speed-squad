@@ -9,11 +9,10 @@ export function NotificationsPanel() {
   const getIcon = (status: string) => {
     switch (status) {
       case "pending": return "📦";
-      case "broadcasted": return "📡";
       case "accepted": return "✅";
       case "collecting": return "🏪";
-      case "in_route": return "🏍️";
-      case "completed": return "🎉";
+      case "in_transit": return "🏍️";
+      case "delivered": return "🎉";
       case "cancelled": return "❌";
       default: return "📦";
     }
@@ -23,10 +22,9 @@ export function NotificationsPanel() {
     const name = d.companies?.name || "Empresa";
     switch (d.status) {
       case "pending": return `Novo pedido de ${name}`;
-      case "broadcasted": return `Pedido enviado para motoboys`;
       case "accepted": return `Pedido aceito`;
-      case "in_route": return `Entrega em rota`;
-      case "completed": return `Entrega finalizada`;
+      case "in_transit": return `Entrega em trânsito`;
+      case "delivered": return `Entrega finalizada`;
       case "cancelled": return `Entrega cancelada`;
       default: return `Atualização: ${d.status}`;
     }
@@ -53,7 +51,7 @@ export function NotificationsPanel() {
               <span className="text-lg mt-0.5">{getIcon(d.status)}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{getTitle(d)}</p>
-                <p className="text-xs text-muted-foreground truncate">{d.customer_name} — R$ {Number(d.value).toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground truncate">{d.customer_name} — R$ {Number(d.price ?? 0).toFixed(2)}</p>
                 <p className="text-xs text-muted-foreground/70 mt-1">{format(new Date(d.updated_at), "dd/MM HH:mm")}</p>
               </div>
             </div>

@@ -18,13 +18,13 @@ export default function DriverHomePage() {
     if (!user) return;
     supabase
       .from("delivery_drivers")
-      .select("id, is_online")
+      .select("id, online")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setDriverRecord({ id: data.id });
-          setIsOnline(data.is_online);
+          setIsOnline(data.online ?? false);
         }
       });
   }, [user]);
@@ -36,8 +36,9 @@ export default function DriverHomePage() {
         await supabase
           .from("delivery_drivers")
           .update({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
+            current_latitude: pos.coords.latitude,
+            current_longitude: pos.coords.longitude,
+            last_location_update: new Date().toISOString(),
           })
           .eq("id", driverId);
       },
@@ -56,8 +57,9 @@ export default function DriverHomePage() {
           await supabase
             .from("delivery_drivers")
             .update({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
+              current_latitude: pos.coords.latitude,
+              current_longitude: pos.coords.longitude,
+              last_location_update: new Date().toISOString(),
             })
             .eq("id", driverId);
         },
@@ -94,8 +96,8 @@ export default function DriverHomePage() {
     const { error } = await supabase
       .from("delivery_drivers")
       .update({
-        is_online: newStatus,
-        ...(newStatus ? {} : { latitude: null, longitude: null }),
+        online: newStatus,
+        ...(newStatus ? {} : { current_latitude: null, current_longitude: null }),
       })
       .eq("id", driverRecord.id);
 
