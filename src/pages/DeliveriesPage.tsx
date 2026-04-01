@@ -116,6 +116,15 @@ export default function DeliveriesPage() {
     }
   };
 
+  const handleBroadcast = async (delivery: DeliveryWithRelations) => {
+    try {
+      await updateStatus.mutateAsync({ id: delivery.id, status: "broadcasted" as DeliveryStatus });
+      toast({ title: "📡 OS Enviada!", description: `OS #${delivery.id.slice(0, 8).toUpperCase()} compartilhada com ${onlineDrivers.length} entregadores online` });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handlePrint = (delivery: DeliveryWithRelations) => {
     const w = window.open("", "_blank", "width=400,height=600");
     if (!w) return;
