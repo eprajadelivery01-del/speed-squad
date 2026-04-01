@@ -600,26 +600,38 @@ export type Database = {
       regions: {
         Row: {
           active: boolean
+          city: string | null
+          color: string | null
           created_at: string
           description: string | null
+          geometry: Json | null
           id: string
           name: string
+          price: number | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          city?: string | null
+          color?: string | null
           created_at?: string
           description?: string | null
+          geometry?: Json | null
           id?: string
           name: string
+          price?: number | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          city?: string | null
+          color?: string | null
           created_at?: string
           description?: string | null
+          geometry?: Json | null
           id?: string
           name?: string
+          price?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -650,6 +662,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_region_for_point: {
+        Args: { _lat: number; _lng: number }
+        Returns: {
+          region_color: string
+          region_id: string
+          region_name: string
+          region_price: number
+        }[]
+      }
       get_driver_id: { Args: { _user_id: string }; Returns: string }
       has_profile_role: {
         Args: { _role: string; _user_id: string }
