@@ -27,24 +27,22 @@ export default function ReportsPage() {
   });
 
   const deliveries = data?.data ?? [];
-  const totalValue = deliveries.reduce((s, d) => s + Number(d.value), 0);
-  const totalCommission = deliveries.reduce((s, d) => s + Number(d.commission), 0);
-  const completedCount = deliveries.filter((d) => d.status === "completed").length;
+  const totalPrice = deliveries.reduce((s, d) => s + Number(d.price ?? 0), 0);
+  const deliveredCount = deliveries.filter((d) => d.status === "delivered").length;
 
   const handleExport = () => {
     if (deliveries.length === 0) {
       toast({ title: "Nenhum dado para exportar", variant: "destructive" });
       return;
     }
-    const headers = ["Data", "Cliente", "Empresa", "Endereço", "Status", "Valor", "Comissão"];
+    const headers = ["Data", "Cliente", "Empresa", "Destino", "Status", "Valor"];
     const rows = deliveries.map((d) => [
       format(new Date(d.created_at), "dd/MM/yyyy HH:mm"),
-      d.customer_name,
-      (d as any).companies?.name || "",
-      d.address,
+      d.customer_name || "",
+      d.companies?.name || "",
+      d.dropoff_address,
       d.status,
-      Number(d.value).toFixed(2),
-      Number(d.commission).toFixed(2),
+      Number(d.price ?? 0).toFixed(2),
     ]);
     const csv = [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
@@ -59,7 +57,6 @@ export default function ReportsPage() {
 
   return (
     <AdminLayout title="Financeiro" subtitle="Relatórios financeiros">
-      {/* Filters */}
       <div className="rounded-2xl bg-card p-4 shadow-card mb-4">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="h-4 w-4 text-primary" />
@@ -85,31 +82,28 @@ export default function ReportsPage() {
             <label className="text-xs text-muted-foreground">Entregador</label>
             <select value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm outline-none">
               <option value="">Todos</option>
-              {(drivers ?? []).map((d) => <option key={d.id} value={d.id}>{d.profiles?.full_name || "—"}</option>)}
+              {(drivers ?? []).map((d) => <option key={d.id} value={d.id}>{d.full_name || "—"}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Status</label>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm outline-none">
               <option value="all">Todos</option>
-              <option value="completed">Finalizadas</option>
+              <option value="delivered">Entregues</option>
               <option value="cancelled">Canceladas</option>
               <option value="pending">Pendentes</option>
-              <option value="in_route">Em Rota</option>
+              <option value="in_transit">Em Trânsito</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
         <SummaryCard label="Total Entregas" value={deliveries.length} icon={<BarChart3 className="h-5 w-5 text-primary" />} />
-        <SummaryCard label="Finalizadas" value={completedCount} icon={<BarChart3 className="h-5 w-5 text-success" />} />
-        <SummaryCard label="Faturamento" value={`R$ ${totalValue.toFixed(2)}`} icon={<BarChart3 className="h-5 w-5 text-info" />} />
-        <SummaryCard label="Comissões" value={`R$ ${totalCommission.toFixed(2)}`} icon={<BarChart3 className="h-5 w-5 text-accent" />} />
+        <SummaryCard label="Entregues" value={deliveredCount} icon={<BarChart3 className="h-5 w-5 text-success" />} />
+        <SummaryCard label="Faturamento" value={`R$ ${totalPrice.toFixed(2)}`} icon={<BarChart3 className="h-5 w-5 text-info" />} />
       </div>
 
-      {/* Table */}
       <div className="rounded-2xl bg-card shadow-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-sm text-muted-foreground">{deliveries.length} registros</span>
@@ -131,18 +125,16 @@ export default function ReportsPage() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Empresa</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Valor</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Comissão</th>
                 </tr>
               </thead>
               <tbody>
                 {deliveries.slice(0, 50).map((d) => (
                   <tr key={d.id} className="border-b border-border hover:bg-muted/30">
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(d.created_at), "dd/MM HH:mm")}</td>
-                    <td className="px-4 py-3">{d.customer_name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{(d as any).companies?.name || "—"}</td>
+                    <td className="px-4 py-3">{d.customer_name || "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{d.companies?.name || "—"}</td>
                     <td className="px-4 py-3"><StatusDot status={d.status} /></td>
-                    <td className="px-4 py-3 font-medium">R$ {Number(d.value).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">R$ {Number(d.commission).toFixed(2)}</td>
+                    <td className="px-4 py-3 font-medium">R$ {Number(d.price ?? 0).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -170,12 +162,12 @@ function SummaryCard({ label, value, icon }: { label: string; value: string | nu
 
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    pending: "bg-warning", broadcasted: "bg-info", accepted: "bg-info",
-    collecting: "bg-accent", in_route: "bg-primary", completed: "bg-success", cancelled: "bg-destructive",
+    pending: "bg-warning", accepted: "bg-info",
+    collecting: "bg-accent", in_transit: "bg-primary", delivered: "bg-success", cancelled: "bg-destructive",
   };
   const labels: Record<string, string> = {
-    pending: "Pendente", broadcasted: "Enviada", accepted: "Aceita",
-    collecting: "Coletando", in_route: "Em Rota", completed: "Finalizada", cancelled: "Cancelada",
+    pending: "Pendente", accepted: "Aceita",
+    collecting: "Coletando", in_transit: "Em Trânsito", delivered: "Entregue", cancelled: "Cancelada",
   };
   return (
     <span className="flex items-center gap-1.5 text-xs">

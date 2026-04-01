@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BusinessLayout } from "@/components/business/BusinessLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Truck, Clock, CheckCircle, MapPin, DollarSign, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, Truck, Clock, CheckCircle, Loader2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,12 +40,12 @@ export default function BusinessHomePage() {
             <div className="bg-card rounded-2xl p-4 text-center shadow-card">
               <Truck className="h-5 w-5 text-primary mx-auto mb-1" />
               <p className="text-xl font-bold text-foreground">0</p>
-              <p className="text-xs text-muted-foreground">Em rota</p>
+              <p className="text-xs text-muted-foreground">Em trânsito</p>
             </div>
             <div className="bg-card rounded-2xl p-4 text-center shadow-card">
               <CheckCircle className="h-5 w-5 text-success mx-auto mb-1" />
               <p className="text-xl font-bold text-foreground">0</p>
-              <p className="text-xs text-muted-foreground">Concluídas</p>
+              <p className="text-xs text-muted-foreground">Entregues</p>
             </div>
           </div>
 
@@ -63,95 +63,22 @@ function NewDeliveryForm({ onClose, userId }: { onClose: () => void; userId?: st
   const { toast } = useToast();
   const qc = useQueryClient();
   const [customerName, setCustomerName] = useState("");
-  const [address, setAddress] = useState("");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropoffAddress, setDropoffAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [searching, setSearching] = useState(false);
-
-  const [regionInfo, setRegionInfo] = useState<{ name: string; price: number; color: string } | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("companies")
-      .select("id")
-      .eq("user_id", userId)
-      .single()
-      .then(({ data }) => {
-        if (data) setCompanyId(data.id);
-      });
-  }, [userId]);
-
-  const lookupAddress = async () => {
-    if (address.length < 5) return;
-    setSearching(true);
-    setRegionInfo(null);
-    setCoords(null);
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
-      );
-      const results = await res.json();
-
-      if (results.length === 0) {
-        toast({ title: "Endereço não encontrado", description: "Tente um endereço mais detalhado", variant: "destructive" });
-        setSearching(false);
-        return;
-      }
-
-      const lat = parseFloat(results[0].lat);
-      const lng = parseFloat(results[0].lon);
-      setCoords({ lat, lng });
-
-      const { data: regionId } = await supabase.rpc("find_region_for_point", {
-        _lat: lat,
-        _lng: lng,
-      });
-
-      if (regionId) {
-        const { data: region } = await supabase
-          .from("regions")
-          .select("name, price, color")
-          .eq("id", regionId)
-          .single();
-
-        if (region) {
-          setRegionInfo({ name: region.name, price: Number(region.price), color: region.color });
-        }
-      } else {
-        setRegionInfo(null);
-        toast({ title: "Região não encontrada", description: "Este endereço não está em nenhuma região cadastrada" });
-      }
-    } catch {
-      toast({ title: "Erro ao buscar endereço", variant: "destructive" });
-    }
-
-    setSearching(false);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) {
-      toast({ title: "Erro", description: "Empresa não encontrada", variant: "destructive" });
-      return;
-    }
 
     setSubmitting(true);
 
-    const { error } = await supabase.from("deliveries").insert({
-      company_id: companyId,
+    const { error } = await supabase.from("deliveries").insert([{
       customer_name: customerName,
-      address,
-      value: regionInfo?.price ?? 0,
-      commission: (regionInfo?.price ?? 0) * 0.15,
-      latitude: coords?.lat ?? null,
-      longitude: coords?.lng ?? null,
-      region_id: null,
+      pickup_address: pickupAddress,
+      dropoff_address: dropoffAddress,
       notes: notes || null,
-    });
+    }]);
 
     if (error) {
       toast({ title: "Erro ao criar entrega", description: error.message, variant: "destructive" });
@@ -185,44 +112,26 @@ function NewDeliveryForm({ onClose, userId }: { onClose: () => void; userId?: st
         </div>
 
         <div>
-          <label className="text-sm font-medium text-foreground mb-1 block">Endereço de entrega</label>
-          <div className="flex gap-2">
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Rua, número, bairro, cidade"
-              className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
-              required
-            />
-            <button type="button" onClick={lookupAddress} disabled={searching} className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-            </button>
-          </div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Endereço de coleta</label>
+          <input
+            value={pickupAddress}
+            onChange={(e) => setPickupAddress(e.target.value)}
+            placeholder="Rua, número, bairro"
+            className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
+            required
+          />
         </div>
 
-        {regionInfo && (
-          <div className="bg-success/10 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: regionInfo.color }} />
-                <span className="text-sm font-medium text-foreground">{regionInfo.name}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4 text-success" />
-                <span className="text-lg font-bold text-success">
-                  R$ {regionInfo.price.toFixed(2)}
-                </span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Preço calculado automaticamente pela região</p>
-          </div>
-        )}
-
-        {coords && !regionInfo && !searching && (
-          <div className="bg-warning/10 rounded-xl p-3 text-sm text-warning">
-            ⚠️ Endereço localizado mas fora de qualquer região cadastrada. O preço será R$ 0,00.
-          </div>
-        )}
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Endereço de entrega</label>
+          <input
+            value={dropoffAddress}
+            onChange={(e) => setDropoffAddress(e.target.value)}
+            placeholder="Rua, número, bairro"
+            className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
+            required
+          />
+        </div>
 
         <div>
           <label className="text-sm font-medium text-foreground mb-1 block">Observações (opcional)</label>
@@ -237,11 +146,11 @@ function NewDeliveryForm({ onClose, userId }: { onClose: () => void; userId?: st
 
         <button
           type="submit"
-          disabled={submitting || !customerName || !address}
+          disabled={submitting || !customerName || !pickupAddress || !dropoffAddress}
           className="w-full py-3 rounded-xl gradient-primary text-primary-foreground text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {submitting ? "Criando..." : `Criar Entrega${regionInfo ? ` • R$ ${regionInfo.price.toFixed(2)}` : ""}`}
+          {submitting ? "Criando..." : "Criar Entrega"}
         </button>
       </form>
     </div>
