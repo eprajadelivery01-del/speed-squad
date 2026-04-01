@@ -14,9 +14,29 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  // Verify the caller is an admin
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: caller } } = await supabase.auth.getUser(token);
+    if (caller) {
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", caller.id)
+        .single();
+      if (callerProfile?.role !== "admin") {
+        return new Response(JSON.stringify({ error: "Apenas administradores podem criar usuários" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+  }
+
   try {
     const body = await req.json();
-    const { email, password, fullName, phone, document, role, vehicle, licensePlate, commissionRate, companyName, address, regionId } = body;
+    const { email, password, fullName, phone, document, role, vehicleType, vehiclePlate, companyName, address } = body;
 
     if (!email || !password || !role) {
       return new Response(JSON.stringify({ error: "email, password e role são obrigatórios" }), {
@@ -50,16 +70,14 @@ Deno.serve(async (req) => {
 
     const userId = authData.user.id;
 
-    // Update profile with active status (admin-created users skip approval)
-    await supabase.from("profiles").upsert({
-      user_id: userId,
+    // Update profile with role (profile is auto-created by trigger)
+    await supabase.from("profiles").update({
       full_name: fullName || "",
       phone: phone || null,
-      document: document || null,
-      status: "active",
-    });
+      role,
+    }).eq("id", userId);
 
-    // Assign role
+    // Also insert into user_roles table
     await supabase.from("user_roles").insert({
       user_id: userId,
       role,
@@ -69,20 +87,23 @@ Deno.serve(async (req) => {
     if (role === "driver") {
       await supabase.from("delivery_drivers").insert({
         user_id: userId,
-        vehicle: vehicle || "motorcycle",
-        license_plate: licensePlate || null,
-        commission_rate: commissionRate ?? 15,
+        full_name: fullName || "",
+        phone: phone || null,
+        document: document || null,
+        vehicle_type: vehicleType || "motorcycle",
+        vehicle_plate: vehiclePlate || null,
+        status: "active",
       });
     }
 
     // If company, create companies record
     if (role === "company") {
       await supabase.from("companies").insert({
-        user_id: userId,
         name: companyName || fullName || "",
         phone: phone || null,
+        email: email,
         address: address || null,
-        region_id: regionId || null,
+        document: document || null,
       });
     }
 
