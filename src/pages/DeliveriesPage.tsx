@@ -21,6 +21,7 @@ import type { DeliveryStatus } from "@/types/models";
 const statusFilters = [
   { label: "Todas", value: "all" },
   { label: "Pendentes", value: "pending" },
+  { label: "Enviadas", value: "broadcasted" },
   { label: "Aceitas", value: "accepted" },
   { label: "Em Coleta", value: "collecting" },
   { label: "Em Trânsito", value: "in_transit" },
