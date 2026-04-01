@@ -63,7 +63,7 @@ export default function OccurrencesPage() {
   const { toast } = useToast();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ type: "other", description: "", driver_id: "", delivery_id: "" });
+  const [form, setForm] = useState<{ type: "delay" | "damage" | "absence" | "other"; description: string; driver_id: string; delivery_id: string }>({ type: "other", description: "", driver_id: "", delivery_id: "" });
 
   const handleCreate = async () => {
     if (!form.driver_id || !form.description || !form.delivery_id) {
