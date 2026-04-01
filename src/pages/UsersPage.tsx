@@ -18,7 +18,8 @@ export default function UsersPage() {
   return (
     <AdminLayout title="Usuários" subtitle="Gerenciamento de usuários do sistema">
       <div className="space-y-4">
-        <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
           {([
             { key: "all" as const, icon: Users, label: "Todos" },
             { key: "drivers" as const, icon: Bike, label: "Entregadores" },
