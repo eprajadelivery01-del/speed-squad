@@ -157,7 +157,7 @@ export default function OccurrencesPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Tipo *</label>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary">
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "delay" | "damage" | "absence" | "other" })} className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary">
                 <option value="delay">Atraso</option>
                 <option value="damage">Dano</option>
                 <option value="absence">Ausência</option>
