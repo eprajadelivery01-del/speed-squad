@@ -696,6 +696,7 @@ export type Database = {
       assignment_type: "broadcast" | "direct"
       delivery_status:
         | "pending"
+        | "broadcasted"
         | "accepted"
         | "collecting"
         | "in_transit"
@@ -836,6 +837,7 @@ export const Constants = {
       assignment_type: ["broadcast", "direct"],
       delivery_status: [
         "pending",
+        "broadcasted",
         "accepted",
         "collecting",
         "in_transit",
