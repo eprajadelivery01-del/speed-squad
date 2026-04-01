@@ -255,9 +255,10 @@ export default function DeliveriesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => setDetailDelivery(delivery)}><Eye className="h-4 w-4 mr-2" /> Ver detalhes</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handlePrint(delivery)}><Printer className="h-4 w-4 mr-2" /> Imprimir OS</DropdownMenuItem>
-                              {delivery.status === "pending" && (
+                              {(delivery.status === "pending" || delivery.status === ("broadcasted" as any)) && (
                                 <>
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleBroadcast(delivery)}><Radio className="h-4 w-4 mr-2" /> Broadcast (todos)</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => { setDispatchDelivery(delivery); setSelectedDriverId(""); }}><Send className="h-4 w-4 mr-2" /> Enviar para entregador</DropdownMenuItem>
                                 </>
                               )}
