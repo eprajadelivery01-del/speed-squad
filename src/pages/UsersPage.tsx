@@ -1,4 +1,5 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
 import { useDrivers } from "@/services/drivers";
 import { useCompanies } from "@/services/companies";
 import { useProfiles } from "@/services/users";
@@ -17,7 +18,8 @@ export default function UsersPage() {
   return (
     <AdminLayout title="Usuários" subtitle="Gerenciamento de usuários do sistema">
       <div className="space-y-4">
-        <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
           {([
             { key: "all" as const, icon: Users, label: "Todos" },
             { key: "drivers" as const, icon: Bike, label: "Entregadores" },
@@ -34,6 +36,8 @@ export default function UsersPage() {
               <t.icon className="h-4 w-4" /> {t.label}
             </button>
           ))}
+          </div>
+          <CreateUserDialog />
         </div>
 
         {tab === "all" && (

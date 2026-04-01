@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          created_at: string | null
+          delivery_id: string
+          id: string
+          message: string
+          read: boolean | null
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_id: string
+          id?: string
+          message: string
+          read?: boolean | null
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string | null
+          delivery_id?: string
+          id?: string
+          message?: string
+          read?: boolean | null
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           active: boolean | null
@@ -65,6 +103,7 @@ export type Database = {
       deliveries: {
         Row: {
           accepted_at: string | null
+          assignment_type: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           collected_at: string | null
@@ -73,14 +112,19 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           delivered_at: string | null
+          delivery_address: string | null
+          delivery_latitude: number | null
+          delivery_longitude: number | null
           distance_km: number | null
           driver_id: string | null
           dropoff_address: string
           dropoff_latitude: number | null
           dropoff_longitude: number | null
           estimated_time_minutes: number | null
+          estimated_value: number | null
           id: string
           notes: string | null
+          picked_up_at: string | null
           pickup_address: string
           pickup_latitude: number | null
           pickup_longitude: number | null
@@ -92,6 +136,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          assignment_type?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           collected_at?: string | null
@@ -100,14 +145,19 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           delivered_at?: string | null
+          delivery_address?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
           distance_km?: number | null
           driver_id?: string | null
           dropoff_address: string
           dropoff_latitude?: number | null
           dropoff_longitude?: number | null
           estimated_time_minutes?: number | null
+          estimated_value?: number | null
           id?: string
           notes?: string | null
+          picked_up_at?: string | null
           pickup_address: string
           pickup_latitude?: number | null
           pickup_longitude?: number | null
@@ -119,6 +169,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          assignment_type?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           collected_at?: string | null
@@ -127,14 +178,19 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           delivered_at?: string | null
+          delivery_address?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
           distance_km?: number | null
           driver_id?: string | null
           dropoff_address?: string
           dropoff_latitude?: number | null
           dropoff_longitude?: number | null
           estimated_time_minutes?: number | null
+          estimated_value?: number | null
           id?: string
           notes?: string | null
+          picked_up_at?: string | null
           pickup_address?: string
           pickup_latitude?: number | null
           pickup_longitude?: number | null
@@ -171,11 +227,16 @@ export type Database = {
           document: string | null
           full_name: string
           id: string
+          is_online: boolean | null
           last_location_update: string | null
+          latitude: number | null
+          location_updated_at: string | null
+          longitude: number | null
           online: boolean | null
           phone: string | null
           rating: number | null
           status: Database["public"]["Enums"]["driver_status"] | null
+          terms_accepted_at: string | null
           total_deliveries: number | null
           updated_at: string | null
           user_id: string
@@ -191,11 +252,16 @@ export type Database = {
           document?: string | null
           full_name: string
           id?: string
+          is_online?: boolean | null
           last_location_update?: string | null
+          latitude?: number | null
+          location_updated_at?: string | null
+          longitude?: number | null
           online?: boolean | null
           phone?: string | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"] | null
+          terms_accepted_at?: string | null
           total_deliveries?: number | null
           updated_at?: string | null
           user_id: string
@@ -211,11 +277,16 @@ export type Database = {
           document?: string | null
           full_name?: string
           id?: string
+          is_online?: boolean | null
           last_location_update?: string | null
+          latitude?: number | null
+          location_updated_at?: string | null
+          longitude?: number | null
           online?: boolean | null
           phone?: string | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"] | null
+          terms_accepted_at?: string | null
           total_deliveries?: number | null
           updated_at?: string | null
           user_id?: string
@@ -381,6 +452,7 @@ export type Database = {
       }
       driver_location_history: {
         Row: {
+          created_at: string | null
           delivery_id: string | null
           driver_id: string
           heading: number | null
@@ -391,6 +463,7 @@ export type Database = {
           speed: number | null
         }
         Insert: {
+          created_at?: string | null
           delivery_id?: string | null
           driver_id: string
           heading?: number | null
@@ -401,6 +474,7 @@ export type Database = {
           speed?: number | null
         }
         Update: {
+          created_at?: string | null
           delivery_id?: string | null
           driver_id?: string
           heading?: number | null
@@ -426,6 +500,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          role: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          token?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -490,18 +597,82 @@ export type Database = {
         }
         Relationships: []
       }
+      regions: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_driver_id: { Args: { _user_id: string }; Returns: string }
       has_profile_role: {
         Args: { _role: string; _user_id: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
         Returns: boolean
       }
       is_driver: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "driver"
+        | "company"
+        | "customer"
+      assignment_type: "broadcast" | "direct"
       delivery_status:
         | "pending"
         | "accepted"
@@ -640,6 +811,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user", "driver", "company", "customer"],
+      assignment_type: ["broadcast", "direct"],
       delivery_status: [
         "pending",
         "accepted",
