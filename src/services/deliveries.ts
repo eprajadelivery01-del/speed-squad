@@ -32,15 +32,17 @@ interface UseDeliveriesParams {
   search?: string;
   companyId?: string;
   driverId?: string;
+  dateFrom?: string;
+  dateTo?: string;
   pageSize?: number;
   page?: number;
 }
 
 export function useDeliveries(params?: UseDeliveriesParams) {
-  const { status, search, companyId, driverId, pageSize = 50, page = 0 } = params || {};
+  const { status, search, companyId, driverId, dateFrom, dateTo, pageSize = 50, page = 0 } = params || {};
 
   return useQuery({
-    queryKey: ["deliveries", status, search, companyId, driverId, page, pageSize],
+    queryKey: ["deliveries", status, search, companyId, driverId, dateFrom, dateTo, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from("deliveries")
@@ -52,6 +54,12 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       if (search) query = query.ilike("customer_name", `%${search}%`);
       if (companyId) query = query.eq("company_id", companyId);
       if (driverId) query = query.eq("driver_id", driverId);
+      if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", end.toISOString());
+      }
 
       const { data, error, count } = await query;
       if (error) throw error;
@@ -99,7 +107,6 @@ export function useUpdateDeliveryStatus() {
       if (status === "collecting") updates.collected_at = new Date().toISOString();
       if (status === "completed") updates.completed_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
-
       const { error } = await supabase.from("deliveries").update(updates).eq("id", id);
       if (error) throw error;
     },
@@ -117,8 +124,6 @@ export function useReassignDelivery() {
       const { error } = await supabase.from("deliveries").update({ driver_id: driverId, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveries"] }),
   });
 }
