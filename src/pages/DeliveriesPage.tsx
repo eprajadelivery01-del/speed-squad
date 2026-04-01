@@ -235,10 +235,15 @@ export default function DeliveriesPage() {
                       <td className="px-4 py-3"><span className="text-muted-foreground text-xs">{format(new Date(delivery.created_at), "dd/MM HH:mm")}</span></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {delivery.status === "pending" && (
-                            <button onClick={() => { setDispatchDelivery(delivery); setSelectedDriverId(""); }} className="p-2 rounded-lg hover:bg-info/10 transition-colors" title="Enviar para entregador">
-                              <Send className="h-4 w-4 text-info" />
-                            </button>
+                          {(delivery.status === "pending" || delivery.status === ("broadcasted" as any)) && (
+                            <>
+                              <button onClick={() => handleBroadcast(delivery)} className="p-2 rounded-lg hover:bg-warning/10 transition-colors" title="Broadcast para todos">
+                                <Radio className="h-4 w-4 text-warning" />
+                              </button>
+                              <button onClick={() => { setDispatchDelivery(delivery); setSelectedDriverId(""); }} className="p-2 rounded-lg hover:bg-info/10 transition-colors" title="Enviar para entregador">
+                                <Send className="h-4 w-4 text-info" />
+                              </button>
+                            </>
                           )}
                           <button onClick={() => setDetailDelivery(delivery)} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Ver detalhes">
                             <Eye className="h-4 w-4 text-muted-foreground" />
