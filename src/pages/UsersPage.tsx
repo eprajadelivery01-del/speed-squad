@@ -36,6 +36,8 @@ export default function UsersPage() {
               <t.icon className="h-4 w-4" /> {t.label}
             </button>
           ))}
+          </div>
+          <CreateUserDialog />
         </div>
 
         {tab === "all" && (
