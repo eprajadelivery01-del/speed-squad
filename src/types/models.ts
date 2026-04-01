@@ -1,85 +1,91 @@
-export type DeliveryStatus =
-  | "pending"
-  | "broadcasted"
-  | "accepted"
-  | "collecting"
-  | "in_route"
-  | "completed"
-  | "cancelled";
+export type DeliveryStatus = "pending" | "broadcasted" | "accepted" | "collecting" | "in_route" | "completed" | "cancelled";
 
-export interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  avatar_url: string | null;
-  phone: string | null;
-  status: "pending" | "active" | "rejected";
-  created_at: string;
-}
+export type OccurrenceType = "motorcycle_issue" | "accident" | "robbery";
 
-export interface Company {
-  id: string;
-  name: string;
-  phone: string | null;
-  address: string | null;
-  logo_url: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface Driver {
-  id: string;
-  user_id: string;
-  vehicle: string;
-  plate: string | null;
-  is_online: boolean;
-  latitude: number | null;
-  longitude: number | null;
-  rating: number;
-  created_at: string;
-  profiles?: Profile;
-}
-
-export interface Delivery {
-  id: string;
-  company_id: string;
-  driver_id: string | null;
-  customer_name: string;
-  customer_phone: string | null;
-  pickup_address: string;
-  delivery_address: string;
-  value: number;
-  status: DeliveryStatus;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  companies?: Company;
-  drivers?: Driver;
-}
+export type UserRole = "admin" | "company" | "driver" | "customer";
 
 export interface Region {
   id: string;
   name: string;
   color: string;
-  geometry: unknown;
-  is_active: boolean;
+  price: number;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  region_id: string;
+}
+
+export interface DeliveryDriver {
+  id: string;
+  name: string;
+  phone: string;
+  vehicle: string;
+  is_online: boolean;
+  rating: number;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  cpf: string;
+  phone: string;
+}
+
+export interface Delivery {
+  id: string;
+  company_id: string;
+  company_name: string;
+  driver_id: string | null;
+  driver_name: string | null;
+  customer_name: string;
+  address: string;
+  region_id: string;
+  region_name: string;
+  status: DeliveryStatus;
+  value: number;
+  commission: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: string;
+  customer_id: string;
+  company_id: string;
+  items: OrderItem[];
+  total: number;
+  delivery_id?: string;
+  status: "pending" | "preparing" | "ready" | "delivered" | "cancelled";
   created_at: string;
 }
 
-export interface Occurrence {
-  id: string;
-  delivery_id: string;
-  driver_id: string | null;
-  type: string;
-  description: string;
-  status: string;
-  created_at: string;
+export interface OrderItem {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  price: number;
 }
 
 export interface Review {
   id: string;
   delivery_id: string;
+  driver_id: string;
   rating: number;
-  comment: string | null;
+  comment?: string;
   created_at: string;
+}
+
+export interface Occurrence {
+  id: string;
+  driver_id: string;
+  driver_name: string;
+  type: OccurrenceType;
+  description: string;
+  delivery_id: string | null;
+  created_at: string;
+  status: "open" | "resolved";
 }
