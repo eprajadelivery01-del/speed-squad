@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import logoImg from "@/assets/logo.jpeg";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
