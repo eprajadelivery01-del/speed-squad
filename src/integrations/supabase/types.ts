@@ -56,46 +56,70 @@ export type Database = {
         Row: {
           active: boolean | null
           address: string | null
+          banner_url: string | null
           city: string | null
+          city_id: string | null
           created_at: string | null
+          delivery_mode: string | null
+          description: string | null
           document: string | null
           email: string | null
           id: string
+          latitude: number | null
           logo_url: string | null
+          longitude: number | null
           name: string
+          opening_hours: Json | null
           phone: string | null
           state: string | null
           updated_at: string | null
+          user_id: string | null
           zip_code: string | null
         }
         Insert: {
           active?: boolean | null
           address?: string | null
+          banner_url?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string | null
+          delivery_mode?: string | null
+          description?: string | null
           document?: string | null
           email?: string | null
           id?: string
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name: string
+          opening_hours?: Json | null
           phone?: string | null
           state?: string | null
           updated_at?: string | null
+          user_id?: string | null
           zip_code?: string | null
         }
         Update: {
           active?: boolean | null
           address?: string | null
+          banner_url?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string | null
+          delivery_mode?: string | null
+          description?: string | null
           document?: string | null
           email?: string | null
           id?: string
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name?: string
+          opening_hours?: Json | null
           phone?: string | null
           state?: string | null
           updated_at?: string | null
+          user_id?: string | null
           zip_code?: string | null
         }
         Relationships: []
@@ -106,6 +130,7 @@ export type Database = {
           assignment_type: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
+          city_id: string | null
           collected_at: string | null
           company_id: string | null
           created_at: string | null
@@ -124,6 +149,7 @@ export type Database = {
           estimated_value: number | null
           id: string
           notes: string | null
+          order_id: string | null
           picked_up_at: string | null
           pickup_address: string
           pickup_latitude: number | null
@@ -139,6 +165,7 @@ export type Database = {
           assignment_type?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          city_id?: string | null
           collected_at?: string | null
           company_id?: string | null
           created_at?: string | null
@@ -157,6 +184,7 @@ export type Database = {
           estimated_value?: number | null
           id?: string
           notes?: string | null
+          order_id?: string | null
           picked_up_at?: string | null
           pickup_address: string
           pickup_latitude?: number | null
@@ -172,6 +200,7 @@ export type Database = {
           assignment_type?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          city_id?: string | null
           collected_at?: string | null
           company_id?: string | null
           created_at?: string | null
@@ -190,6 +219,7 @@ export type Database = {
           estimated_value?: number | null
           id?: string
           notes?: string | null
+          order_id?: string | null
           picked_up_at?: string | null
           pickup_address?: string
           pickup_latitude?: number | null
@@ -215,11 +245,19 @@ export type Database = {
             referencedRelation: "delivery_drivers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deliveries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
         ]
       }
       delivery_drivers: {
         Row: {
           avatar_url: string | null
+          city_id: string | null
           company_id: string | null
           created_at: string | null
           current_latitude: number | null
@@ -245,6 +283,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          city_id?: string | null
           company_id?: string | null
           created_at?: string | null
           current_latitude?: number | null
@@ -270,6 +309,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          city_id?: string | null
           company_id?: string | null
           created_at?: string | null
           current_latitude?: number | null
@@ -501,6 +541,39 @@ export type Database = {
           },
         ]
       }
+      financial_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -566,6 +639,213 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      order_items: {
+        Row: {
+          id: string
+          notes: string | null
+          order_id: string
+          product_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          order_id: string
+          product_id: string
+          quantity?: number
+          unit_price: number
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          city_id: string | null
+          company_id: string
+          created_at: string | null
+          customer_id: string
+          delivery_address: string | null
+          delivery_latitude: number | null
+          delivery_longitude: number | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          status: string
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          city_id?: string | null
+          company_id: string
+          created_at?: string | null
+          customer_id: string
+          delivery_address?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          status?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Update: {
+          city_id?: string | null
+          company_id?: string
+          created_at?: string | null
+          customer_id?: string
+          delivery_address?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          status?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_id: string
+          paid_at: string | null
+          payment_method: Database["public"]["Enums"]["payment_method_type"]
+          status: Database["public"]["Enums"]["payment_status"]
+          total_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_id: string
+          paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method_type"]
+          status?: Database["public"]["Enums"]["payment_status"]
+          total_amount: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_id?: string
+          paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method_type"]
+          status?: Database["public"]["Enums"]["payment_status"]
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category: string
+          company_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -636,6 +916,33 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -657,6 +964,69 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets: {
+        Row: {
+          balance: number
+          id: string
+          total_earned: number
+          total_withdrawn: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          total_earned?: number
+          total_withdrawn?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          total_earned?: number
+          total_withdrawn?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      withdrawals: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          notes: string | null
+          pix_key: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          pix_key?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          pix_key?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -671,6 +1041,10 @@ export type Database = {
           region_price: number
         }[]
       }
+      get_delivery_price: {
+        Args: { lat: number; lng: number }
+        Returns: number
+      }
       get_driver_id: { Args: { _user_id: string }; Returns: string }
       has_profile_role: {
         Args: { _role: string; _user_id: string }
@@ -684,6 +1058,14 @@ export type Database = {
         Returns: boolean
       }
       is_driver: { Args: { _user_id: string }; Returns: string }
+      process_delivery_payment: {
+        Args: { p_delivery_id: string }
+        Returns: undefined
+      }
+      process_payment_split: {
+        Args: { p_payment_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
@@ -705,7 +1087,11 @@ export type Database = {
         | "returned"
       driver_status: "pending" | "active" | "rejected" | "suspended"
       occurrence_type: "delay" | "damage" | "absence" | "other"
+      payment_method_type: "pix" | "card" | "cash"
+      payment_status: "pending" | "paid" | "failed" | "refunded"
+      transaction_type: "earning" | "fee" | "withdrawal" | "refund"
       vehicle_type: "motorcycle" | "bicycle" | "car" | "van" | "truck"
+      withdrawal_status: "pending" | "approved" | "rejected" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -847,7 +1233,11 @@ export const Constants = {
       ],
       driver_status: ["pending", "active", "rejected", "suspended"],
       occurrence_type: ["delay", "damage", "absence", "other"],
+      payment_method_type: ["pix", "card", "cash"],
+      payment_status: ["pending", "paid", "failed", "refunded"],
+      transaction_type: ["earning", "fee", "withdrawal", "refund"],
       vehicle_type: ["motorcycle", "bicycle", "car", "van", "truck"],
+      withdrawal_status: ["pending", "approved", "rejected", "completed"],
     },
   },
 } as const

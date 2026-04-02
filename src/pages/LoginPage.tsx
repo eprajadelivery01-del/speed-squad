@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Truck, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import logoImg from "@/assets/logo.jpeg";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -46,14 +47,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6 rounded-2xl bg-card p-8 shadow-card">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary">
-            <Truck className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground">É Pra Já</h1>
-          <p className="text-sm text-muted-foreground">Delivery • Painel de Gestão</p>
+          <img src={logoImg} alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
+          <p className="text-sm text-muted-foreground">Painel de Gestão</p>
         </div>
 
         <div className="space-y-4">
