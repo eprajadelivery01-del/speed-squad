@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Pencil, MousePointer, Trash2, Plus, Undo2, Save, X, DollarSign } from "lucide-react";
+import { MapPin, Pencil, MousePointer, Trash2, Undo2, Save, X, DollarSign, Search, Loader2, Eye } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -28,16 +28,30 @@ export default function RegionsPage() {
   const [configOpen, setConfigOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  const [newRegion, setNewRegion] = useState({ name: "", color: "#3B82F6", price: "0", city: "" });
+  const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: "" });
+
+  // City search state
+  const [cityQuery, setCityQuery] = useState("");
+  const [citySuggestions, setCitySuggestions] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
+  const [searchingCity, setSearchingCity] = useState(false);
 
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
+    const saved = localStorage.getItem("epj_selected_city");
+    let center: [number, number] = [-56.0974, -15.5989];
+    let zoom = 12;
+    if (saved) {
+      try {
+        const c = JSON.parse(saved);
+        center = [c.lng, c.lat];
+      } catch {}
+    }
     const m = new maplibregl.Map({
       container: mapContainer.current,
       style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-      center: [-56.0974, -15.5989],
-      zoom: 12,
+      center,
+      zoom,
     });
     m.addControl(new maplibregl.NavigationControl(), "top-right");
     m.on("load", () => setMapReady(true));
@@ -45,19 +59,41 @@ export default function RegionsPage() {
     return () => { m.remove(); map.current = null; };
   }, []);
 
+  // City search
+  const searchCity = async () => {
+    if (cityQuery.length < 2) return;
+    setSearchingCity(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityQuery)}&limit=5&addressdetails=1`
+      );
+      const data = await res.json();
+      setCitySuggestions(
+        data.map((r: any) => ({
+          name: r.display_name.split(",").slice(0, 3).join(",").trim(),
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+        }))
+      );
+    } catch {}
+    setSearchingCity(false);
+  };
+
+  const selectCity = (city: { name: string; lat: number; lng: number }) => {
+    if (map.current) {
+      map.current.flyTo({ center: [city.lng, city.lat], zoom: 13, duration: 2000 });
+    }
+    setCitySuggestions([]);
+    setCityQuery(city.name);
+  };
+
   // Render regions on map
   useEffect(() => {
     if (!mapReady || !map.current || !regions) return;
     const m = map.current;
 
-    // Remove old layers/sources
-    regions.forEach((_, i) => {
-      if (m.getLayer(`region-fill-${i}`)) m.removeLayer(`region-fill-${i}`);
-      if (m.getLayer(`region-line-${i}`)) m.removeLayer(`region-line-${i}`);
-      if (m.getSource(`region-${i}`)) m.removeSource(`region-${i}`);
-    });
-    // Also clean up stale ones
-    for (let i = 0; i < 100; i++) {
+    // Clean up all region layers
+    for (let i = 0; i < 200; i++) {
       if (m.getLayer(`region-fill-${i}`)) m.removeLayer(`region-fill-${i}`);
       if (m.getLayer(`region-line-${i}`)) m.removeLayer(`region-line-${i}`);
       if (m.getSource(`region-${i}`)) m.removeSource(`region-${i}`);
@@ -73,24 +109,26 @@ export default function RegionsPage() {
         id: `region-fill-${i}`,
         type: "fill",
         source: `region-${i}`,
-        paint: { "fill-color": region.color || "#3B82F6", "fill-opacity": 0.25 },
+        paint: {
+          "fill-color": region.color || "#F59E0B",
+          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.45, 0.25],
+        },
       });
       m.addLayer({
         id: `region-line-${i}`,
         type: "line",
         source: `region-${i}`,
-        paint: { "line-color": region.color || "#3B82F6", "line-width": 2 },
+        paint: { "line-color": region.color || "#F59E0B", "line-width": 2.5 },
       });
 
       // Popup on click
       m.on("click", `region-fill-${i}`, (e) => {
-        new maplibregl.Popup()
+        new maplibregl.Popup({ closeButton: true, maxWidth: "200px" })
           .setLngLat(e.lngLat)
-          .setHTML(`<div style="padding:4px"><strong>${region.name}</strong><br/>R$ ${Number(region.price).toFixed(2)}</div>`)
+          .setHTML(`<div style="padding:6px 2px"><strong style="font-size:14px">${region.name}</strong><br/><span style="color:#F59E0B;font-weight:600">R$ ${Number(region.price).toFixed(2)}</span>${region.city ? `<br/><span style="font-size:12px;color:#888">${region.city}</span>` : ''}</div>`)
           .addTo(m);
       });
 
-      // Hover cursor
       m.on("mouseenter", `region-fill-${i}`, () => { m.getCanvas().style.cursor = "pointer"; });
       m.on("mouseleave", `region-fill-${i}`, () => { m.getCanvas().style.cursor = ""; });
     });
@@ -109,7 +147,7 @@ export default function RegionsPage() {
     if (drawingPoints.length < 2) {
       if (drawingPoints.length === 1) {
         m.addSource("drawing-pts", { type: "geojson", data: { type: "FeatureCollection", features: drawingPoints.map(p => ({ type: "Feature" as const, geometry: { type: "Point" as const, coordinates: p }, properties: {} })) } });
-        m.addLayer({ id: "drawing-points", type: "circle", source: "drawing-pts", paint: { "circle-radius": 5, "circle-color": "#3B82F6" } });
+        m.addLayer({ id: "drawing-points", type: "circle", source: "drawing-pts", paint: { "circle-radius": 6, "circle-color": "#F59E0B", "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
       }
       return;
     }
@@ -119,11 +157,11 @@ export default function RegionsPage() {
       type: "geojson",
       data: { type: "Feature", geometry: { type: "Polygon", coordinates: [coords] }, properties: {} },
     });
-    m.addLayer({ id: "drawing-fill", type: "fill", source: "drawing", paint: { "fill-color": "#3B82F6", "fill-opacity": 0.2 } });
-    m.addLayer({ id: "drawing-line", type: "line", source: "drawing", paint: { "line-color": "#3B82F6", "line-width": 2, "line-dasharray": [2, 2] } });
+    m.addLayer({ id: "drawing-fill", type: "fill", source: "drawing", paint: { "fill-color": "#F59E0B", "fill-opacity": 0.2 } });
+    m.addLayer({ id: "drawing-line", type: "line", source: "drawing", paint: { "line-color": "#F59E0B", "line-width": 2, "line-dasharray": [2, 2] } });
 
     m.addSource("drawing-pts", { type: "geojson", data: { type: "FeatureCollection", features: drawingPoints.map(p => ({ type: "Feature" as const, geometry: { type: "Point" as const, coordinates: p }, properties: {} })) } });
-    m.addLayer({ id: "drawing-points", type: "circle", source: "drawing-pts", paint: { "circle-radius": 5, "circle-color": "#3B82F6", "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
+    m.addLayer({ id: "drawing-points", type: "circle", source: "drawing-pts", paint: { "circle-radius": 6, "circle-color": "#F59E0B", "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
   }, [mapReady, drawingPoints]);
 
   // Map click handler for point mode
@@ -200,7 +238,7 @@ export default function RegionsPage() {
       toast.success("Região criada!");
       setConfigOpen(false);
       setDrawingPoints([]);
-      setNewRegion({ name: "", color: "#3B82F6", price: "0", city: "" });
+      setNewRegion({ name: "", color: "#F59E0B", price: "0", city: "" });
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -245,8 +283,38 @@ export default function RegionsPage() {
         <div className="flex-1 relative rounded-2xl overflow-hidden bg-card shadow-card">
           <div ref={mapContainer} className="w-full h-full" />
 
+          {/* City search bar */}
+          <div className="absolute top-4 right-14 w-72 z-10">
+            <div className="bg-card/95 backdrop-blur rounded-xl shadow-lg overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                <input
+                  value={cityQuery}
+                  onChange={(e) => setCityQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && searchCity()}
+                  placeholder="Buscar cidade..."
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground text-foreground"
+                />
+                {searchingCity && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+              </div>
+              {citySuggestions.length > 0 && (
+                <div className="border-t border-border max-h-48 overflow-y-auto">
+                  {citySuggestions.map((city, i) => (
+                    <button
+                      key={i}
+                      onClick={() => selectCity(city)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-b border-border last:border-0 text-foreground"
+                    >
+                      {city.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Drawing toolbar */}
-          <div className="absolute top-4 left-4 flex gap-2">
+          <div className="absolute top-4 left-4 flex gap-2 z-10">
             {drawMode === "none" ? (
               <>
                 <Button size="sm" onClick={() => startDraw("points")} className="gap-1.5 shadow-lg">
@@ -258,11 +326,11 @@ export default function RegionsPage() {
               </>
             ) : (
               <>
-                <div className="bg-card/95 backdrop-blur rounded-lg px-3 py-1.5 text-xs font-medium text-primary flex items-center gap-2 shadow-lg">
-                  {drawMode === "points" ? <><MousePointer className="h-3 w-3" /> Clique para adicionar pontos</> : <><Pencil className="h-3 w-3" /> Arraste para desenhar</>}
+                <div className="bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-2 shadow-lg animate-pulse">
+                  {drawMode === "points" ? <><MousePointer className="h-3 w-3" /> Clique para adicionar pontos ({drawingPoints.length})</> : <><Pencil className="h-3 w-3" /> Arraste para desenhar ({drawingPoints.length} pts)</>}
                 </div>
                 {drawMode === "points" && drawingPoints.length > 0 && (
-                  <Button size="sm" variant="outline" onClick={undoPoint} className="shadow-lg">
+                  <Button size="sm" variant="outline" onClick={undoPoint} className="shadow-lg bg-card/95">
                     <Undo2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -291,22 +359,22 @@ export default function RegionsPage() {
               {(regions ?? []).map(region => (
                 <div
                   key={region.id}
-                  className="p-3 rounded-xl border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                  className="p-3 rounded-xl border border-border hover:bg-primary/5 cursor-pointer transition-colors group"
                   onClick={() => flyToRegion(region)}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: region.color }} />
+                    <div className="w-4 h-4 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: region.color }} />
                     <span className="font-medium text-sm flex-1">{region.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedRegion(region); setEditOpen(true); }} className="text-muted-foreground hover:text-primary">
+                    <button onClick={(e) => { e.stopPropagation(); setSelectedRegion(region); setEditOpen(true); }} className="text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteRegion(region.id); }} className="text-muted-foreground hover:text-destructive">
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteRegion(region.id); }} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />R$ {Number(region.price).toFixed(2)}</span>
-                    {region.city && <span>{region.city}</span>}
+                    <span className="flex items-center gap-1 font-semibold text-primary"><DollarSign className="h-3 w-3" />R$ {Number(region.price).toFixed(2)}</span>
+                    {region.city && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{region.city}</span>}
                   </div>
                 </div>
               ))}
