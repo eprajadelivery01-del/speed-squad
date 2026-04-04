@@ -45,7 +45,29 @@ export function useDriversRealtime() {
   }, [qc]);
 }
 
+export function useOrdersRealtime() {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("orders-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["orders"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+}
+
 export function useAllRealtime() {
   useDeliveriesRealtime();
   useDriversRealtime();
+  useOrdersRealtime();
 }

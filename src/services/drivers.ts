@@ -1,38 +1,33 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-export type DriverRow = {
+export type DriverWithProfile = {
   id: string;
   user_id: string;
-  full_name: string;
-  phone: string | null;
-  document: string | null;
-  avatar_url: string | null;
-  vehicle_type: string | null;
-  vehicle_plate: string | null;
-  online: boolean;
+  vehicle: string;
+  is_online: boolean;
   rating: number;
-  total_deliveries: number;
-  current_latitude: number | null;
-  current_longitude: number | null;
-  status: string | null;
-  company_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  license_plate: string | null;
+  commission_rate: number;
   created_at: string;
+  profiles?: { full_name: string; phone: string | null; avatar_url: string | null } | null;
 };
 
 export async function fetchDrivers() {
   const { data, error } = await supabase
     .from("delivery_drivers")
-    .select("*")
+    .select("*, profiles:user_id(full_name, phone, avatar_url)")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as DriverRow[];
+  return (data ?? []) as unknown as DriverWithProfile[];
 }
 
-export async function toggleDriverOnline(driverId: string, online: boolean) {
+export async function toggleDriverOnline(driverId: string, isOnline: boolean) {
   const { error } = await supabase
     .from("delivery_drivers")
-    .update({ online })
+    .update({ is_online: isOnline })
     .eq("id", driverId);
   if (error) throw error;
 }
@@ -40,7 +35,7 @@ export async function toggleDriverOnline(driverId: string, online: boolean) {
 export async function updateDriverLocation(driverId: string, lat: number, lng: number) {
   const { error } = await supabase
     .from("delivery_drivers")
-    .update({ current_latitude: lat, current_longitude: lng, last_location_update: new Date().toISOString() })
+    .update({ latitude: lat, longitude: lng })
     .eq("id", driverId);
   if (error) throw error;
 }
@@ -58,10 +53,10 @@ export function useOnlineDrivers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("delivery_drivers")
-        .select("*")
-        .eq("online", true);
+        .select("*, profiles:user_id(full_name, phone, avatar_url)")
+        .eq("is_online", true);
       if (error) throw error;
-      return (data ?? []) as DriverRow[];
+      return (data ?? []) as unknown as DriverWithProfile[];
     },
   });
 }
@@ -69,10 +64,74 @@ export function useOnlineDrivers() {
 export function useToggleDriverOnline() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ driverId, online }: { driverId: string; online: boolean }) =>
-      toggleDriverOnline(driverId, online),
+    mutationFn: ({ driverId, isOnline }: { driverId: string; isOnline: boolean }) =>
+      toggleDriverOnline(driverId, isOnline),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drivers"] });
     },
+  });
+}
+
+/**
+ * NOVOS HOOKS (ENTREGADOR)
+ */
+export function useAvailableDeliveries(regionId?: string) {
+  return useQuery({
+    queryKey: ["deliveries", "available", regionId],
+    queryFn: async () => {
+      let query = supabase
+        .from("deliveries")
+        .select("*, companies(name)")
+        .eq("status", "pending")
+        .is("driver_id", null);
+      
+      if (regionId) query = query.eq("region_id", regionId);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useAcceptDelivery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ deliveryId, driverId }: { deliveryId: string; driverId: string }) => {
+      const { data, error } = await supabase
+        .from("deliveries")
+        .update({ 
+          driver_id: driverId, 
+          status: "accepted",
+          accepted_at: new Date().toISOString()
+        })
+        .eq("id", deliveryId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["deliveries"] });
+    },
+  });
+}
+
+export function useDriverEarnings(driverId?: string) {
+  return useQuery({
+    queryKey: ["driver-earnings", driverId],
+    queryFn: async () => {
+      if (!driverId) return { total: 0, count: 0 };
+      const { data, error } = await supabase
+        .from("deliveries")
+        .select("commission")
+        .eq("driver_id", driverId)
+        .eq("status", "completed");
+      if (error) throw error;
+      
+      const total = (data ?? []).reduce((sum, d) => sum + Number(d.commission), 0);
+      return { total, count: data?.length ?? 0 };
+    },
+    enabled: !!driverId,
   });
 }
