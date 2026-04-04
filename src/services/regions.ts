@@ -1,63 +1,105 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
-export interface Region {
-  id: string;
-  name: string;
-  description: string | null;
-  active: boolean;
-  color: string;
-  price: number;
-  city: string | null;
-  geometry: any | null;
-  created_at: string;
-  updated_at: string;
+export type RegionRow = Tables<"regions">;
+export type CreateRegionInput = TablesInsert<"regions"> & { city?: string };
+export type UpdateRegionInput = TablesUpdate<"regions"> & { city?: string };
+
+export async function fetchRegions(city?: string) {
+  let query = supabase.from("regions").select("*").order("name");
+  if (city) query = query.eq("city", city);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
 }
 
-async function fetchRegions(): Promise<Region[]> {
+export async function fetchCitiesWithRegions() {
   const { data, error } = await supabase
     .from("regions")
-    .select("*")
-    .order("name");
+    .select("city")
+    .not("city", "is", null);
+  
   if (error) throw error;
-  return (data ?? []) as Region[];
+  
+  // Return unique sorted list of cities
+  const cities = Array.from(new Set(data.map(r => r.city as string))).sort();
+  return cities;
 }
 
-export function useRegions() {
-  return useQuery({ queryKey: ["regions"], queryFn: fetchRegions });
+export async function createRegion(region: CreateRegionInput) {
+  const { data, error } = await supabase
+    .from("regions")
+    .insert(region as any)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateRegion(id: string, updates: UpdateRegionInput) {
+  const { data, error } = await supabase
+    .from("regions")
+    .update(updates as any)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteRegion(id: string) {
+  const { error } = await supabase
+    .from("regions")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export function useRegions(city?: string) {
+  return useQuery({
+    queryKey: ["regions", city],
+    queryFn: () => fetchRegions(city),
+  });
+}
+
+export function useCitiesWithRegions() {
+  return useQuery({
+    queryKey: ["cities-with-regions"],
+    queryFn: fetchCitiesWithRegions,
+  });
 }
 
 export function useCreateRegion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (region: { name: string; color: string; price: number; city?: string; geometry: any }) => {
-      const { data, error } = await supabase.from("regions").insert(region as any).select().single();
-      if (error) throw error;
-      return data;
+    mutationFn: createRegion,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["regions"] });
+      qc.invalidateQueries({ queryKey: ["cities-with-regions"] });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["regions"] }),
   });
 }
 
 export function useUpdateRegion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; color?: string; price?: number; city?: string; geometry?: any; active?: boolean }) => {
-      const { data, error } = await supabase.from("regions").update(updates as any).eq("id", id).select().single();
-      if (error) throw error;
-      return data;
+    mutationFn: ({ id, updates }: { id: string; updates: UpdateRegionInput }) =>
+      updateRegion(id, updates),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["regions"] });
+      qc.invalidateQueries({ queryKey: ["cities-with-regions"] });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["regions"] }),
   });
 }
 
 export function useDeleteRegion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("regions").delete().eq("id", id);
-      if (error) throw error;
+    mutationFn: deleteRegion,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["regions"] });
+      qc.invalidateQueries({ queryKey: ["cities-with-regions"] });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["regions"] }),
   });
 }
