@@ -4,23 +4,59 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- TODO: Set the document title to the name of your application -->
-    <title>Lovable App</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <title>É Pra Já Delivery</title>
+    <meta name="description" content="É Pra Já Delivery - Inteligência em Logística e Entregas.">
+    <meta name="author" content="É Pra Já" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    <meta property="og:title" content="Lovable App" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="É Pra Já Delivery" />
+    <meta property="og:description" content="Inteligência em Logística e Entregas." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="/splash.png">
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-  </head>
+    <link rel="icon" type="image/png" href="/logo.png">
+    
+    <style>
+      #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+      }
+      .splash-logo {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        margin-bottom: 20px;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      #root:not(:empty) + #splash-screen {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+</head>
 
   <body>
     <div id="root"></div>
+    <div id="splash-screen">
+      <img src="/logo.png" alt="É Pra Já" class="splash-logo">
+      <div style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #F97316; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+      <p style="margin-top: 20px; font-family: sans-serif; font-weight: bold; color: #666; font-size: 14px; letter-spacing: 2px;">CARREGANDO</p>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
