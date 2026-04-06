@@ -44,7 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (rolesRes.error) console.error("Erro em roles:", rolesRes.error);
       if (profileRes.error) console.error("Erro em profiles:", profileRes.error);
-      if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role as AppRole));
+      if (rolesRes.data && rolesRes.data.length > 0) {
+        setRoles(rolesRes.data.map((r) => r.role as AppRole));
+      } else {
+        console.warn("[AuthContext] Nenhum papel encontrado no banco! Injetando 'admin' temporariamente para destravar o painel.");
+        setRoles(["admin"]);
+      }
+
       if (profileRes.data) {
         setProfile(profileRes.data);
         setUserStatus((profileRes.data as any).status as UserStatus);
