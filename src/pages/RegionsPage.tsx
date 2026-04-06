@@ -6,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Pencil, MousePointer, Trash2, Undo2, Save, X, DollarSign, Search, Loader2, Eye } from "lucide-react";
+import { MapPin, Pencil, MousePointer, Trash2, Undo2, Save, X, DollarSign, Search, Loader2, Eye, Check } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useCity } from "@/contexts/CityContext";
+import { cn } from "@/lib/utils";
 
 type DrawMode = "none" | "points" | "freehand";
 
 export default function RegionsPage() {
-  const { data: regions, isLoading } = useRegions();
+  const { selectedCity, setSelectedCity, cities } = useCity();
+  const { data: allRegions, isLoading } = useRegions();
   const createRegion = useCreateRegion();
   const updateRegion = useUpdateRegion();
   const deleteRegion = useDeleteRegion();
@@ -21,6 +24,7 @@ export default function RegionsPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [isControlPressed, setIsControlPressed] = useState(false);
 
   const [drawMode, setDrawMode] = useState<DrawMode>("none");
   const [drawingPoints, setDrawingPoints] = useState<[number, number][]>([]);
@@ -28,7 +32,12 @@ export default function RegionsPage() {
   const [configOpen, setConfigOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: "" });
+  // Filter regions by selected city
+  const regions = allRegions?.filter(r => 
+    !selectedCity || r.city?.toLowerCase() === selectedCity.name.toLowerCase()
+  );
+
+  const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: selectedCity?.name || "" });
 
   // City search state
   const [cityQuery, setCityQuery] = useState("");
@@ -59,33 +68,22 @@ export default function RegionsPage() {
     return () => { m.remove(); map.current = null; };
   }, []);
 
-  // City search
-  const searchCity = async () => {
-    if (cityQuery.length < 2) return;
-    setSearchingCity(true);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityQuery)}&limit=5&addressdetails=1`
-      );
-      const data = await res.json();
-      setCitySuggestions(
-        data.map((r: any) => ({
-          name: r.display_name.split(",").slice(0, 3).join(",").trim(),
-          lat: parseFloat(r.lat),
-          lng: parseFloat(r.lon),
-        }))
-      );
-    } catch {}
-    setSearchingCity(false);
-  };
+  // Key listeners for Control key
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => e.key === "Control" && setIsControlPressed(true);
+    const up = (e: KeyboardEvent) => e.key === "Control" && setIsControlPressed(false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
 
-  const selectCity = (city: { name: string; lat: number; lng: number }) => {
-    if (map.current) {
-      map.current.flyTo({ center: [city.lng, city.lat], zoom: 13, duration: 2000 });
+  // Sync map center with selected city
+  useEffect(() => {
+    if (map.current && selectedCity) {
+      map.current.flyTo({ center: [selectedCity.lng, selectedCity.lat], zoom: 13, duration: 2000 });
+      setCityQuery(selectedCity.name);
     }
-    setCitySuggestions([]);
-    setCityQuery(city.name);
-  };
+  }, [selectedCity]);
 
   // Render regions on map
   useEffect(() => {
@@ -93,7 +91,7 @@ export default function RegionsPage() {
     const m = map.current;
 
     // Clean up all region layers
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 500; i++) {
       if (m.getLayer(`region-fill-${i}`)) m.removeLayer(`region-fill-${i}`);
       if (m.getLayer(`region-line-${i}`)) m.removeLayer(`region-line-${i}`);
       if (m.getSource(`region-${i}`)) m.removeSource(`region-${i}`);
@@ -134,6 +132,30 @@ export default function RegionsPage() {
     });
   }, [mapReady, regions]);
 
+  // City search (Restore manual search)
+  const searchCity = async () => {
+    if (cityQuery.length < 2) return;
+    setSearchingCity(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityQuery)}&limit=5&addressdetails=1`);
+      const data = await res.json();
+      setCitySuggestions(data.map((r: any) => ({
+        name: r.display_name.split(",").slice(0, 3).join(",").trim(),
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+      })));
+    } catch {}
+    setSearchingCity(false);
+  };
+
+  const selectCity = (city: { name: string; lat: number; lng: number }) => {
+    if (map.current) {
+      map.current.flyTo({ center: [city.lng, city.lat], zoom: 13, duration: 2000 });
+    }
+    setCitySuggestions([]);
+    setCityQuery(city.name);
+  };
+
   // Render drawing preview
   useEffect(() => {
     if (!mapReady || !map.current) return;
@@ -169,12 +191,12 @@ export default function RegionsPage() {
     if (!mapReady || !map.current) return;
     const m = map.current;
     const handleClick = (e: maplibregl.MapMouseEvent) => {
-      if (drawMode !== "points") return;
+      if (drawMode !== "points" || isControlPressed) return;
       setDrawingPoints(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
     };
     m.on("click", handleClick);
     return () => { m.off("click", handleClick); };
-  }, [mapReady, drawMode]);
+  }, [mapReady, drawMode, isControlPressed]);
 
   // Freehand drawing
   useEffect(() => {
@@ -183,17 +205,19 @@ export default function RegionsPage() {
     let isDrawing = false;
 
     const onDown = (e: maplibregl.MapMouseEvent) => {
-      if (drawMode !== "freehand") return;
+      if (drawMode !== "freehand" || isControlPressed) return;
       isDrawing = true;
       m.dragPan.disable();
       setDrawingPoints([[e.lngLat.lng, e.lngLat.lat]]);
     };
     const onMove = (e: maplibregl.MapMouseEvent) => {
-      if (!isDrawing || drawMode !== "freehand") return;
+      if (!isDrawing || drawMode !== "freehand" || isControlPressed) {
+        if (isControlPressed) m.dragPan.enable();
+        return;
+      }
       setDrawingPoints(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
     };
     const onUp = () => {
-      if (!isDrawing) return;
       isDrawing = false;
       m.dragPan.enable();
     };
@@ -206,7 +230,7 @@ export default function RegionsPage() {
       m.off("mousemove", onMove);
       m.off("mouseup", onUp);
     };
-  }, [mapReady, drawMode]);
+  }, [mapReady, drawMode, isControlPressed]);
 
   const startDraw = (mode: DrawMode) => {
     setDrawMode(mode);
@@ -233,8 +257,9 @@ export default function RegionsPage() {
     if (!newRegion.name) { toast.error("Nome é obrigatório"); return; }
     const coords = [...drawingPoints, drawingPoints[0]];
     const geometry = { type: "Polygon", coordinates: [coords] };
+    const cityName = selectedCity?.name || newRegion.city;
     try {
-      await createRegion.mutateAsync({ name: newRegion.name, color: newRegion.color, price: parseFloat(newRegion.price) || 0, city: newRegion.city || undefined, geometry });
+      await createRegion.mutateAsync({ name: newRegion.name, color: newRegion.color, price: parseFloat(newRegion.price) || 0, city: cityName || undefined, geometry });
       toast.success("Região criada!");
       setConfigOpen(false);
       setDrawingPoints([]);
@@ -257,7 +282,7 @@ export default function RegionsPage() {
   const handleEditSave = async () => {
     if (!selectedRegion) return;
     try {
-      await updateRegion.mutateAsync({ id: selectedRegion.id, name: selectedRegion.name, color: selectedRegion.color, price: selectedRegion.price, city: selectedRegion.city || undefined });
+      await updateRegion.mutateAsync({ id: selectedRegion.id, name: selectedRegion.name, color: selectedRegion.color, price: selectedRegion.price, city: selectedRegion.city || selectedCity?.name || undefined });
       toast.success("Região atualizada!");
       setEditOpen(false);
       setSelectedRegion(null);
@@ -345,36 +370,66 @@ export default function RegionsPage() {
           </div>
         </div>
 
+import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
+
         {/* Sidebar */}
-        <div className="w-80 rounded-2xl bg-card shadow-card p-4 overflow-y-auto">
-          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" />Regiões ({regions?.length || 0})
+        <div className="w-80 rounded-2xl bg-card shadow-card p-4 overflow-y-auto custom-scrollbar">
+          {/* City Selector List */}
+          <div className="mb-6">
+            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block px-1">Cidade Ativa</Label>
+            <div className="space-y-1">
+              {cities.map((city) => (
+                <button
+                  key={city.id}
+                  onClick={() => setSelectedCity(city)}
+                  className={cn(
+                    "w-full text-left px-3 py-2 rounded-xl text-sm transition-all flex items-center justify-between border border-transparent",
+                    selectedCity?.id === city.id 
+                      ? "bg-primary/10 text-primary border-primary/20 font-bold" 
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <MapPin className={cn("h-3.5 w-3.5", selectedCity?.id === city.id ? "text-primary" : "text-muted-foreground")} />
+                    {city.name}
+                  </span>
+                  {selectedCity?.id === city.id && <Check className="h-4 w-4" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 px-1">
+            <MousePointer className="h-4 w-4 text-primary" />Regiões ({regions?.length || 0})
           </h3>
+          
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <p className="text-sm text-muted-foreground px-1">Carregando...</p>
           ) : (regions ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma região cadastrada. Use os botões no mapa para criar.</p>
+            <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-xl border border-dashed border-border px-4 py-6 text-center">
+              Nenhuma região cadastrada em <strong>{selectedCity?.name}</strong>.
+            </p>
           ) : (
             <div className="space-y-2">
               {(regions ?? []).map(region => (
                 <div
                   key={region.id}
-                  className="p-3 rounded-xl border border-border hover:bg-primary/5 cursor-pointer transition-colors group"
+                  className="p-3 rounded-xl border border-border hover:bg-primary/5 cursor-pointer transition-colors group bg-card"
                   onClick={() => flyToRegion(region)}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-4 h-4 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: region.color }} />
-                    <span className="font-medium text-sm flex-1">{region.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedRegion(region); setEditOpen(true); }} className="text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="font-medium text-sm flex-1 truncate">{region.name}</span>
+                    <button onClick={(e) => { e.stopPropagation(); setSelectedRegion(region); setEditOpen(true); }} className="text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity p-1">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteRegion(region.id); }} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteRegion(region.id); }} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-1">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1 font-semibold text-primary"><DollarSign className="h-3 w-3" />R$ {Number(region.price).toFixed(2)}</span>
-                    {region.city && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{region.city}</span>}
+                    <span className="flex items-center gap-1 font-bold text-primary">R$ {Number(region.price).toFixed(2)}</span>
                   </div>
                 </div>
               ))}
@@ -406,10 +461,6 @@ export default function RegionsPage() {
                 <Label>Preço (R$)</Label>
                 <Input type="number" min="0" step="0.50" value={newRegion.price} onChange={e => setNewRegion(p => ({ ...p, price: e.target.value }))} />
               </div>
-            </div>
-            <div>
-              <Label>Cidade</Label>
-              <Input value={newRegion.city} onChange={e => setNewRegion(p => ({ ...p, city: e.target.value }))} placeholder="Ex: Cuiabá" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setConfigOpen(false); setDrawingPoints([]); }}>Cancelar</Button>
@@ -444,10 +495,6 @@ export default function RegionsPage() {
                   <Label>Preço (R$)</Label>
                   <Input type="number" min="0" step="0.50" value={selectedRegion.price} onChange={e => setSelectedRegion(p => p ? { ...p, price: parseFloat(e.target.value) || 0 } : p)} />
                 </div>
-              </div>
-              <div>
-                <Label>Cidade</Label>
-                <Input value={selectedRegion.city || ""} onChange={e => setSelectedRegion(p => p ? { ...p, city: e.target.value } : p)} />
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
