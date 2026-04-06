@@ -1,16 +1,19 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useCompanies } from "@/services/companies";
+import { EditCompanyDialog } from "@/components/admin/EditCompanyDialog";
 import { CreateCompanyDialog } from "@/components/admin/CreateCompanyDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Power, Trash2 } from "lucide-react";
+import { MoreHorizontal, Power, Trash2, Edit2 } from "lucide-react";
+import { useState } from "react";
 
 export default function CompaniesPage() {
   const { data: companies, isLoading } = useCompanies();
   const qc = useQueryClient();
+  const [editingCompany, setEditingCompany] = useState<any>(null);
 
   const toggleActive = async (id: string, active: boolean) => {
     await supabase.from("companies").update({ active: !active }).eq("id", id);
@@ -25,9 +28,17 @@ export default function CompaniesPage() {
     toast.success("Empresa excluída");
   };
 
+import { GenerateInviteDialog } from "@/components/admin/GenerateInviteDialog";
+
+export default function CompaniesPage() {
+  const { data: companies, isLoading } = useCompanies();
+  const qc = useQueryClient();
+  const [editingCompany, setEditingCompany] = useState<any>(null);
+
   return (
     <AdminLayout title="Empresas" subtitle="Gerenciamento de empresas parceiras">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-3 mb-4">
+        <GenerateInviteDialog />
         <CreateCompanyDialog />
       </div>
       <div className="rounded-2xl bg-card shadow-card overflow-hidden">
@@ -73,6 +84,9 @@ export default function CompaniesPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingCompany(c)}>
+                            <Edit2 className="h-4 w-4 mr-2" />Editar Informações
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggleActive(c.id, !!c.active)}>
                             <Power className="h-4 w-4 mr-2" />{c.active ? "Desativar" : "Ativar"}
                           </DropdownMenuItem>
@@ -89,6 +103,13 @@ export default function CompaniesPage() {
           </table>
         </div>
       </div>
+      {editingCompany && (
+        <EditCompanyDialog
+          company={editingCompany}
+          open={!!editingCompany}
+          onOpenChange={(open) => !open && setEditingCompany(null)}
+        />
+      )}
     </AdminLayout>
   );
 }

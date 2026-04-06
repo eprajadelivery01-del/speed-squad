@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Truck, Map, Users, Building2, Bike,
-  MapPin, DollarSign, AlertTriangle, Settings, Menu, X, LogOut, User
+  MapPin, DollarSign, AlertTriangle, Settings, Menu, X, LogOut, User, MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import logoImg from "@/assets/logo.jpeg";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
   { label: "Corridas (OS)", icon: Truck, href: "/admin/deliveries" },
+  { label: "Chat", icon: MessageSquare, href: "/admin/chat" },
   { label: "Mapa", icon: Map, href: "/admin/map" },
   { label: "Usuários", icon: Users, href: "/admin/users" },
   { label: "Empresas", icon: Building2, href: "/admin/companies" },

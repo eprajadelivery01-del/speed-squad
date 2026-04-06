@@ -1,16 +1,19 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useDrivers } from "@/services/drivers";
+import { EditDriverDialog } from "@/components/admin/EditDriverDialog";
 import { CreateDriverDialog } from "@/components/admin/CreateDriverDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Power, Trash2, UserCheck, UserX } from "lucide-react";
+import { MoreHorizontal, Power, Trash2, UserCheck, UserX, Edit2 } from "lucide-react";
+import { useState } from "react";
 
 export default function DriversPage() {
   const { data: drivers, isLoading } = useDrivers();
   const qc = useQueryClient();
+  const [editingDriver, setEditingDriver] = useState<any>(null);
 
   const toggleOnline = async (id: string, online: boolean) => {
     await supabase.from("delivery_drivers").update({ online: !online } as any).eq("id", id);
@@ -36,9 +39,17 @@ export default function DriversPage() {
     motorcycle: "🏍️ Moto", bicycle: "🚲 Bicicleta", car: "🚗 Carro", van: "🚐 Van", truck: "🚛 Caminhão",
   };
 
+import { GenerateInviteDialog } from "@/components/admin/GenerateInviteDialog";
+
+export default function DriversPage() {
+  const { data: drivers, isLoading } = useDrivers();
+  const qc = useQueryClient();
+  const [editingDriver, setEditingDriver] = useState<any>(null);
+
   return (
     <AdminLayout title="Entregadores" subtitle="Gerenciamento de motoboys">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-3 mb-4">
+        <GenerateInviteDialog />
         <CreateDriverDialog />
       </div>
       <div className="rounded-2xl bg-card shadow-card overflow-hidden">
@@ -93,6 +104,9 @@ export default function DriversPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingDriver(d)}>
+                            <Edit2 className="h-4 w-4 mr-2" />Editar Informações
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggleOnline(d.id, !!d.online)}>
                             <Power className="h-4 w-4 mr-2" />{d.online ? "Colocar Offline" : "Colocar Online"}
                           </DropdownMenuItem>
@@ -112,6 +126,13 @@ export default function DriversPage() {
           </table>
         </div>
       </div>
+      {editingDriver && (
+        <EditDriverDialog
+          driver={editingDriver}
+          open={!!editingDriver}
+          onOpenChange={(open) => !open && setEditingDriver(null)}
+        />
+      )}
     </AdminLayout>
   );
 }

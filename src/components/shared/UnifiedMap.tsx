@@ -212,14 +212,44 @@ export function UnifiedMap({ regions, centerCity: propCenterCity, interactive = 
         </div>
       `;
 
+      const popupContent = `
+        <div style="padding: 10px; font-family: sans-serif; min-width: 160px; text-align: left;">
+          <div style="font-weight: bold; color: #1a1a1a; margin-bottom: 2px;">${driver.profiles?.full_name || "Entregador"}</div>
+          <div style="font-size: 11px; color: #22c55e; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+            <div style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite;"></div>
+            Disponível
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button onclick="window.location.href='/admin/chat?recipient=${driver.user_id}'" style="
+              cursor: pointer;
+              background: #3b82f6;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 7px;
+              font-size: 11px;
+              font-weight: 600;
+              transition: opacity 0.2s;
+            ">💬 Iniciar Chat</button>
+            <button onclick="window.open('https://wa.me/${driver.profiles?.phone?.replace(/\D/g, "")}', '_blank')" style="
+              cursor: pointer;
+              background: #22c55e;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 7px;
+              font-size: 11px;
+              font-weight: 600;
+              transition: opacity 0.2s;
+            ">🟢 WhatsApp</button>
+          </div>
+          <style>@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }</style>
+        </div>
+      `;
+
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([driver.longitude, driver.latitude])
-        .setPopup(new maplibregl.Popup({ offset: 15, closeButton: false }).setHTML(`
-          <div style="padding: 4px; font-family: sans-serif;">
-            <div style="font-weight: bold; color: #1a1a1a;">${driver.profiles?.full_name || "Entregador"}</div>
-            <div style="font-size: 11px; color: #666; margin-top: 2px;">Disponível</div>
-          </div>
-        `))
+        .setPopup(new maplibregl.Popup({ offset: 15, closeButton: false }).setHTML(popupContent))
         .addTo(m);
 
       markersRef.current.push(marker);
