@@ -29,22 +29,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
 
   const fetchUserData = async (userId: string) => {
-    const [rolesRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase.from("profiles").select("full_name, avatar_url, phone, status").eq("user_id", userId).single(),
-    ]);
-    if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role as AppRole));
-    if (profileRes.data) {
-      setProfile(profileRes.data);
-      setUserStatus((profileRes.data as any).status as UserStatus);
+    try {
+      const [rolesRes, profileRes] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("profiles").select("full_name, avatar_url, phone, status").eq("user_id", userId).single(),
+      ]);
+      if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role as AppRole));
+      if (profileRes.data) {
+        setProfile(profileRes.data);
+        setUserStatus((profileRes.data as any).status as UserStatus);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
     }
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
           await fetchUserData(session.user.id);
         } else {
@@ -57,13 +66,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) await fetchUserData(session.user.id);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const hasRole = (role: AppRole) => roles.includes(role);
