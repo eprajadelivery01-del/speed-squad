@@ -29,24 +29,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
 
   const fetchUserData = async (userId: string) => {
-    const timeoutPromise = new Promise((resolve) => 
-      setTimeout(() => resolve({ timeout: true }), 5000)
-    );
-
     try {
-      const dataPromise = Promise.all([
+      console.log(`[AuthContext] Buscando dados para: ${userId}`);
+      console.time("Supabase Fetch");
+
+      const [rolesRes, profileRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase.from("profiles").select("full_name, avatar_url, phone, status").eq("user_id", userId).single(),
       ]);
 
-      const result: any = await Promise.race([dataPromise, timeoutPromise]);
+      console.timeEnd("Supabase Fetch");
+      console.log("[AuthContext] Resposta Roles:", rolesRes);
+      console.log("[AuthContext] Resposta Profile:", profileRes);
 
-      if (result?.timeout) {
-        console.warn("Tempo limite excedido ao buscar dados do usuário. O banco pode estar lento ou travado.");
-        return;
-      }
-
-      const [rolesRes, profileRes] = result;
+      if (rolesRes.error) console.error("Erro em roles:", rolesRes.error);
+      if (profileRes.error) console.error("Erro em profiles:", profileRes.error);
       if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role as AppRole));
       if (profileRes.data) {
         setProfile(profileRes.data);
