@@ -52,6 +52,9 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-2">
           <img src={logoImg} alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
           <p className="text-sm text-muted-foreground">Painel de Gestão</p>
+          <div className="mt-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
+            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Repositório ENTREGADOR (cbe3232c)</p>
+          </div>
         </div>
 
         <div className="space-y-4">
