@@ -370,9 +370,6 @@ export default function RegionsPage() {
           </div>
         </div>
 
-import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
-
         {/* Sidebar */}
         <div className="w-80 rounded-2xl bg-card shadow-card p-4 overflow-y-auto custom-scrollbar">
           {/* City Selector List */}
