@@ -42,7 +42,7 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/invite/:token" element={<InvitePage />} />
-                <Route path="/" element={<Navigate to="/admin" replace />} />
+                <Route path="/" element={<Navigate to="/driver" replace />} />
 
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><DashboardPage /></ProtectedRoute>} />
                 <Route path="/admin/deliveries" element={<ProtectedRoute requiredRole="admin"><DeliveriesPage /></ProtectedRoute>} />
