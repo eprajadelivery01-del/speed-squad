@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useRegions, useCreateRegion, useUpdateRegion, useDeleteRegion, type Region } from "@/services/regions";
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,12 @@ export default function RegionsPage() {
   const [configOpen, setConfigOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  // Filter regions by selected city
-  const regions = allRegions?.filter(r => 
-    !selectedCity || r.city?.toLowerCase() === selectedCity.name.toLowerCase()
-  );
+  // Filter regions by selected city - Memoized to prevent infinite map re-renders
+  const regions = useMemo(() => {
+    return allRegions?.filter(r => 
+      !selectedCity || r.city?.toLowerCase() === selectedCity.name.toLowerCase()
+    );
+  }, [allRegions, selectedCity]);
 
   const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: selectedCity?.name || "" });
 
