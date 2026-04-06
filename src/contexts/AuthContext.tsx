@@ -65,11 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       const globalTimeout = setTimeout(() => {
-        if (mounted) {
-          console.warn("Segurança: Forçando fim do carregamento após 10 segundos.");
-          setLoading(false);
-        }
-      }, 10000);
+        if (mounted) setLoading(false);
+      }, 5000);
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -79,13 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchUserData(session.user.id);
+          // Busca em background sem travar o React
+          fetchUserData(session.user.id).finally(() => {
+            if (mounted) setLoading(false);
+          });
+        } else {
+          if (mounted) setLoading(false);
         }
       } catch (error) {
-        console.error("Erro crítico na inicialização do Auth:", error);
+        console.error("Erro na inicialização do Auth:", error);
+        if (mounted) setLoading(false);
       } finally {
         clearTimeout(globalTimeout);
-        if (mounted) setLoading(false);
       }
     };
 
