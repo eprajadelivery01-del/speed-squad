@@ -1,17 +1,17 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { MotoboysSidebar } from "@/components/admin/MotoboysSidebar";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
-import { MapView } from "@/components/admin/MapView";
 import { useDeliveryStats, useDeliveries } from "@/services/deliveries";
 import { useOnlineDrivers } from "@/services/drivers";
 import { useCompanies } from "@/services/companies";
 import { useAllRealtime } from "@/services/realtime";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useCity } from "@/contexts/CityContext";
+import { useRegions } from "@/services/regions";
+import { UnifiedMap } from "@/components/shared/UnifiedMap";
 import {
   Package, Bike, Building2, DollarSign, TrendingUp, Clock, CheckCircle, Search, MapPin, Loader2
 } from "lucide-react";
-
-const CITY_STORAGE_KEY = "epj_selected_city";
 
 export default function DashboardPage() {
   useAllRealtime();
@@ -22,20 +22,15 @@ export default function DashboardPage() {
   const { data: inTransitData } = useDeliveries({ status: "in_transit" });
   const { data: deliveredData } = useDeliveries({ status: "delivered" });
 
+  const { selectedCity, setCity } = useCity();
+  const { data: regions } = useRegions(selectedCity || undefined);
+
   const inTransitCount = inTransitData?.count ?? 0;
   const deliveredCount = deliveredData?.count ?? 0;
 
   const [cityQuery, setCityQuery] = useState("");
-  const [selectedCity, setSelectedCity] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [citySuggestions, setCitySuggestions] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
   const [searchingCity, setSearchingCity] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(CITY_STORAGE_KEY);
-    if (stored) {
-      try { setSelectedCity(JSON.parse(stored)); } catch {}
-    }
-  }, []);
 
   const searchCity = async () => {
     if (cityQuery.length < 2) return;
@@ -47,7 +42,7 @@ export default function DashboardPage() {
       const data = await res.json();
       setCitySuggestions(
         data.map((r: any) => ({
-          name: r.display_name.split(",").slice(0, 3).join(","),
+          name: r.display_name.split(",")[0],
           lat: parseFloat(r.lat),
           lng: parseFloat(r.lon),
         }))
@@ -57,8 +52,7 @@ export default function DashboardPage() {
   };
 
   const selectCity = (city: { name: string; lat: number; lng: number }) => {
-    setSelectedCity(city);
-    localStorage.setItem(CITY_STORAGE_KEY, JSON.stringify(city));
+    setCity(city.name);
     setCitySuggestions([]);
     setCityQuery("");
   };
@@ -77,9 +71,9 @@ export default function DashboardPage() {
                 <MapPin className="h-4 w-4 text-primary shrink-0" />
                 {selectedCity ? (
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-sm font-medium text-foreground truncate">{selectedCity.name}</span>
+                    <span className="text-sm font-medium text-foreground truncate">{selectedCity}</span>
                     <button
-                      onClick={() => { setSelectedCity(null); localStorage.removeItem(CITY_STORAGE_KEY); }}
+                      onClick={() => setCity(null)}
                       className="text-xs text-muted-foreground hover:text-foreground shrink-0"
                     >
                       ✕
@@ -131,7 +125,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex-1 rounded-2xl overflow-hidden shadow-card min-h-[300px]">
-            <MapView centerCity={selectedCity} />
+            <UnifiedMap regions={regions ?? []} />
           </div>
         </div>
 

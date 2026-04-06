@@ -16,12 +16,29 @@ export type DriverWithProfile = {
 };
 
 export async function fetchDrivers() {
-  const { data, error } = await supabase
+  const { data: drivers, error: driversError } = await supabase
     .from("delivery_drivers")
-    .select("*, profiles:user_id(full_name, phone, avatar_url)")
+    .select("*")
     .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as DriverWithProfile[];
+    
+  if (driversError) throw driversError;
+  if (!drivers) return [];
+
+  const userIds = drivers.map(d => d.user_id);
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("user_id, full_name, phone, avatar_url")
+    .in("user_id", userIds);
+
+  if (profilesError) {
+    console.error("Erro ao buscar perfis dos motoristas:", profilesError);
+    return drivers as unknown as DriverWithProfile[];
+  }
+
+  return drivers.map(driver => ({
+    ...driver,
+    profiles: profiles?.find(p => p.user_id === driver.user_id) || null
+  })) as unknown as DriverWithProfile[];
 }
 
 export async function toggleDriverOnline(driverId: string, isOnline: boolean) {
@@ -51,12 +68,29 @@ export function useOnlineDrivers() {
   return useQuery({
     queryKey: ["drivers", "online"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: drivers, error: driversError } = await supabase
         .from("delivery_drivers")
-        .select("*, profiles:user_id(full_name, phone, avatar_url)")
+        .select("*")
         .eq("is_online", true);
-      if (error) throw error;
-      return (data ?? []) as unknown as DriverWithProfile[];
+      
+      if (driversError) throw driversError;
+      if (!drivers) return [];
+
+      const userIds = drivers.map(d => d.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, phone, avatar_url")
+        .in("user_id", userIds);
+
+      if (profilesError) {
+        console.error("Erro ao buscar perfis dos motoristas online:", profilesError);
+        return drivers as unknown as DriverWithProfile[];
+      }
+
+      return drivers.map(driver => ({
+        ...driver,
+        profiles: profiles?.find(p => p.user_id === driver.user_id) || null
+      })) as unknown as DriverWithProfile[];
     },
   });
 }
