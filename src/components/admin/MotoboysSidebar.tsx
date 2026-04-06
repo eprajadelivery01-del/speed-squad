@@ -13,8 +13,8 @@ export function MotoboysSidebar() {
   const { data: companies } = useCompanies();
 
   const allDrivers = drivers ?? [];
-  const online = allDrivers.filter((d) => d.online);
-  const offline = allDrivers.filter((d) => !d.online);
+  const online = allDrivers.filter((d) => d.is_online);
+  const offline = allDrivers.filter((d) => !d.is_online);
 
   const filterBySearch = (name: string) => !search || name.toLowerCase().includes(search.toLowerCase());
 
@@ -45,15 +45,15 @@ export function MotoboysSidebar() {
             Motoboys Online ({online.length})
             {showOnline ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
-          {showOnline && online.filter((d) => filterBySearch(d.full_name || "")).map((driver) => (
+          {showOnline && online.filter((d) => filterBySearch(d.profiles?.full_name || "")).map((driver) => (
             <div key={driver.id} className="flex items-center justify-between px-4 py-2 hover:bg-muted/30">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center text-sm">
-                  {driver.avatar_url ? <img src={driver.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : "🏍️"}
+                <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center text-sm overflow-hidden">
+                  {driver.profiles?.avatar_url ? <img src={driver.profiles?.avatar_url} alt="" className="h-full w-full object-cover" /> : "🏍️"}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{driver.full_name || "—"}</p>
-                  <p className="text-xs text-muted-foreground">{driver.vehicle_type || "—"}</p>
+                  <p className="text-sm font-medium text-foreground">{driver.profiles?.full_name || "—"}</p>
+                  <p className="text-xs text-muted-foreground">{driver.vehicle || "—"}</p>
                 </div>
               </div>
               <span className="h-2 w-2 rounded-full bg-success" />
@@ -66,15 +66,15 @@ export function MotoboysSidebar() {
             Motoboys Offline ({offline.length})
             {showOffline ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
-          {showOffline && offline.filter((d) => filterBySearch(d.full_name || "")).map((driver) => (
+          {showOffline && offline.filter((d) => filterBySearch(d.profiles?.full_name || "")).map((driver) => (
             <div key={driver.id} className="flex items-center justify-between px-4 py-2 hover:bg-muted/30">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm">
-                  {driver.avatar_url ? <img src={driver.avatar_url} alt="" className="h-full w-full rounded-full object-cover" /> : "🏍️"}
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm overflow-hidden">
+                  {driver.profiles?.avatar_url ? <img src={driver.profiles?.avatar_url} alt="" className="h-full w-full object-cover" /> : "🏍️"}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{driver.full_name || "—"}</p>
-                  <p className="text-xs text-muted-foreground">{driver.vehicle_type || "—"}</p>
+                  <p className="text-sm font-medium text-foreground">{driver.profiles?.full_name || "—"}</p>
+                  <p className="text-xs text-muted-foreground">{driver.vehicle || "—"}</p>
                 </div>
               </div>
               <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
