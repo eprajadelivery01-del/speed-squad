@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import logoImg from "@/assets/logo.jpeg";
 
 export default function LoginPage() {
@@ -12,38 +13,31 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading, hasRole } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (hasRole("admin")) navigate("/admin");
+      else if (hasRole("company")) navigate("/business");
+      else if (hasRole("driver")) navigate("/driver");
+      else navigate("/admin");
+    }
+  }, [user, authLoading, hasRole, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error, data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setLoading(false);
+      if (error) {
+        toast({ title: "Erro ao entrar", description: error.message, variant: "destructive" });
+      }
+    } catch (error: any) {
       toast({ title: "Erro ao entrar", description: error.message, variant: "destructive" });
-      return;
-    }
-
-    const user = signInData.user;
-    if (!user) {
+    } finally {
       setLoading(false);
-      toast({ title: "Erro ao entrar", description: "Usuário não encontrado", variant: "destructive" });
-      return;
     }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    const userRole = profile?.role || "customer";
-    setLoading(false);
-
-    if (userRole === "admin") navigate("/admin");
-    else if (userRole === "company") navigate("/business");
-    else if (userRole === "driver") navigate("/driver");
-    else navigate("/admin");
   };
 
   return (

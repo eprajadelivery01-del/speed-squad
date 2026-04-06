@@ -47,32 +47,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!mounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          await fetchUserData(session.user.id);
-        } else {
-          setRoles([]);
-          setProfile(null);
-          setUserStatus(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!mounted) return;
       
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) await fetchUserData(session.user.id);
+      
+      if (session?.user) {
+        await fetchUserData(session.user.id);
+      }
+      
       setLoading(false);
-    });
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchUserData(session.user.id);
+          }
+          setLoading(false);
+        } else if (event === "SIGNED_OUT") {
+          setSession(null);
+          setUser(null);
+          setRoles([]);
+          setProfile(null);
+          setUserStatus(null);
+          setLoading(false);
+        }
+      }
+    );
 
     return () => {
       mounted = false;
