@@ -48,17 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserData(session.user.id);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        }
+      } catch (error) {
+        console.error("Erro crítico na inicialização do Auth:", error);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initializeAuth();
@@ -67,20 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!mounted) return;
 
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            await fetchUserData(session.user.id);
+        try {
+          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+              await fetchUserData(session.user.id);
+            }
+          } else if (event === "SIGNED_OUT") {
+            setSession(null);
+            setUser(null);
+            setRoles([]);
+            setProfile(null);
+            setUserStatus(null);
           }
-          setLoading(false);
-        } else if (event === "SIGNED_OUT") {
-          setSession(null);
-          setUser(null);
-          setRoles([]);
-          setProfile(null);
-          setUserStatus(null);
-          setLoading(false);
+        } catch (error) {
+          console.error("Erro no listener de Auth:", error);
+        } finally {
+          if (mounted) setLoading(false);
         }
       }
     );
