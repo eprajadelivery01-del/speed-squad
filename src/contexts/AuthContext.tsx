@@ -29,18 +29,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
 
   const fetchUserData = async (userId: string) => {
+    const timeoutPromise = new Promise((resolve) => 
+      setTimeout(() => resolve({ timeout: true }), 5000)
+    );
+
     try {
-      const [rolesRes, profileRes] = await Promise.all([
+      const dataPromise = Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase.from("profiles").select("full_name, avatar_url, phone, status").eq("user_id", userId).single(),
       ]);
+
+      const result: any = await Promise.race([dataPromise, timeoutPromise]);
+
+      if (result?.timeout) {
+        console.warn("Tempo limite excedido ao buscar dados do usuário. O banco pode estar lento ou travado.");
+        return;
+      }
+
+      const [rolesRes, profileRes] = result;
       if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role as AppRole));
       if (profileRes.data) {
         setProfile(profileRes.data);
         setUserStatus((profileRes.data as any).status as UserStatus);
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("Erro ao buscar dados do usuário:", error);
     }
   };
 
