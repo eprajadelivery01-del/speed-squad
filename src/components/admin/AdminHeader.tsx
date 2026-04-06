@@ -1,4 +1,5 @@
 import { Bell, Search } from "lucide-react";
+import { NotificationsPopover } from "./NotificationsPopover";
 
 interface AdminHeaderProps {
   title: string;
@@ -14,17 +15,14 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 bg-muted rounded-xl px-3 py-2">
+          <div className="hidden md:flex items-center gap-2 bg-muted rounded-xl px-3 py-2 border border-transparent focus-within:border-primary/20 transition-all">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               placeholder="Buscar..."
               className="bg-transparent text-sm outline-none w-40 placeholder:text-muted-foreground"
             />
           </div>
-          <button className="relative p-2 rounded-xl hover:bg-muted transition-colors">
-            <Bell className="h-5 w-5 text-muted-foreground" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-          </button>
+          <NotificationsPopover />
         </div>
       </div>
     </header>
