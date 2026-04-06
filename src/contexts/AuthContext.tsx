@@ -61,6 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const initializeAuth = async () => {
+      const globalTimeout = setTimeout(() => {
+        if (mounted) {
+          console.warn("Segurança: Forçando fim do carregamento após 10 segundos.");
+          setLoading(false);
+        }
+      }, 10000);
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
@@ -74,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Erro crítico na inicialização do Auth:", error);
       } finally {
+        clearTimeout(globalTimeout);
         if (mounted) setLoading(false);
       }
     };
@@ -83,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+
+        const authTimeout = setTimeout(() => {
+          if (mounted) setLoading(false);
+        }, 10000);
 
         try {
           if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
@@ -101,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error("Erro no listener de Auth:", error);
         } finally {
+          clearTimeout(authTimeout);
           if (mounted) setLoading(false);
         }
       }
