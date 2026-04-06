@@ -12,10 +12,22 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useCity } from "@/contexts/CityContext";
 import { cn } from "@/lib/utils";
 
+const AVAILABLE_CITIES = [
+  { id: "1", name: "Cuiabá", lat: -15.5989, lng: -56.0974 },
+  { id: "2", name: "Várzea Grande", lat: -15.65, lng: -56.1333 },
+  { id: "3", name: "Diamantino", lat: -14.4087, lng: -56.4462 },
+  { id: "4", name: "Tangará da Serra", lat: -14.6231, lng: -57.4851 },
+  { id: "5", name: "Rondonópolis", lat: -16.4674, lng: -54.6318 },
+  { id: "6", name: "Sinop", lat: -11.864, lng: -55.509 },
+  { id: "7", name: "Sorriso", lat: -12.5442, lng: -55.7231 },
+  { id: "8", name: "Lucas do Rio Verde", lat: -13.06, lng: -55.91 },
+  { id: "9", name: "Nova Mutum", lat: -13.83, lng: -56.08 },
+];
+
 type DrawMode = "none" | "points" | "freehand";
 
 export default function RegionsPage() {
-  const { selectedCity, setSelectedCity, cities } = useCity();
+  const { selectedCity, selectedCityCoords, setCity } = useCity();
   const { data: allRegions, isLoading } = useRegions();
   const createRegion = useCreateRegion();
   const updateRegion = useUpdateRegion();
@@ -35,11 +47,11 @@ export default function RegionsPage() {
   // Filter regions by selected city - Memoized to prevent infinite map re-renders
   const regions = useMemo(() => {
     return allRegions?.filter(r => 
-      !selectedCity || r.city?.toLowerCase() === selectedCity.name.toLowerCase()
+      !selectedCity || r.city?.toLowerCase() === selectedCity.toLowerCase()
     );
   }, [allRegions, selectedCity]);
 
-  const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: selectedCity?.name || "" });
+  const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: selectedCity || "" });
 
   // City search state
   const [cityQuery, setCityQuery] = useState("");
@@ -81,11 +93,11 @@ export default function RegionsPage() {
 
   // Sync map center with selected city
   useEffect(() => {
-    if (map.current && selectedCity) {
-      map.current.flyTo({ center: [selectedCity.lng, selectedCity.lat], zoom: 13, duration: 2000 });
-      setCityQuery(selectedCity.name);
+    if (map.current && selectedCityCoords) {
+      map.current.flyTo({ center: [selectedCityCoords.lng, selectedCityCoords.lat], zoom: 13, duration: 2000 });
+      setCityQuery(selectedCityCoords.name);
     }
-  }, [selectedCity]);
+  }, [selectedCityCoords]);
 
   // Render regions on map
   useEffect(() => {
@@ -259,7 +271,7 @@ export default function RegionsPage() {
     if (!newRegion.name) { toast.error("Nome é obrigatório"); return; }
     const coords = [...drawingPoints, drawingPoints[0]];
     const geometry = { type: "Polygon", coordinates: [coords] };
-    const cityName = selectedCity?.name || newRegion.city;
+    const cityName = selectedCity || newRegion.city;
     try {
       await createRegion.mutateAsync({ name: newRegion.name, color: newRegion.color, price: parseFloat(newRegion.price) || 0, city: cityName || undefined, geometry });
       toast.success("Região criada!");
@@ -284,7 +296,7 @@ export default function RegionsPage() {
   const handleEditSave = async () => {
     if (!selectedRegion) return;
     try {
-      await updateRegion.mutateAsync({ id: selectedRegion.id, name: selectedRegion.name, color: selectedRegion.color, price: selectedRegion.price, city: selectedRegion.city || selectedCity?.name || undefined });
+      await updateRegion.mutateAsync({ id: selectedRegion.id, name: selectedRegion.name, color: selectedRegion.color, price: selectedRegion.price, city: selectedRegion.city || selectedCity || undefined });
       toast.success("Região atualizada!");
       setEditOpen(false);
       setSelectedRegion(null);
@@ -378,22 +390,22 @@ export default function RegionsPage() {
           <div className="mb-6">
             <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block px-1">Cidade Ativa</Label>
             <div className="space-y-1">
-              {cities.map((city) => (
+              {AVAILABLE_CITIES.map((city) => (
                 <button
                   key={city.id}
-                  onClick={() => setSelectedCity(city)}
+                  onClick={() => setCity(city.name)}
                   className={cn(
                     "w-full text-left px-3 py-2 rounded-xl text-sm transition-all flex items-center justify-between border border-transparent",
-                    selectedCity?.id === city.id 
+                    selectedCity === city.name 
                       ? "bg-primary/10 text-primary border-primary/20 font-bold" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <MapPin className={cn("h-3.5 w-3.5", selectedCity?.id === city.id ? "text-primary" : "text-muted-foreground")} />
+                    <MapPin className={cn("h-3.5 w-3.5", selectedCity === city.name ? "text-primary" : "text-muted-foreground")} />
                     {city.name}
                   </span>
-                  {selectedCity?.id === city.id && <Check className="h-4 w-4" />}
+                  {selectedCity === city.name && <Check className="h-4 w-4" />}
                 </button>
               ))}
             </div>
@@ -407,7 +419,7 @@ export default function RegionsPage() {
             <p className="text-sm text-muted-foreground px-1">Carregando...</p>
           ) : (regions ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-xl border border-dashed border-border px-4 py-6 text-center">
-              Nenhuma região cadastrada em <strong>{selectedCity?.name}</strong>.
+              Nenhuma região cadastrada em <strong>{selectedCity || "qualquer cidade"}</strong>.
             </p>
           ) : (
             <div className="space-y-2">
