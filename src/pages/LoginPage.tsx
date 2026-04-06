@@ -17,10 +17,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      if (hasRole("admin")) navigate("/admin");
-      else if (hasRole("company")) navigate("/business");
-      else if (hasRole("driver")) navigate("/driver");
-      else navigate("/admin");
+      if (hasRole("admin")) {
+        navigate("/admin");
+      } else if (hasRole("company")) {
+        navigate("/business");
+      } else if (hasRole("driver")) {
+        navigate("/driver");
+      } else {
+        console.warn("Usuário autenticado, mas nenhum papel (role) foi encontrado ainda.");
+        // Não redirecionamos por padrão para evitar o loop infinito com a ProtectedRoute
+      }
     }
   }, [user, authLoading, hasRole, navigate]);
 
