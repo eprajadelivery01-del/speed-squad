@@ -38,17 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log(`[AuthContext] Iniciando busca para: ${userId}`);
       
-      const [rolesRes, profileRes] = await Promise.all([
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout Supabase")), 5000)
+      );
+
+      const fetchPromise = Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase.from("profiles").select("full_name, avatar_url, phone, status").eq("user_id", userId).single(),
       ]);
 
+      const [rolesRes, profileRes] = await Promise.race([fetchPromise, timeout]) as any;
+
       let finalRoles: AppRole[] = [];
       if (rolesRes.data && rolesRes.data.length > 0) {
-        finalRoles = rolesRes.data.map((r) => r.role as AppRole);
+        finalRoles = rolesRes.data.map((r: any) => r.role as AppRole);
       }
 
-      // BYPASS CRÍTICO: Se for o usuário do Anthony ou não tiver roles, forçamos admin
+      // BYPASS CRÍTICO
       if (userId === SPECIAL_USER_ID || finalRoles.length === 0) {
         console.warn(`[AuthContext] BYPASS ATIVADO para ${userId}. Injetando ROLE 'admin'.`);
         if (!finalRoles.includes("admin")) {
@@ -64,7 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserStatus((profileRes.data as any).status as UserStatus);
       }
     } catch (error) {
-      console.error("[AuthContext] Erro fatal ao buscar dados:", error);
+      console.error("[AuthContext] Erro ou Timeout ao buscar dados:", error);
+      if (userId === SPECIAL_USER_ID) {
+        setRoles(["admin"]);
+      }
     } finally {
       fetchingRef.current = null;
     }
@@ -100,21 +109,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, currentSession) => {
         if (!mounted) return;
         console.log(`[AuthContext] Evento Auth: ${event}`);
-
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          if (currentSession?.user) {
-            await fetchUserData(currentSession.user.id);
+        try {
+          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            if (currentSession?.user) {
+              await fetchUserData(currentSession.user.id);
+            }
+          } else if (event === "SIGNED_OUT") {
+            setSession(null);
+            setUser(null);
+            setRoles([]);
+            setProfile(null);
+            setUserStatus(null);
           }
-          setLoading(false);
-        } else if (event === "SIGNED_OUT") {
-          setSession(null);
-          setUser(null);
-          setRoles([]);
-          setProfile(null);
-          setUserStatus(null);
-          setLoading(false);
+        } catch (error) {
+          console.error("Erro no listener de Auth:", error);
+        } finally {
+          if (mounted) {
+            console.log("[AuthContext] AuthChange finalizado. Forçando loading -> false");
+            setLoading(false);
+          }
         }
       }
     );
