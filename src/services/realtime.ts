@@ -7,7 +7,7 @@ export function useDeliveriesRealtime() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("deliveries-realtime")
+      .channel(`deliveries-realtime-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "deliveries" },
@@ -29,7 +29,7 @@ export function useDriversRealtime() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("drivers-realtime")
+      .channel(`drivers-realtime-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "delivery_drivers" },
@@ -50,7 +50,7 @@ export function useOrdersRealtime() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("orders-realtime")
+      .channel(`orders-realtime-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders" },
