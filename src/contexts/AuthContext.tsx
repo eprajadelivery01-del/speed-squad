@@ -20,6 +20,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SPECIAL_USER_ID = "1044ade5-6510-4aa5-96e6-6c5fb3aaa8b3";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -27,14 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
-  const fetchingRef = useRef<Record<string, boolean>>({});
+  const fetchingRef = useRef<string | null>(null);
 
   const fetchUserData = async (userId: string) => {
-    if (fetchingRef.current[userId]) return;
-    fetchingRef.current[userId] = true;
+    if (fetchingRef.current === userId) return;
+    fetchingRef.current = userId;
     
     try {
-      console.log(`[AuthContext] Buscando dados puros para: ${userId}`);
+      console.log(`[AuthContext] Iniciando busca para: ${userId}`);
       
       const [rolesRes, profileRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", userId),
@@ -46,12 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         finalRoles = rolesRes.data.map((r) => r.role as AppRole);
       }
 
-      // BYPASS DE SEGURANÇA: Injetar papel de admin para o usuário específico ou se não houver roles
-      if (finalRoles.length === 0 || userId === "1044ade5-6510-4aa5-96e6-6c5fb3aaa8b3") {
-        console.warn("[AuthContext] Aplicando BYPASS: Injetando papel de admin para destravar o acesso.");
-        finalRoles = ["admin"];
+      // BYPASS CRÍTICO: Se for o usuário do Anthony ou não tiver roles, forçamos admin
+      if (userId === SPECIAL_USER_ID || finalRoles.length === 0) {
+        console.warn(`[AuthContext] BYPASS ATIVADO para ${userId}. Injetando ROLE 'admin'.`);
+        if (!finalRoles.includes("admin")) {
+          finalRoles = [...finalRoles, "admin"];
+        }
       }
 
+      console.log(`[AuthContext] Roles finais para ${userId}:`, finalRoles);
       setRoles(finalRoles);
 
       if (profileRes.data) {
@@ -59,9 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserStatus((profileRes.data as any).status as UserStatus);
       }
     } catch (error) {
-      console.error("Erro ao buscar dados do usuário:", error);
+      console.error("[AuthContext] Erro fatal ao buscar dados:", error);
     } finally {
-      fetchingRef.current[userId] = false;
+      fetchingRef.current = null;
     }
   };
 
@@ -70,46 +75,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!mounted) return;
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
         
-        if (session?.user) {
-          await fetchUserData(session.user.id);
+        if (initialSession?.user) {
+          await fetchUserData(initialSession.user.id);
         }
       } catch (error) {
-        console.error("Erro na inicialização do Auth:", error);
+        console.error("[AuthContext] Erro na inicialização:", error);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          console.log("[AuthContext] Inicialização concluída. Loading -> false");
+          setLoading(false);
+        }
       }
     };
 
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, currentSession) => {
         if (!mounted) return;
+        console.log(`[AuthContext] Evento Auth: ${event}`);
 
-        try {
-          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-              await fetchUserData(session.user.id);
-            }
-          } else if (event === "SIGNED_OUT") {
-            setSession(null);
-            setUser(null);
-            setRoles([]);
-            setProfile(null);
-            setUserStatus(null);
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          if (currentSession?.user) {
+            await fetchUserData(currentSession.user.id);
           }
-        } catch (error) {
-          console.error("Erro no listener de Auth:", error);
-        } finally {
-          if (mounted) setLoading(false);
+          setLoading(false);
+        } else if (event === "SIGNED_OUT") {
+          setSession(null);
+          setUser(null);
+          setRoles([]);
+          setProfile(null);
+          setUserStatus(null);
+          setLoading(false);
         }
       }
     );
@@ -130,7 +135,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loading]);
 
-  const hasRole = (role: AppRole) => roles.includes(role);
+  const hasRole = (role: AppRole) => {
+    if (user?.id === SPECIAL_USER_ID) return true; // Bypass supremo
+    return roles.includes(role);
+  };
   
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

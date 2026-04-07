@@ -17,21 +17,22 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      // Pequeno delay para garantir que o contexto sincronizou as roles
+      console.log(`[LoginPage] Verificando acesso para user.id: ${user.id}, roles:`, roles);
       const timer = setTimeout(() => {
         if (hasRole("admin")) {
+          console.log("[LoginPage] Role ADMIN detectada. Navegando para /admin");
           navigate("/admin");
         } else if (hasRole("company")) {
           navigate("/business");
         } else if (hasRole("driver")) {
           navigate("/driver");
         } else {
-          console.warn("Usuário autenticado, mas nenhum papel (role) foi encontrado ainda.");
+          console.warn("[LoginPage] Usuário sem papel detectado no redirecionamento.");
         }
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [user, authLoading, hasRole, navigate]);
+  }, [user, authLoading, hasRole, roles, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
