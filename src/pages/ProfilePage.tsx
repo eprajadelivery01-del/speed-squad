@@ -1,14 +1,20 @@
 import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile, uploadAvatar } from "@/services/users";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Save, Loader2, User, Phone } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const isDriver = location.pathname.startsWith("/driver");
+  const Layout = isDriver ? DriverLayout : AdminLayout;
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [phone, setPhone] = useState(profile?.phone || "");
@@ -46,8 +52,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <AdminLayout title="Perfil" subtitle="Seu perfil">
-      <div className="max-w-md mx-auto space-y-6">
+    <Layout>
+      <div className="max-w-md mx-auto space-y-6 pt-4">
+        {isDriver && <h1 className="text-2xl font-bold tracking-tight mb-4">Seu Perfil</h1>}
         {/* Avatar */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
@@ -102,6 +109,6 @@ export default function ProfilePage() {
           </button>
         </form>
       </div>
-    </AdminLayout>
+    </Layout>
   );
 }

@@ -4,28 +4,21 @@ import type { DeliveryStatus } from "@/types/models";
 
 export interface DeliveryWithRelations {
   id: string;
-  company_id: string | null;
+  company_id: string;
   driver_id: string | null;
-  customer_name: string | null;
-  customer_phone: string | null;
-  pickup_address: string;
-  dropoff_address: string;
-  pickup_latitude: number | null;
-  pickup_longitude: number | null;
-  dropoff_latitude: number | null;
-  dropoff_longitude: number | null;
-  price: number | null;
-  distance_km: number | null;
-  estimated_time_minutes: number | null;
+  customer_name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
   status: DeliveryStatus;
+  value: number;
+  commission: number;
   notes: string | null;
-  proof_photo_url: string | null;
-  signature_url: string | null;
+  region_id: string | null;
   accepted_at: string | null;
   collected_at: string | null;
-  delivered_at: string | null;
+  completed_at: string | null;
   cancelled_at: string | null;
-  cancellation_reason: string | null;
   created_at: string;
   updated_at: string;
   companies?: { name: string; phone: string | null } | null;
@@ -80,7 +73,7 @@ export function useDeliveryStats() {
       today.setHours(0, 0, 0, 0);
 
       const [todayRes, totalRes] = await Promise.all([
-        supabase.from("deliveries").select("status, price").gte("created_at", today.toISOString()),
+        supabase.from("deliveries").select("status, value").gte("created_at", today.toISOString()),
         supabase.from("deliveries").select("id", { count: "exact", head: true }),
       ]);
 
@@ -91,10 +84,10 @@ export function useDeliveryStats() {
         today: data.length,
         total: totalRes.count ?? 0,
         pending: data.filter((d) => d.status === "pending").length,
-        inTransit: data.filter((d) => d.status === "in_transit").length,
-        delivered: data.filter((d) => d.status === "delivered").length,
+        inRoute: data.filter((d) => d.status === "in_route").length,
+        completed: data.filter((d) => d.status === "completed").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === "delivered").reduce((sum, d) => sum + Number(d.price ?? 0), 0),
+        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.value ?? 0), 0),
       };
     },
     refetchInterval: 30000,
@@ -104,13 +97,17 @@ export function useDeliveryStats() {
 export function useUpdateDeliveryStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: DeliveryStatus }) => {
+    mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
       const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-      if (status === "accepted") updates.accepted_at = new Date().toISOString();
+      if (status === "accepted") {
+        updates.accepted_at = new Date().toISOString();
+        if (driverId) updates.driver_id = driverId;
+      }
       if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.delivered_at = new Date().toISOString();
+      if (status === "completed") updates.completed_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
-      const { error } = await supabase.from("deliveries").update(updates).eq("id", id);
+      
+      const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

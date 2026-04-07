@@ -24,6 +24,8 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import DriverHomePage from "./pages/driver/DriverHomePage";
+import DriverDeliveriesPage from "./pages/driver/DriverDeliveriesPage";
+import DriverOccurrencesPage from "./pages/driver/DriverOccurrencesPage";
 import BusinessHomePage from "./pages/business/BusinessHomePage";
 
 // import ChatPage from "./pages/ChatPage";
@@ -59,6 +61,9 @@ const App = () => (
                 <Route path="/admin/profile" element={<ProtectedRoute requiredRole="admin"><ProfilePage /></ProtectedRoute>} />
 
                 <Route path="/driver" element={<ProtectedRoute requiredRole="driver"><DriverHomePage /></ProtectedRoute>} />
+                <Route path="/driver/deliveries" element={<ProtectedRoute requiredRole="driver"><DriverDeliveriesPage /></ProtectedRoute>} />
+                <Route path="/driver/occurrences" element={<ProtectedRoute requiredRole="driver"><DriverOccurrencesPage /></ProtectedRoute>} />
+                <Route path="/driver/profile" element={<ProtectedRoute requiredRole="driver"><ProfilePage /></ProtectedRoute>} />
                 <Route path="/business" element={<ProtectedRoute requiredRole="company"><BusinessHomePage /></ProtectedRoute>} />
 
                 <Route path="*" element={<NotFound />} />

@@ -12,6 +12,7 @@ export default function DriverHomePage() {
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
+  const [stats, setStats] = useState({ todayCount: 0, todayEarnings: 0 });
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -19,13 +20,31 @@ export default function DriverHomePage() {
     if (!user) return;
     supabase
       .from("delivery_drivers")
-      .select("id, online")
+      .select("id, is_online")
       .eq("user_id", user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setDriverRecord({ id: data.id });
-          setIsOnline(data.online ?? false);
+          setIsOnline(data.is_online ?? false);
+          
+          // Fetch Stats
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const { data: deliveries } = await supabase
+            .from("deliveries")
+            .select("value, status")
+            .eq("driver_id", data.id)
+            .gte("created_at", today.toISOString());
+            
+          if (deliveries) {
+            const completed = deliveries.filter(d => d.status === "completed");
+            setStats({
+              todayCount: deliveries.length,
+              todayEarnings: completed.reduce((acc, d) => acc + (Number(d.value) || 0), 0)
+            });
+          }
         }
       });
   }, [user]);
@@ -37,9 +56,9 @@ export default function DriverHomePage() {
         await supabase
           .from("delivery_drivers")
           .update({
-            current_latitude: pos.coords.latitude,
-            current_longitude: pos.coords.longitude,
-            last_location_update: new Date().toISOString(),
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", driverId);
       },
@@ -58,9 +77,9 @@ export default function DriverHomePage() {
           await supabase
             .from("delivery_drivers")
             .update({
-              current_latitude: pos.coords.latitude,
-              current_longitude: pos.coords.longitude,
-              last_location_update: new Date().toISOString(),
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              updated_at: new Date().toISOString(),
             })
             .eq("id", driverId);
         },
@@ -97,8 +116,8 @@ export default function DriverHomePage() {
     const { error } = await supabase
       .from("delivery_drivers")
       .update({
-        online: newStatus,
-        ...(newStatus ? {} : { current_latitude: null, current_longitude: null }),
+        is_online: newStatus,
+        ...(newStatus ? {} : { latitude: null, longitude: null }),
       })
       .eq("id", driverRecord.id);
 
@@ -158,7 +177,7 @@ export default function DriverHomePage() {
               <Truck className="h-3.5 w-3.5" />
               Hoje
             </div>
-            <p className="text-2xl font-bold text-foreground">0</p>
+            <p className="text-2xl font-bold text-foreground">{stats.todayCount}</p>
             <p className="text-xs text-muted-foreground">entregas</p>
           </div>
           <div className="bg-card rounded-2xl p-4 text-center shadow-card">
@@ -166,7 +185,7 @@ export default function DriverHomePage() {
               <MapPin className="h-3.5 w-3.5" />
               Ganhos
             </div>
-            <p className="text-2xl font-bold text-foreground">R$ 0</p>
+            <p className="text-2xl font-bold text-foreground">R$ {stats.todayEarnings.toFixed(2).replace(".", ",")}</p>
             <p className="text-xs text-muted-foreground">hoje</p>
           </div>
         </div>
