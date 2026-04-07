@@ -11,6 +11,7 @@ interface HeroMapSectionProps {
   showActions?: boolean;
   onExpand?: () => void;
   variant?: 'default' | 'driver';
+  isDetecting?: boolean;
 }
 
 export function HeroMapSection({ 
@@ -18,7 +19,8 @@ export function HeroMapSection({
   subtitle = "Acompanhe entregadores e regiões atendidas com transparência total.",
   showActions = true,
   onExpand,
-  variant = 'default'
+  variant = 'default',
+  isDetecting = false
 }: HeroMapSectionProps) {
   const { selectedCity } = useCity();
   const { data: regions } = useRegions(selectedCity || undefined);
@@ -106,7 +108,12 @@ export function HeroMapSection({
           </div>
           <div className="pr-2">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Localização</p>
-            <p className="text-sm font-extrabold text-foreground leading-none">{selectedCity || "Global"}</p>
+            <p className={cn(
+              "text-sm font-extrabold text-foreground leading-none",
+              isDetecting && "animate-pulse text-primary"
+            )}>
+              {isDetecting ? "Detectando..." : (selectedCity || "Global")}
+            </p>
           </div>
         </div>
       </div>

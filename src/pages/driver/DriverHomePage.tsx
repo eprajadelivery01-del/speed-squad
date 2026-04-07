@@ -8,9 +8,10 @@ import { HeroMapSection } from "@/components/shared/HeroMapSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UnifiedMap } from "@/components/shared/UnifiedMap";
 import { useRegions } from "@/services/regions";
-import { useCity } from "@/contexts/CityContext";
+import { useCity, CITY_COORDS } from "@/contexts/CityContext";
 import { cn } from "@/lib/utils";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
+import { findNearestCity } from "@/utils/location";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
@@ -24,6 +25,7 @@ export default function DriverHomePage() {
   const [hasConsent, setHasConsent] = useState(() => {
     return localStorage.getItem("nexus_location_consent") === "true";
   });
+  const [isDetecting, setIsDetecting] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -60,10 +62,21 @@ export default function DriverHomePage() {
       });
   }, [user]);
 
+  const { selectedCity, setCity } = useCity();
+
+
   const updateLocation = useCallback(async (driverId: string) => {
     if (!navigator.geolocation) return;
+    setIsDetecting(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
+        if (detectedCity && detectedCity !== selectedCity) {
+          console.log(`[AutoCity] Detected city: ${detectedCity}`);
+          setCity(detectedCity);
+        }
+        setIsDetecting(false);
+
         await supabase
           .from("delivery_drivers")
           .update({
@@ -76,15 +89,22 @@ export default function DriverHomePage() {
       (err) => console.warn("Geolocation error:", err),
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, []);
+  }, [selectedCity, setCity]);
 
   const startTracking = useCallback((driverId: string) => {
     updateLocation(driverId);
     intervalRef.current = setInterval(() => updateLocation(driverId), 10000);
 
     if (navigator.geolocation) {
+      setIsDetecting(true);
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
+          const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
+          if (detectedCity && detectedCity !== selectedCity) {
+            setCity(detectedCity);
+          }
+          setIsDetecting(false);
+
           await supabase
             .from("delivery_drivers")
             .update({
@@ -98,7 +118,14 @@ export default function DriverHomePage() {
         { enableHighAccuracy: true, maximumAge: 5000 }
       );
     }
-  }, [updateLocation]);
+  }, [updateLocation, selectedCity, setCity]);
+
+  // Proactive detection on mount
+  useEffect(() => {
+    if (hasConsent && driverRecord) {
+      updateLocation(driverRecord.id);
+    }
+  }, [hasConsent, driverRecord, updateLocation]);
 
   const stopTracking = useCallback(() => {
     if (intervalRef.current) {
@@ -162,7 +189,6 @@ export default function DriverHomePage() {
     setLoading(false);
   };
 
-  const { selectedCity } = useCity();
   const { data: regions } = useRegions(selectedCity || undefined);
 
   return (
@@ -173,6 +199,7 @@ export default function DriverHomePage() {
         showActions={false}
         variant="driver"
         onExpand={() => setIsMapExpanded(true)}
+        isDetecting={isDetecting}
       />
       
       <div className="flex flex-col items-center gap-6 py-6 px-4 relative z-10 bg-background">
@@ -193,6 +220,27 @@ export default function DriverHomePage() {
           )}
           {loading ? "Atualizando..." : isOnline ? "ONLINE" : "FICAR ONLINE"}
         </button>
+
+        {/* Manual City Selector - FALLBACK */}
+        <div className="flex flex-col items-center gap-2 w-full max-w-sm px-4">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cidade de Operação</p>
+          <select 
+            value={selectedCity || ""} 
+            onChange={(e) => setCity(e.target.value || null)}
+            className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none text-center"
+          >
+            <option value="">{isDetecting ? "📍 Detectando..." : "Selecione sua cidade"}</option>
+            {Object.keys(CITY_COORDS).map(city => (
+              <option key={city} value={city}>{city}</option>
+            ))}
+          </select>
+          {!selectedCity && !isDetecting && (
+             <p className="text-[10px] text-yellow-500 font-medium">Não detectamos sua cidade. Selecione acima.</p>
+          )}
+          {isDetecting && (
+             <p className="text-[10px] text-primary animate-pulse font-medium">Acessando GPS do navegador...</p>
+          )}
+        </div>
 
         {isOnline && (
           <div className="flex items-center gap-2 text-sm text-success">

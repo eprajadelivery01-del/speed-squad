@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { APP_TYPE, APP_PROJECT_ID, APP_COLOR } from "@/constants/app-config";
 
 
 export default function LoginPage() {
@@ -56,8 +57,8 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-2">
           <img src="/logo.png" alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
           <p className="text-sm text-muted-foreground">Painel de Gestão</p>
-          <div className="mt-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Repositório ENTREGADOR (cbe3232c)</p>
+          <div className="mt-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full" style={{ borderColor: APP_COLOR + '40', backgroundColor: APP_COLOR + '10' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: APP_COLOR }}>PROJETO: {APP_TYPE} ({APP_PROJECT_ID})</p>
           </div>
         </div>
 

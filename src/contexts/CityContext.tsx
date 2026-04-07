@@ -12,7 +12,7 @@ interface CityContextType {
   setCity: (cityName: string | null) => void;
 }
 
-const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "Cuiabá": { lat: -15.5989, lng: -56.0974 },
   "Várzea Grande": { lat: -15.65, lng: -56.1333 },
   "Diamantino": { lat: -14.4087, lng: -56.4462 },
