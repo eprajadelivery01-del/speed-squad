@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useOnlineDrivers } from "@/services/drivers";
 import { useDeliveries } from "@/services/deliveries";
 import { useCity } from "@/contexts/CityContext";
+import { Search, MapPin, X, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { RegionRow } from "@/services/regions";
 
 interface UnifiedMapProps {
@@ -16,8 +18,13 @@ export function UnifiedMap({ regions, centerCity: propCenterCity, interactive = 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
   const regionsRenderedRef = useRef<string[]>([]);
   const mapLoaded = useRef(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const { selectedCityCoords } = useCity();
   const centerCity = propCenterCity || selectedCityCoords;
@@ -256,5 +263,96 @@ export function UnifiedMap({ regions, centerCity: propCenterCity, interactive = 
     });
   }, [drivers]);
 
-  return <div ref={mapContainer} className="w-full h-full rounded-xl overflow-hidden shadow-inner bg-muted/20" />;
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=br`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectLocation = (result: any) => {
+    if (!map.current) return;
+
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+
+    map.current.flyTo({
+      center: [lon, lat],
+      zoom: 16,
+      duration: 2000
+    });
+
+    if (searchMarkerRef.current) searchMarkerRef.current.remove();
+
+    searchMarkerRef.current = new maplibregl.Marker({ color: "#f97316" })
+      .setLngLat([lon, lat])
+      .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<div style="padding: 5px; font-weight: bold;">${result.display_name}</div>`))
+      .addTo(map.current);
+
+    setSearchResults([]);
+    setSearchQuery(result.display_name);
+  };
+
+  return (
+    <div className="relative w-full h-full group">
+      {/* Google Maps Style Search Bar */}
+      <div className="absolute top-4 left-4 z-[40] w-full max-w-[320px] md:max-w-md animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="relative bg-background/80 backdrop-blur-xl border border-border shadow-2xl rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+          <div className="flex items-center px-4 py-3 gap-3">
+            <Search className="h-5 w-5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Buscar ruas, cidades..."
+              className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder:text-muted-foreground/60"
+            />
+            {isSearching ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            ) : searchQuery ? (
+              <button 
+                onClick={() => { setSearchQuery(""); setSearchResults([]); }}
+                className="p-1 hover:bg-muted rounded-full transition-colors"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            ) : null}
+          </div>
+
+          {searchResults.length > 0 && (
+            <div className="border-t border-border max-h-[300px] overflow-y-auto bg-background/95 backdrop-blur-xl">
+              {searchResults.map((result, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => selectLocation(result)}
+                  className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-border/40 last:border-none flex items-start gap-3 group"
+                >
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 group-hover:text-primary transition-colors" />
+                  <span className="text-xs font-medium text-foreground line-clamp-2 leading-relaxed">
+                    {result.display_name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div ref={mapContainer} className="w-full h-full rounded-xl overflow-hidden shadow-inner bg-muted/20" />
+    </div>
+  );
 }

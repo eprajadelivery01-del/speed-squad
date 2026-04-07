@@ -5,12 +5,18 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { HeroMapSection } from "@/components/shared/HeroMapSection";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { UnifiedMap } from "@/components/shared/UnifiedMap";
+import { useRegions } from "@/services/regions";
+import { useCity } from "@/contexts/CityContext";
+import { cn } from "@/lib/utils";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
   const [stats, setStats] = useState({ todayCount: 0, todayEarnings: 0 });
   const watchIdRef = useRef<number | null>(null);
@@ -139,13 +145,20 @@ export default function DriverHomePage() {
     setLoading(false);
   };
 
+  const { selectedCity } = useCity();
+  const { data: regions } = useRegions(selectedCity || undefined);
+
   return (
     <DriverLayout>
       <HeroMapSection 
         title={`Olá, ${profile?.full_name || "Entregador"} 👋`} 
         subtitle={isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"} 
+        showActions={false}
+        variant="driver"
+        onExpand={() => setIsMapExpanded(true)}
       />
-      <div className="flex flex-col items-center gap-8 py-8 -mt-20 relative z-10">
+      
+      <div className="flex flex-col items-center gap-6 py-6 px-4 relative z-10 bg-background">
 
         <button
           onClick={handleToggle}
@@ -190,13 +203,27 @@ export default function DriverHomePage() {
           </div>
         </div>
 
-        <div className="w-full max-w-sm bg-card rounded-2xl p-6 text-center shadow-card">
+        <div className="w-full max-w-sm bg-card rounded-2xl p-6 text-center shadow-card border border-border">
           <Truck className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             {isOnline ? "Aguardando novas corridas..." : "Fique online para ver corridas disponíveis"}
           </p>
         </div>
       </div>
+
+      <Dialog open={isMapExpanded} onOpenChange={setIsMapExpanded}>
+        <DialogContent className="max-w-[95vw] w-full h-[80vh] p-0 overflow-hidden rounded-3xl sm:rounded-3xl">
+          <DialogHeader className="p-4 absolute top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-md border-b border-border">
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              Mapa de Entregas - {selectedCity || "Global"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="w-full h-full pt-14">
+            <UnifiedMap regions={regions ?? []} interactive={true} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </DriverLayout>
   );
 }
