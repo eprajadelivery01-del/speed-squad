@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useCity } from "@/contexts/CityContext";
 import { useRegions } from "@/services/regions";
 import { UnifiedMap } from "@/components/shared/UnifiedMap";
+import { HeroMapSection } from "@/components/shared/HeroMapSection";
 import {
   Package, Bike, Building2, DollarSign, TrendingUp, Clock, CheckCircle, Search, MapPin, Loader2
 } from "lucide-react";

@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Power, Trash2, UserCheck, UserX, Edit2 } from "lucide-react";
 import { useState } from "react";
+import { GenerateInviteDialog } from "@/components/admin/GenerateInviteDialog";
 
 export default function DriversPage() {
   const { data: drivers, isLoading } = useDrivers();
@@ -39,12 +40,7 @@ export default function DriversPage() {
     motorcycle: "🏍️ Moto", bicycle: "🚲 Bicicleta", car: "🚗 Carro", van: "🚐 Van", truck: "🚛 Caminhão",
   };
 
-import { GenerateInviteDialog } from "@/components/admin/GenerateInviteDialog";
 
-export default function DriversPage() {
-  const { data: drivers, isLoading } = useDrivers();
-  const qc = useQueryClient();
-  const [editingDriver, setEditingDriver] = useState<any>(null);
 
   return (
     <AdminLayout title="Entregadores" subtitle="Gerenciamento de motoboys">

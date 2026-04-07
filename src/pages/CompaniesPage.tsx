@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Power, Trash2, Edit2 } from "lucide-react";
 import { useState } from "react";
+import { GenerateInviteDialog } from "@/components/admin/GenerateInviteDialog";
 
 export default function CompaniesPage() {
   const { data: companies, isLoading } = useCompanies();
@@ -28,12 +29,7 @@ export default function CompaniesPage() {
     toast.success("Empresa excluída");
   };
 
-import { GenerateInviteDialog } from "@/components/admin/GenerateInviteDialog";
 
-export default function CompaniesPage() {
-  const { data: companies, isLoading } = useCompanies();
-  const qc = useQueryClient();
-  const [editingCompany, setEditingCompany] = useState<any>(null);
 
   return (
     <AdminLayout title="Empresas" subtitle="Gerenciamento de empresas parceiras">
