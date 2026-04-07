@@ -4,6 +4,7 @@ import { Power, MapPin, Truck, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { HeroMapSection } from "@/components/shared/HeroMapSection";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
@@ -121,15 +122,11 @@ export default function DriverHomePage() {
 
   return (
     <DriverLayout>
-      <div className="flex flex-col items-center gap-8 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground">
-            Olá, {profile?.full_name || "Entregador"} 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"}
-          </p>
-        </div>
+      <HeroMapSection 
+        title={`Olá, ${profile?.full_name || "Entregador"} 👋`} 
+        subtitle={isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"} 
+      />
+      <div className="flex flex-col items-center gap-8 py-8 -mt-20 relative z-10">
 
         <button
           onClick={handleToggle}
