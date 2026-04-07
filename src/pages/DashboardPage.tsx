@@ -58,59 +58,17 @@ export default function DashboardPage() {
   };
 
   return (
-    <AdminLayout title="Dashboard" subtitle="Visão geral do sistema">
-      <div className="flex gap-4 h-[calc(100vh-130px)]">
+    <AdminLayout title="Dashboard">
+      <HeroMapSection 
+        title="Central do Entregador" 
+        subtitle="Monitore suas entregas e áreas ativas em tempo real." 
+      />
+      <div className="flex gap-4 p-4 md:p-6 h-[calc(100vh-400px)]">
         <div className="hidden xl:block w-72 flex-shrink-0">
           <MotoboysSidebar />
         </div>
 
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-          <div className="relative">
-            <div className="rounded-2xl bg-card shadow-card overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3">
-                <MapPin className="h-4 w-4 text-primary shrink-0" />
-                {selectedCity ? (
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-sm font-medium text-foreground truncate">{selectedCity}</span>
-                    <button
-                      onClick={() => setCity(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground shrink-0"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-1">
-                    <input
-                      value={cityQuery}
-                      onChange={(e) => setCityQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && searchCity()}
-                      placeholder="Selecionar cidade..."
-                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    />
-                    <button onClick={searchCity} className="p-1">
-                      {searchingCity ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Search className="h-4 w-4 text-muted-foreground" />}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {citySuggestions.length > 0 && (
-                <div className="border-t border-border">
-                  {citySuggestions.map((city, i) => (
-                    <button
-                      key={i}
-                      onClick={() => selectCity(city)}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors border-b border-border last:border-0"
-                    >
-                      {city.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard icon={<Package className="h-5 w-5" />} label="Corridas Hoje" value={stats?.today ?? 0} iconBg="bg-warning/10" iconColor="text-warning" />
             <StatCard icon={<Clock className="h-5 w-5" />} label="Em Trânsito" value={inTransitCount} iconBg="bg-primary/10" iconColor="text-primary" pulse />
@@ -122,10 +80,6 @@ export default function DashboardPage() {
             <MiniStat icon={<CheckCircle className="h-3.5 w-3.5 text-success" />} label="Entregues" value={deliveredCount} />
             <MiniStat icon={<Building2 className="h-3.5 w-3.5 text-primary" />} label="Empresas" value={companies?.length ?? 0} />
             <MiniStat icon={<TrendingUp className="h-3.5 w-3.5 text-accent" />} label="Total Geral" value={stats?.total ?? 0} />
-          </div>
-
-          <div className="flex-1 rounded-2xl overflow-hidden shadow-card min-h-[300px]">
-            <UnifiedMap regions={regions ?? []} />
           </div>
         </div>
 
