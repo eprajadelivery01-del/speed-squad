@@ -24,6 +24,10 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ error, errorInfo });
+    
+    // Forçar remoção do carregar se houver crash
+    const splash = document.getElementById("splash-screen");
+    if (splash) splash.remove();
   }
 
   public render() {
