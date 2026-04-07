@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { HeroMapSection } from "@/components/shared/HeroMapSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UnifiedMap } from "@/components/shared/UnifiedMap";
-import { useRegions } from "@/services/regions";
+import { useRegions, useCitiesWithRegions } from "@/services/regions";
 import { useCity, CITY_COORDS } from "@/contexts/CityContext";
 import { cn } from "@/lib/utils";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
@@ -189,6 +189,7 @@ export default function DriverHomePage() {
     setLoading(false);
   };
 
+  const { data: activeCities, isLoading: loadingCities } = useCitiesWithRegions();
   const { data: regions } = useRegions(selectedCity || undefined);
 
   return (
@@ -229,13 +230,13 @@ export default function DriverHomePage() {
             onChange={(e) => setCity(e.target.value || null)}
             className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none text-center"
           >
-            <option value="">{isDetecting ? "📍 Detectando..." : "Selecione sua cidade"}</option>
-            {Object.keys(CITY_COORDS).map(city => (
+            <option value="">{isDetecting ? "📍 Detectando..." : (loadingCities ? "🔄 Carregando cidades..." : "Selecione sua cidade")}</option>
+            {(activeCities ?? []).map(city => (
               <option key={city} value={city}>{city}</option>
             ))}
           </select>
-          {!selectedCity && !isDetecting && (
-             <p className="text-[10px] text-yellow-500 font-medium">Não detectamos sua cidade. Selecione acima.</p>
+          {!selectedCity && !isDetecting && !loadingCities && (
+             <p className="text-[10px] text-yellow-500 font-medium">Selecione uma das cidades atendidas acima</p>
           )}
           {isDetecting && (
              <p className="text-[10px] text-primary animate-pulse font-medium">Acessando GPS do navegador...</p>
