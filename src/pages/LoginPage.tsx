@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import logoImg from "@/assets/logo.jpeg";
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -50,7 +50,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6 rounded-2xl bg-card p-8 shadow-card">
         <div className="flex flex-col items-center gap-2">
-          <img src={logoImg} alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
+          <img src="/logo.png" alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
           <p className="text-sm text-muted-foreground">Painel de Gestão</p>
           <div className="mt-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
             <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Repositório ENTREGADOR (cbe3232c)</p>

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import logoImg from "@/assets/logo.jpeg";
+
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
@@ -50,7 +50,7 @@ export function AdminSidebar() {
         {/* Brand */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <img src={logoImg} alt="É Pra Já" className="h-10 w-auto rounded-lg" />
+            <img src="/logo.png" alt="É Pra Já" className="h-10 w-auto rounded-lg" />
             <div>
               <span className="text-base font-bold text-sidebar-foreground">É Pra Já</span>
               <span className="block text-xs text-sidebar-accent-foreground">Delivery</span>
