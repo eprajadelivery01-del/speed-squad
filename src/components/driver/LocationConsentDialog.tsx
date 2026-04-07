@@ -24,10 +24,9 @@ export function LocationConsentDialog({ open, onAccept }: LocationConsentDialogP
           </div>
           <DialogTitle className="text-xl font-bold text-center">Permissão de Localização</DialogTitle>
           <DialogDescription className="text-center text-muted-foreground leading-relaxed">
-            Este aplicativo coleta dados de localização para permitir o **rastreamento de entregas em tempo real**, 
-            garantindo que os lojistas e clientes saibam onde você está durante uma corrida.
+            O É Pra Já coleta dados de localização para habilitar o rastreamento das suas entregas e o cálculo de rotas em tempo real, garantindo que os lojistas e clientes acompanhem o progresso do seu trabalho.
             <br /><br />
-            Isso funciona mesmo quando o aplicativo está fechado ou não está em uso enquanto você estiver **Online**.
+            Este recurso requer acesso à sua localização mesmo quando o aplicativo está em segundo plano ou fechado, mas apenas enquanto você estiver no modo Online.
           </DialogDescription>
         </DialogHeader>
         
