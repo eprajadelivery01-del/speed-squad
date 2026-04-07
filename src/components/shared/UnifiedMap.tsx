@@ -12,9 +12,15 @@ interface UnifiedMapProps {
   regions: RegionRow[];
   centerCity?: { name: string; lat: number; lng: number } | null;
   interactive?: boolean;
+  showControls?: boolean;
 }
 
-export function UnifiedMap({ regions, centerCity: propCenterCity, interactive = false }: UnifiedMapProps) {
+export function UnifiedMap({ 
+  regions, 
+  centerCity: propCenterCity, 
+  interactive = false,
+  showControls = true
+}: UnifiedMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -62,7 +68,9 @@ export function UnifiedMap({ regions, centerCity: propCenterCity, interactive = 
       zoom: 12,
     });
 
-    map.current.addControl(new maplibregl.NavigationControl(), "bottom-right");
+    if (showControls) {
+      map.current.addControl(new maplibregl.NavigationControl(), "bottom-right");
+    }
 
     map.current.on("load", () => {
       mapLoaded.current = true;

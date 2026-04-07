@@ -10,6 +10,7 @@ import { UnifiedMap } from "@/components/shared/UnifiedMap";
 import { useRegions } from "@/services/regions";
 import { useCity } from "@/contexts/CityContext";
 import { cn } from "@/lib/utils";
+import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
@@ -19,6 +20,10 @@ export default function DriverHomePage() {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
   const [stats, setStats] = useState({ todayCount: 0, todayEarnings: 0 });
+  const [showConsent, setShowConsent] = useState(false);
+  const [hasConsent, setHasConsent] = useState(() => {
+    return localStorage.getItem("nexus_location_consent") === "true";
+  });
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -110,6 +115,12 @@ export default function DriverHomePage() {
     return () => stopTracking();
   }, [stopTracking]);
 
+  const handleAcceptConsent = () => {
+    localStorage.setItem("nexus_location_consent", "true");
+    setHasConsent(true);
+    setShowConsent(false);
+  };
+
   const handleToggle = async () => {
     if (!driverRecord) {
       toast({ title: "Erro", description: "Registro de entregador não encontrado", variant: "destructive" });
@@ -118,6 +129,12 @@ export default function DriverHomePage() {
 
     setLoading(true);
     const newStatus = !isOnline;
+
+    if (newStatus && !hasConsent) {
+      setShowConsent(true);
+      setLoading(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("delivery_drivers")
@@ -224,6 +241,11 @@ export default function DriverHomePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <LocationConsentDialog 
+        open={showConsent} 
+        onAccept={handleAcceptConsent} 
+      />
     </DriverLayout>
   );
 }

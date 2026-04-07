@@ -106,7 +106,7 @@ export function useUpdateDeliveryStatus() {
       if (status === "collecting") updates.collected_at = new Date().toISOString();
       if (status === "completed") updates.completed_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
-      
+
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
     },

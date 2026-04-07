@@ -2,6 +2,7 @@ import { useAllRealtime } from "@/services/realtime";
 import { ReactNode, useState, useEffect } from "react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { APP_TYPE, APP_PROJECT_ID, APP_COLOR } from "@/constants/app-config";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -32,6 +33,15 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
         <main className="flex-1 p-4 md:p-6 animate-fade-in">
           {children}
         </main>
+      </div>
+
+      {/* Persistence Safety Badge - DEV ONLY */}
+      <div 
+        className="fixed bottom-6 right-6 z-[9999] px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest text-white shadow-2xl flex items-center gap-2 pointer-events-none select-none opacity-80"
+        style={{ backgroundColor: APP_COLOR, border: "2px solid white" }}
+      >
+        <span className="animate-pulse">●</span>
+        APP: {APP_TYPE} ({APP_PROJECT_ID})
       </div>
     </div>
   );

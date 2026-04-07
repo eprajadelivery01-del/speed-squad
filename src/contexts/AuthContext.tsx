@@ -16,6 +16,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,11 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = async (userId: string) => {
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
-    
+
     try {
       console.log(`[AuthContext] Iniciando busca para: ${userId}`);
-      
-      const timeout = new Promise((_, reject) => 
+
+      const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Timeout Supabase")), 5000)
       );
 
@@ -86,10 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!mounted) return;
-        
+
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
-        
+
         if (initialSession?.user) {
           await fetchUserData(initialSession.user.id);
         }
@@ -154,35 +155,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id === SPECIAL_USER_ID) return true; // Bypass supremo
     return roles.includes(role);
   };
-  
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password, 
-      options: { data: { full_name: fullName } } 
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } }
     });
     if (error) throw error;
   };
 
   const signOut = async () => { await supabase.auth.signOut(); };
 
+  const deleteAccount = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("profiles").update({ status: "rejected" }).eq("user_id", user.id);
+    if (error) throw error;
+    await signOut();
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      loading, 
-      roles, 
-      userStatus, 
-      profile, 
-      hasRole, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
+      roles,
+      userStatus,
+      profile,
+      hasRole,
       signIn,
       signUp,
-      signOut 
+      signOut,
+      deleteAccount
     }}>
       {children}
     </AuthContext.Provider>

@@ -23,6 +23,8 @@ import ReviewsPage from "./pages/ReviewsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import DriverHomePage from "./pages/driver/DriverHomePage";
 import DriverDeliveriesPage from "./pages/driver/DriverDeliveriesPage";
 import DriverOccurrencesPage from "./pages/driver/DriverOccurrencesPage";
@@ -44,6 +46,8 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/invite/:token" element={<InvitePage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/" element={<Navigate to="/driver" replace />} />
 
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><DashboardPage /></ProtectedRoute>} />

@@ -37,7 +37,7 @@ export function HeroMapSection({
     >
       {/* Background Interactive Map */}
       <div className="absolute inset-0 z-0 opacity-40 dark:opacity-30 grayscale-[0.2] contrast-[1.1]">
-        <UnifiedMap regions={regions ?? []} interactive={true} />
+        <UnifiedMap regions={regions ?? []} interactive={true} showControls={false} />
       </div>
 
       {/* Glassmorphism Overlays */}

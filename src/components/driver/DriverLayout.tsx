@@ -4,6 +4,7 @@ import { Home, Truck, AlertTriangle, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
+import { APP_TYPE, APP_PROJECT_ID, APP_COLOR } from "@/constants/app-config";
 
 const tabs = [
   { label: "Início", icon: Home, href: "/driver" },
@@ -63,6 +64,15 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
           );
         })}
       </nav>
+
+      {/* Persistence Safety Badge - DEV ONLY */}
+      <div 
+        className="fixed bottom-20 right-4 z-[9999] px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest text-white shadow-2xl flex items-center gap-2 pointer-events-none select-none opacity-80"
+        style={{ backgroundColor: APP_COLOR, border: "2px solid white" }}
+      >
+        <span className="animate-pulse">●</span>
+        APP: {APP_TYPE} ({APP_PROJECT_ID})
+      </div>
     </div>
   );
 }

@@ -61,8 +61,8 @@ export default function DashboardPage() {
   return (
     <AdminLayout title="Dashboard">
       <HeroMapSection 
-        title="Central do Entregador" 
-        subtitle="Monitore suas entregas e áreas ativas em tempo real." 
+        title="Painel Administrativo" 
+        subtitle="Visão geral e monitoramento operacional em tempo real" 
       />
       <div className="flex gap-4 p-4 md:p-6 h-[calc(100vh-400px)]">
         <div className="hidden xl:block w-72 flex-shrink-0">
