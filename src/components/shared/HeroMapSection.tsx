@@ -48,7 +48,7 @@ export function HeroMapSection({
 
           <div className="flex flex-wrap gap-4 pointer-events-auto">
             <button 
-              onClick={() => navigate("/admin/map")}
+              onClick={() => navigate("/driver")}
               className="px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3 group"
             >
               <Search className="h-5 w-5 group-hover:rotate-12 transition-transform" />
@@ -56,7 +56,7 @@ export function HeroMapSection({
             </button>
             
             <button 
-              onClick={() => navigate("/admin/map")}
+              onClick={() => navigate("/driver")}
               className="px-8 py-4 rounded-2xl bg-card border border-border text-foreground font-bold shadow-lg hover:bg-muted/50 transition-all flex items-center gap-3"
             >
               <Navigation className="h-5 w-5" />
