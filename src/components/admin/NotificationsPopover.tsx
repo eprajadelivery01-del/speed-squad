@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface Notification {
   id: string;
@@ -111,7 +112,9 @@ export function NotificationsPopover() {
           
           {notifications.length > 0 && (
             <div className="p-3 border-t border-border bg-muted/20 text-center">
-              <Button variant="link" className="text-xs h-auto p-0 font-bold">Ver todo o histórico</Button>
+              <Link to="/admin/logs">
+                <Button variant="link" className="text-xs h-auto p-0 font-bold">Ver todo o histórico</Button>
+              </Link>
             </div>
           )}
         </div>

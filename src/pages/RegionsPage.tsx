@@ -1,522 +1,623 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { useRegions, useCreateRegion, useUpdateRegion, useDeleteRegion, type Region } from "@/services/regions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { MapPin, Pencil, MousePointer, Trash2, Undo2, Save, X, DollarSign, Search, Loader2, Eye, Check } from "lucide-react";
+import { useRegions, useCreateRegion, useUpdateRegion, useDeleteRegion } from "@/services/regions";
+import type { RegionRow } from "@/services/regions";
+import { MapPin, Plus, Trash2, Save, Pencil, Loader2, DollarSign, Search, X, MousePointer, PenTool } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useCity } from "@/contexts/CityContext";
-import { cn } from "@/lib/utils";
-
-const AVAILABLE_CITIES = [
-  { id: "1", name: "Cuiabá", lat: -15.5989, lng: -56.0974 },
-  { id: "2", name: "Várzea Grande", lat: -15.65, lng: -56.1333 },
-  { id: "3", name: "Diamantino", lat: -14.4087, lng: -56.4462 },
-  { id: "4", name: "Tangará da Serra", lat: -14.6231, lng: -57.4851 },
-  { id: "5", name: "Rondonópolis", lat: -16.4674, lng: -54.6318 },
-  { id: "6", name: "Sinop", lat: -11.864, lng: -55.509 },
-  { id: "7", name: "Sorriso", lat: -12.5442, lng: -55.7231 },
-  { id: "8", name: "Lucas do Rio Verde", lat: -13.06, lng: -55.91 },
-  { id: "9", name: "Nova Mutum", lat: -13.83, lng: -56.08 },
-];
 
 type DrawMode = "none" | "points" | "freehand";
 
 export default function RegionsPage() {
-  const { selectedCity, selectedCityCoords, setCity } = useCity();
-  const { data: allRegions, isLoading } = useRegions();
+  const { data: regions, isLoading } = useRegions();
   const createRegion = useCreateRegion();
   const updateRegion = useUpdateRegion();
   const deleteRegion = useDeleteRegion();
+  const { toast } = useToast();
 
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
-  const [mapReady, setMapReady] = useState(false);
-  const [isControlPressed, setIsControlPressed] = useState(false);
-
+  const [selectedRegion, setSelectedRegion] = useState<RegionRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("#3B82F6");
+  const [editPrice, setEditPrice] = useState("0");
+  const [editCity, setEditCity] = useState("");
   const [drawMode, setDrawMode] = useState<DrawMode>("none");
-  const [drawingPoints, setDrawingPoints] = useState<[number, number][]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
-  const [configOpen, setConfigOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  const [drawnPoints, setDrawnPoints] = useState<[number, number][]>([]);
+  const isDrawingFreehand = useRef(false);
 
-  // Filter regions by selected city - Memoized to prevent infinite map re-renders
-  const regions = useMemo(() => {
-    return allRegions?.filter(r => 
-      !selectedCity || r.city?.toLowerCase() === selectedCity.toLowerCase()
-    );
-  }, [allRegions, selectedCity]);
-
-  const [newRegion, setNewRegion] = useState({ name: "", color: "#F59E0B", price: "0", city: selectedCity || "" });
-
-  // City search state
-  const [cityQuery, setCityQuery] = useState("");
-  const [citySuggestions, setCitySuggestions] = useState<Array<{ name: string; lat: number; lng: number }>>([]);
+  // City search
+  const [citySearch, setCitySearch] = useState("");
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [searchingCity, setSearchingCity] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-  // Initialize map
+  // Region config modal
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [pendingGeometry, setPendingGeometry] = useState<any>(null);
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const popupRef = useRef<maplibregl.Popup | null>(null);
+  const renderedRegionIdsRef = useRef<string[]>([]);
+
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
-    const saved = localStorage.getItem("epj_selected_city");
-    let center: [number, number] = [-56.0974, -15.5989];
-    let zoom = 12;
-    if (saved) {
-      try {
-        const c = JSON.parse(saved);
-        center = [c.lng, c.lat];
-      } catch {}
-    }
+    if (!mapContainerRef.current || mapRef.current) return;
     const m = new maplibregl.Map({
-      container: mapContainer.current,
+      container: mapContainerRef.current,
       style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-      center,
-      zoom,
+      center: [-56.0974, -15.5989],
+      zoom: 12,
     });
-    m.addControl(new maplibregl.NavigationControl(), "top-right");
-    m.on("load", () => setMapReady(true));
-    map.current = m;
-    return () => { m.remove(); map.current = null; };
+    m.addControl(new maplibregl.NavigationControl(), "bottom-right");
+    mapRef.current = m;
+    return () => { m.remove(); mapRef.current = null; };
   }, []);
-
-  // Key listeners for Control key
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => e.key === "Control" && setIsControlPressed(true);
-    const up = (e: KeyboardEvent) => e.key === "Control" && setIsControlPressed(false);
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, []);
-
-  // Sync map center with selected city
-  useEffect(() => {
-    if (map.current && selectedCityCoords) {
-      map.current.flyTo({ center: [selectedCityCoords.lng, selectedCityCoords.lat], zoom: 13, duration: 2000 });
-      setCityQuery(selectedCityCoords.name);
-    }
-  }, [selectedCityCoords]);
 
   // Render regions on map
   useEffect(() => {
-    if (!mapReady || !map.current || !regions) return;
-    const m = map.current;
-
-    // Clean up all region layers
-    for (let i = 0; i < 500; i++) {
-      if (m.getLayer(`region-fill-${i}`)) m.removeLayer(`region-fill-${i}`);
-      if (m.getLayer(`region-line-${i}`)) m.removeLayer(`region-line-${i}`);
-      if (m.getSource(`region-${i}`)) m.removeSource(`region-${i}`);
-    }
-
-    regions.forEach((region, i) => {
-      if (!region.geometry) return;
-      m.addSource(`region-${i}`, {
-        type: "geojson",
-        data: { type: "Feature", geometry: region.geometry, properties: { name: region.name, price: region.price } },
+    const m = mapRef.current;
+    if (!m || !regions) return;
+    const handleLoad = () => {
+      // Clean old layers (using tracking ref to catch deletions)
+      renderedRegionIdsRef.current.forEach((id) => {
+        [`region-fill-${id}`, `region-line-${id}`, `region-highlight-${id}`].forEach((l) => {
+          if (m.getLayer(l)) m.removeLayer(l);
+        });
+        if (m.getSource(`region-${id}`)) m.removeSource(`region-${id}`);
       });
-      m.addLayer({
-        id: `region-fill-${i}`,
-        type: "fill",
-        source: `region-${i}`,
-        paint: {
-          "fill-color": region.color || "#F59E0B",
-          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.45, 0.25],
-        },
+      renderedRegionIdsRef.current = [];
+
+      regions.forEach((region) => {
+        if (!region.geometry) return;
+        const geojson = region.geometry as any;
+        if (geojson.type !== "Polygon") return;
+
+        m.addSource(`region-${region.id}`, {
+          type: "geojson",
+          data: { type: "Feature", properties: { name: region.name, price: region.price }, geometry: geojson },
+        });
+
+        m.addLayer({
+          id: `region-fill-${region.id}`,
+          type: "fill",
+          source: `region-${region.id}`,
+          paint: { "fill-color": region.color, "fill-opacity": 0.25 },
+        });
+
+        m.addLayer({
+          id: `region-line-${region.id}`,
+          type: "line",
+          source: `region-${region.id}`,
+          paint: { "line-color": region.color, "line-width": 2.5 },
+        });
+
+        // Hover highlight
+        m.on("mouseenter", `region-fill-${region.id}`, (e) => {
+          if (drawMode !== "none") return;
+          m.getCanvas().style.cursor = "pointer";
+          m.setPaintProperty(`region-fill-${region.id}`, "fill-opacity", 0.45);
+          // Show popup
+          if (popupRef.current) popupRef.current.remove();
+          const popup = new maplibregl.Popup({ closeButton: false, offset: 10 })
+            .setLngLat(e.lngLat)
+            .setHTML(`<div style="font-family:sans-serif;padding:4px 0"><strong>${region.name}</strong><br/><span style="color:#888">R$ ${Number(region.price).toFixed(2)}</span></div>`)
+            .addTo(m);
+          popupRef.current = popup;
+        });
+
+        m.on("mouseleave", `region-fill-${region.id}`, () => {
+          if (drawMode !== "none") return;
+          m.getCanvas().style.cursor = "";
+          m.setPaintProperty(`region-fill-${region.id}`, "fill-opacity", 0.25);
+          if (popupRef.current) { popupRef.current.remove(); popupRef.current = null; }
+        });
+
+        m.on("click", `region-fill-${region.id}`, () => {
+          if (drawMode !== "none") return;
+          setSelectedRegion(region);
+          setEditName(region.name);
+          setEditColor(region.color);
+          setEditPrice(String(region.price));
+          setDrawMode("none");
+          setDrawnPoints([]);
+        });
+
+        renderedRegionIdsRef.current.push(region.id);
       });
-      m.addLayer({
-        id: `region-line-${i}`,
-        type: "line",
-        source: `region-${i}`,
-        paint: { "line-color": region.color || "#F59E0B", "line-width": 2.5 },
-      });
 
-      // Popup on click
-      m.on("click", `region-fill-${i}`, (e) => {
-        new maplibregl.Popup({ closeButton: true, maxWidth: "200px" })
-          .setLngLat(e.lngLat)
-          .setHTML(`<div style="padding:6px 2px"><strong style="font-size:14px">${region.name}</strong><br/><span style="color:#F59E0B;font-weight:600">R$ ${Number(region.price).toFixed(2)}</span>${region.city ? `<br/><span style="font-size:12px;color:#888">${region.city}</span>` : ''}</div>`)
-          .addTo(m);
-      });
+      // Clean drawing layers
+      ["draw-fill", "draw-line", "draw-points"].forEach((l) => { if (m.getLayer(l)) m.removeLayer(l); });
+      if (m.getSource("draw")) m.removeSource("draw");
+    };
+    if (m.isStyleLoaded()) handleLoad();
+    else m.on("load", handleLoad);
+  }, [regions, drawMode]);
 
-      m.on("mouseenter", `region-fill-${i}`, () => { m.getCanvas().style.cursor = "pointer"; });
-      m.on("mouseleave", `region-fill-${i}`, () => { m.getCanvas().style.cursor = ""; });
-    });
-  }, [mapReady, regions]);
-
-  // City search (Restore manual search)
-  const searchCity = async () => {
-    if (cityQuery.length < 2) return;
-    setSearchingCity(true);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityQuery)}&limit=5&addressdetails=1`);
-      const data = await res.json();
-      setCitySuggestions(data.map((r: any) => ({
-        name: r.display_name.split(",").slice(0, 3).join(",").trim(),
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-      })));
-    } catch {}
-    setSearchingCity(false);
-  };
-
-  const selectCity = (city: { name: string; lat: number; lng: number }) => {
-    if (map.current) {
-      map.current.flyTo({ center: [city.lng, city.lat], zoom: 13, duration: 2000 });
-    }
-    setCitySuggestions([]);
-    setCityQuery(city.name);
-  };
-
-  // Render drawing preview
+  // Points drawing mode - click to add vertices
   useEffect(() => {
-    if (!mapReady || !map.current) return;
-    const m = map.current;
-    if (m.getLayer("drawing-fill")) m.removeLayer("drawing-fill");
-    if (m.getLayer("drawing-line")) m.removeLayer("drawing-line");
-    if (m.getLayer("drawing-points")) m.removeLayer("drawing-points");
-    if (m.getSource("drawing")) m.removeSource("drawing");
-    if (m.getSource("drawing-pts")) m.removeSource("drawing-pts");
-
-    if (drawingPoints.length < 2) {
-      if (drawingPoints.length === 1) {
-        m.addSource("drawing-pts", { type: "geojson", data: { type: "FeatureCollection", features: drawingPoints.map(p => ({ type: "Feature" as const, geometry: { type: "Point" as const, coordinates: p }, properties: {} })) } });
-        m.addLayer({ id: "drawing-points", type: "circle", source: "drawing-pts", paint: { "circle-radius": 6, "circle-color": "#F59E0B", "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
-      }
-      return;
-    }
-
-    const coords = [...drawingPoints, drawingPoints[0]];
-    m.addSource("drawing", {
-      type: "geojson",
-      data: { type: "Feature", geometry: { type: "Polygon", coordinates: [coords] }, properties: {} },
-    });
-    m.addLayer({ id: "drawing-fill", type: "fill", source: "drawing", paint: { "fill-color": "#F59E0B", "fill-opacity": 0.2 } });
-    m.addLayer({ id: "drawing-line", type: "line", source: "drawing", paint: { "line-color": "#F59E0B", "line-width": 2, "line-dasharray": [2, 2] } });
-
-    m.addSource("drawing-pts", { type: "geojson", data: { type: "FeatureCollection", features: drawingPoints.map(p => ({ type: "Feature" as const, geometry: { type: "Point" as const, coordinates: p }, properties: {} })) } });
-    m.addLayer({ id: "drawing-points", type: "circle", source: "drawing-pts", paint: { "circle-radius": 6, "circle-color": "#F59E0B", "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
-  }, [mapReady, drawingPoints]);
-
-  // Map click handler for point mode
-  useEffect(() => {
-    if (!mapReady || !map.current) return;
-    const m = map.current;
+    const m = mapRef.current;
+    if (!m) return;
     const handleClick = (e: maplibregl.MapMouseEvent) => {
-      if (drawMode !== "points" || isControlPressed) return;
-      setDrawingPoints(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
+      if (drawMode !== "points") return;
+      setDrawnPoints((prev) => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
     };
     m.on("click", handleClick);
     return () => { m.off("click", handleClick); };
-  }, [mapReady, drawMode, isControlPressed]);
+  }, [drawMode]);
 
-  // Freehand drawing
+  // Freehand drawing mode - drag to draw
   useEffect(() => {
-    if (!mapReady || !map.current) return;
-    const m = map.current;
-    let isDrawing = false;
+    const m = mapRef.current;
+    if (!m) return;
+    if (drawMode !== "freehand") return;
 
-    const onDown = (e: maplibregl.MapMouseEvent) => {
-      if (drawMode !== "freehand" || isControlPressed) return;
-      isDrawing = true;
+    const canvas = m.getCanvas();
+    const onMouseDown = (e: MouseEvent) => {
+      e.preventDefault();
+      isDrawingFreehand.current = true;
       m.dragPan.disable();
-      setDrawingPoints([[e.lngLat.lng, e.lngLat.lat]]);
+      setDrawnPoints([]);
+      const lngLat = m.unproject([e.offsetX, e.offsetY]);
+      setDrawnPoints([[lngLat.lng, lngLat.lat]]);
     };
-    const onMove = (e: maplibregl.MapMouseEvent) => {
-      if (!isDrawing || drawMode !== "freehand" || isControlPressed) {
-        if (isControlPressed) m.dragPan.enable();
-        return;
-      }
-      setDrawingPoints(prev => [...prev, [e.lngLat.lng, e.lngLat.lat]]);
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDrawingFreehand.current) return;
+      const lngLat = m.unproject([e.offsetX, e.offsetY]);
+      setDrawnPoints((prev) => {
+        // Downsample: only add if distance > threshold
+        if (prev.length > 0) {
+          const last = prev[prev.length - 1];
+          const dx = lngLat.lng - last[0];
+          const dy = lngLat.lat - last[1];
+          if (Math.sqrt(dx * dx + dy * dy) < 0.0003) return prev;
+        }
+        return [...prev, [lngLat.lng, lngLat.lat]];
+      });
     };
-    const onUp = () => {
-      isDrawing = false;
+    const onMouseUp = () => {
+      if (!isDrawingFreehand.current) return;
+      isDrawingFreehand.current = false;
       m.dragPan.enable();
     };
-
-    m.on("mousedown", onDown);
-    m.on("mousemove", onMove);
-    m.on("mouseup", onUp);
+    canvas.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("mouseup", onMouseUp);
     return () => {
-      m.off("mousedown", onDown);
-      m.off("mousemove", onMove);
-      m.off("mouseup", onUp);
+      canvas.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      m.dragPan.enable();
     };
-  }, [mapReady, drawMode, isControlPressed]);
+  }, [drawMode]);
 
-  const startDraw = (mode: DrawMode) => {
-    setDrawMode(mode);
-    setDrawingPoints([]);
+  // Update cursor
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m) return;
+    if (drawMode === "points") m.getCanvas().style.cursor = "crosshair";
+    else if (drawMode === "freehand") m.getCanvas().style.cursor = "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22><circle cx=%2212%22 cy=%2212%22 r=%224%22 fill=%22%233B82F6%22/></svg>') 12 12, crosshair";
+    else m.getCanvas().style.cursor = "";
+  }, [drawMode]);
+
+  // Drawing visualization
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !m.isStyleLoaded()) return;
+    ["draw-fill", "draw-line", "draw-points"].forEach((l) => { if (m.getLayer(l)) m.removeLayer(l); });
+    if (m.getSource("draw")) m.removeSource("draw");
+    if (drawnPoints.length === 0) return;
+
+    const coords = [...drawnPoints];
+    const isClosed = coords.length > 2;
+    if (isClosed) coords.push(coords[0]);
+
+    m.addSource("draw", {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: isClosed
+              ? { type: "Polygon", coordinates: [coords] }
+              : { type: "LineString", coordinates: coords },
+          },
+          ...drawnPoints.map((p) => ({
+            type: "Feature" as const,
+            properties: {},
+            geometry: { type: "Point" as const, coordinates: p },
+          })),
+        ],
+      },
+    });
+
+    if (isClosed) {
+      m.addLayer({
+        id: "draw-fill",
+        type: "fill",
+        source: "draw",
+        filter: ["==", "$type", "Polygon"],
+        paint: { "fill-color": editColor, "fill-opacity": 0.3 },
+      });
+      m.addLayer({
+        id: "draw-line",
+        type: "line",
+        source: "draw",
+        filter: ["==", "$type", "Polygon"],
+        paint: { "line-color": editColor, "line-width": 2.5 },
+      });
+    } else {
+      m.addLayer({
+        id: "draw-line",
+        type: "line",
+        source: "draw",
+        filter: ["==", "$type", "LineString"],
+        paint: { "line-color": editColor, "line-width": 2, "line-dasharray": [2, 2] },
+      });
+    }
+
+    m.addLayer({
+      id: "draw-points",
+      type: "circle",
+      source: "draw",
+      filter: ["==", "$type", "Point"],
+      paint: { "circle-radius": 5, "circle-color": editColor, "circle-stroke-width": 2, "circle-stroke-color": "#fff" },
+    });
+  }, [drawnPoints, editColor]);
+
+  // City search
+  const searchCity = useCallback((query: string) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!query.trim()) { setCitySuggestions([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      setSearchingCity(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=br`);
+        const data = await res.json();
+        setCitySuggestions(data);
+      } catch { setCitySuggestions([]); }
+      setSearchingCity(false);
+    }, 400);
+  }, []);
+
+  const selectCity = (item: any) => {
+    const m = mapRef.current;
+    if (m) m.flyTo({ center: [parseFloat(item.lon), parseFloat(item.lat)], zoom: 13, duration: 1500 });
+    setCitySearch(item.display_name.split(",")[0]);
+    setEditCity(item.display_name.split(",")[0]);
+    setCitySuggestions([]);
   };
 
-  const undoPoint = () => setDrawingPoints(prev => prev.slice(0, -1));
+  const startDrawing = (mode: DrawMode) => {
+    setDrawMode(mode);
+    setDrawnPoints([]);
+    setSelectedRegion(null);
+    setEditName("");
+    setEditColor("#3B82F6");
+    setEditPrice("0");
+    setEditCity("");
+  };
 
-  const finishDraw = () => {
-    if (drawingPoints.length < 3) {
-      toast.error("Desenhe pelo menos 3 pontos para formar uma região");
+  const cancelDrawing = () => {
+    setDrawMode("none");
+    setDrawnPoints([]);
+    isDrawingFreehand.current = false;
+    mapRef.current?.dragPan.enable();
+  };
+
+  const undoLastPoint = () => setDrawnPoints((prev) => prev.slice(0, -1));
+
+  const finishDrawing = () => {
+    if (drawnPoints.length < 3) {
+      toast({ title: "Desenhe pelo menos 3 pontos", variant: "destructive" });
       return;
     }
-    setDrawMode("none");
-    setConfigOpen(true);
-  };
-
-  const cancelDraw = () => {
-    setDrawMode("none");
-    setDrawingPoints([]);
+    const coords = [...drawnPoints, drawnPoints[0]];
+    setPendingGeometry({ type: "Polygon", coordinates: [coords] });
+    setShowConfigModal(true);
   };
 
   const saveNewRegion = async () => {
-    if (!newRegion.name) { toast.error("Nome é obrigatório"); return; }
-    const coords = [...drawingPoints, drawingPoints[0]];
-    const geometry = { type: "Polygon", coordinates: [coords] };
-    const cityName = selectedCity || newRegion.city;
+    if (!pendingGeometry) return;
+    if (!editName.trim()) {
+      toast({ title: "Digite um nome para a região", variant: "destructive" });
+      return;
+    }
     try {
-      await createRegion.mutateAsync({ name: newRegion.name, color: newRegion.color, price: parseFloat(newRegion.price) || 0, city: cityName || undefined, geometry });
-      toast.success("Região criada!");
-      setConfigOpen(false);
-      setDrawingPoints([]);
-      setNewRegion({ name: "", color: "#F59E0B", price: "0", city: "" });
+      await createRegion.mutateAsync({
+        name: editName,
+        color: editColor,
+        price: parseFloat(editPrice) || 0,
+        geometry: pendingGeometry as any,
+      });
+      toast({ title: "Região criada!" });
+      setDrawMode("none");
+      setDrawnPoints([]);
+      setShowConfigModal(false);
+      setPendingGeometry(null);
     } catch (err: any) {
-      toast.error(err.message);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
   };
 
-  const handleDeleteRegion = async (id: string) => {
-    if (!confirm("Excluir esta região?")) return;
-    try {
-      await deleteRegion.mutateAsync(id);
-      toast.success("Região excluída");
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleEditSave = async () => {
+  const saveEditRegion = async () => {
     if (!selectedRegion) return;
     try {
-      await updateRegion.mutateAsync({ id: selectedRegion.id, name: selectedRegion.name, color: selectedRegion.color, price: selectedRegion.price, city: selectedRegion.city || selectedCity || undefined });
-      toast.success("Região atualizada!");
-      setEditOpen(false);
+      await updateRegion.mutateAsync({
+        id: selectedRegion.id,
+        updates: { name: editName, color: editColor, price: parseFloat(editPrice) || 0 },
+      });
+      toast({ title: "Região atualizada!" });
       setSelectedRegion(null);
     } catch (err: any) {
-      toast.error(err.message);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
   };
 
-  const flyToRegion = (region: Region) => {
-    if (!map.current || !region.geometry) return;
-    const coords = region.geometry.coordinates[0];
-    const bounds = coords.reduce(
-      (b: any, c: [number, number]) => b.extend(c),
-      new maplibregl.LngLatBounds(coords[0], coords[0])
-    );
-    map.current.fitBounds(bounds, { padding: 80 });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteRegion.mutateAsync(id);
+      toast({ title: "Região excluída" });
+      setSelectedRegion(null);
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
   };
 
   return (
-    <AdminLayout title="Regiões" subtitle="Gerenciamento de regiões de entrega">
-      <div className="flex gap-4 h-[calc(100vh-140px)]">
+    <AdminLayout title="Regiões" subtitle="Gestão de regiões e precificação">
+      <div className="flex flex-col lg:flex-row gap-0 -m-4 md:-m-6 h-[calc(100vh-73px)]">
         {/* Map */}
-        <div className="flex-1 relative rounded-2xl overflow-hidden bg-card shadow-card">
-          <div ref={mapContainer} className="w-full h-full" />
+        <div className="flex-1 relative min-h-[300px]">
+          <div ref={mapContainerRef} className="w-full h-full" />
 
-          {/* City search bar */}
-          <div className="absolute top-4 right-14 w-72 z-10">
-            <div className="bg-card/95 backdrop-blur rounded-xl shadow-lg overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                <input
-                  value={cityQuery}
-                  onChange={(e) => setCityQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && searchCity()}
-                  placeholder="Buscar cidade..."
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground text-foreground"
-                />
-                {searchingCity && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-              </div>
-              {citySuggestions.length > 0 && (
-                <div className="border-t border-border max-h-48 overflow-y-auto">
-                  {citySuggestions.map((city, i) => (
-                    <button
-                      key={i}
-                      onClick={() => selectCity(city)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-b border-border last:border-0 text-foreground"
-                    >
-                      {city.name}
-                    </button>
-                  ))}
-                </div>
+          {/* City search */}
+          <div className="absolute top-4 right-4 w-72 z-10">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                value={citySearch}
+                onChange={(e) => { setCitySearch(e.target.value); searchCity(e.target.value); }}
+                placeholder="Buscar cidade..."
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-card border border-border text-sm outline-none focus:border-primary shadow-md"
+              />
+              {citySearch && (
+                <button onClick={() => { setCitySearch(""); setCitySuggestions([]); }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
               )}
             </div>
+            {citySuggestions.length > 0 && (
+              <div className="mt-1 bg-card rounded-xl border border-border shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+                {citySuggestions.map((s, i) => (
+                  <button key={i} onClick={() => selectCity(s)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors border-b border-border last:border-0">
+                    <p className="font-medium text-foreground truncate">{s.display_name.split(",")[0]}</p>
+                    <p className="text-xs text-muted-foreground truncate">{s.display_name}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchingCity && (
+              <div className="mt-1 bg-card rounded-xl border border-border shadow-lg p-3 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Buscando...</span>
+              </div>
+            )}
           </div>
 
-          {/* Drawing toolbar */}
-          <div className="absolute top-4 left-4 flex gap-2 z-10">
+          {/* Drawing controls */}
+          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
             {drawMode === "none" ? (
-              <>
-                <Button size="sm" onClick={() => startDraw("points")} className="gap-1.5 shadow-lg">
-                  <MousePointer className="h-3.5 w-3.5" />Modo Pontos
-                </Button>
-                <Button size="sm" onClick={() => startDraw("freehand")} className="gap-1.5 shadow-lg">
-                  <Pencil className="h-3.5 w-3.5" />Modo Lápis
-                </Button>
-              </>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => startDrawing("points")}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-md hover:bg-primary/90"
+                >
+                  <MousePointer className="h-4 w-4" /> Modo Pontos
+                </button>
+                <button
+                  onClick={() => startDrawing("freehand")}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-medium shadow-md hover:bg-accent/90"
+                >
+                  <PenTool className="h-4 w-4" /> Modo Lápis
+                </button>
+              </div>
             ) : (
-              <>
-                <div className="bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-medium flex items-center gap-2 shadow-lg animate-pulse">
-                  {drawMode === "points" ? <><MousePointer className="h-3 w-3" /> Clique para adicionar pontos ({drawingPoints.length})</> : <><Pencil className="h-3 w-3" /> Arraste para desenhar ({drawingPoints.length} pts)</>}
-                </div>
-                {drawMode === "points" && drawingPoints.length > 0 && (
-                  <Button size="sm" variant="outline" onClick={undoPoint} className="shadow-lg bg-card/95">
-                    <Undo2 className="h-3.5 w-3.5" />
-                  </Button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={finishDrawing}
+                  disabled={drawnPoints.length < 3 || createRegion.isPending}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium shadow-md disabled:opacity-50"
+                >
+                  {createRegion.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Finalizar
+                </button>
+                {drawMode === "points" && drawnPoints.length > 0 && (
+                  <button onClick={undoLastPoint} className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card text-foreground text-sm font-medium shadow-md">
+                    Desfazer
+                  </button>
                 )}
-                <Button size="sm" variant="default" onClick={finishDraw} disabled={drawingPoints.length < 3} className="shadow-lg gap-1.5">
-                  <Save className="h-3.5 w-3.5" />Finalizar
-                </Button>
-                <Button size="sm" variant="destructive" onClick={cancelDraw} className="shadow-lg">
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </>
+                <button onClick={cancelDrawing} className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card text-foreground text-sm font-medium shadow-md">
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Drawing mode indicator */}
+          {drawMode !== "none" && (
+            <div className="absolute bottom-4 left-4 bg-card rounded-xl p-3 shadow-md z-10 flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full animate-pulse ${drawMode === "points" ? "bg-primary" : "bg-accent"}`} />
+              <span className="text-xs text-muted-foreground">
+                {drawMode === "points"
+                  ? `Clique para adicionar vértices • ${drawnPoints.length} ponto(s) • Mín. 3`
+                  : `Arraste para desenhar • ${drawnPoints.length} ponto(s) • Solte para parar`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Region config modal overlay */}
+        {showConfigModal && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-card rounded-2xl p-6 w-96 shadow-xl space-y-4">
+              <h3 className="font-bold text-lg text-foreground">Configurar Região</h3>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block text-foreground">Nome da região *</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Ex: Centro"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-1.5 block text-foreground">Cor</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0" />
+                    <input value={editColor} onChange={(e) => setEditColor(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none font-mono" />
+                  </div>
+                </div>
+                <div className="w-28">
+                  <label className="text-sm font-medium mb-1.5 block text-foreground">Preço (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block text-foreground">Cidade</label>
+                <input
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  placeholder="Ex: Cuiabá"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => { setShowConfigModal(false); setPendingGeometry(null); }}
+                  className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveNewRegion}
+                  disabled={createRegion.isPending || !editName.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {createRegion.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Salvar Região
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sidebar */}
+        <div className="w-full lg:w-80 bg-card border-l border-border overflow-y-auto">
+          {selectedRegion && (
+            <div className="p-4 border-b border-border space-y-3">
+              <h3 className="font-bold text-foreground text-sm">Editar Região</h3>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Nome</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm outline-none focus:border-primary" />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Cor</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0" />
+                    <input value={editColor} onChange={(e) => setEditColor(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm outline-none font-mono" />
+                  </div>
+                </div>
+                <div className="w-28">
+                  <label className="text-xs text-muted-foreground mb-1 block">Preço (R$)</label>
+                  <input type="number" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm outline-none focus:border-primary" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveEditRegion}
+                  disabled={updateRegion.isPending}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+                >
+                  {updateRegion.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Salvar
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedRegion.id)}
+                  disabled={deleteRegion.isPending}
+                  className="px-4 py-2 rounded-lg bg-destructive/10 text-destructive text-sm font-medium disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="p-4">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+              Regiões ({regions?.length ?? 0})
+            </h3>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <div key={i} className="animate-pulse rounded-xl bg-muted h-20" />)}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(regions ?? []).map((region) => (
+                  <button
+                    key={region.id}
+                    onClick={() => {
+                      setSelectedRegion(region);
+                      setEditName(region.name);
+                      setEditColor(region.color);
+                      setEditPrice(String(region.price));
+                      setDrawMode("none");
+                      setDrawnPoints([]);
+                      const geo = region.geometry as any;
+                      if (geo?.type === "Polygon" && geo.coordinates?.[0]) {
+                        const coords = geo.coordinates[0] as [number, number][];
+                        const avgLng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+                        const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+                        mapRef.current?.flyTo({ center: [avgLng, avgLat], zoom: 14, duration: 1000 });
+                      }
+                    }}
+                    className={`w-full text-left rounded-xl p-3 transition-all ${
+                      selectedRegion?.id === region.id
+                        ? "bg-primary/10 border border-primary/30"
+                        : "bg-muted/50 hover:bg-muted border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${region.color}20` }}>
+                        <MapPin className="h-4 w-4" style={{ color: region.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{region.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: region.color }} />
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" /> R$ {Number(region.price).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        {/* Sidebar */}
-        <div className="w-80 rounded-2xl bg-card shadow-card p-4 overflow-y-auto custom-scrollbar">
-          {/* City Selector List */}
-          <div className="mb-6">
-            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block px-1">Cidade Ativa</Label>
-            <div className="space-y-1">
-              {AVAILABLE_CITIES.map((city) => (
-                <button
-                  key={city.id}
-                  onClick={() => setCity(city.name)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-xl text-sm transition-all flex items-center justify-between border border-transparent",
-                    selectedCity === city.name 
-                      ? "bg-primary/10 text-primary border-primary/20 font-bold" 
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    <MapPin className={cn("h-3.5 w-3.5", selectedCity === city.name ? "text-primary" : "text-muted-foreground")} />
-                    {city.name}
-                  </span>
-                  {selectedCity === city.name && <Check className="h-4 w-4" />}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 px-1">
-            <MousePointer className="h-4 w-4 text-primary" />Regiões ({regions?.length || 0})
-          </h3>
-          
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground px-1">Carregando...</p>
-          ) : (regions ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-xl border border-dashed border-border px-4 py-6 text-center">
-              Nenhuma região cadastrada em <strong>{selectedCity || "qualquer cidade"}</strong>.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {(regions ?? []).map(region => (
-                <div
-                  key={region.id}
-                  className="p-3 rounded-xl border border-border hover:bg-primary/5 cursor-pointer transition-colors group bg-card"
-                  onClick={() => flyToRegion(region)}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-4 h-4 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: region.color }} />
-                    <span className="font-medium text-sm flex-1 truncate">{region.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedRegion(region); setEditOpen(true); }} className="text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteRegion(region.id); }} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1 font-bold text-primary">R$ {Number(region.price).toFixed(2)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* Config modal for new region */}
-      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Configurar Região</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nome *</Label>
-              <Input value={newRegion.name} onChange={e => setNewRegion(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Centro" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Cor</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" value={newRegion.color} onChange={e => setNewRegion(p => ({ ...p, color: e.target.value }))} className="w-10 h-10 rounded border-0 cursor-pointer" />
-                  <Input value={newRegion.color} onChange={e => setNewRegion(p => ({ ...p, color: e.target.value }))} className="font-mono text-xs" />
-                </div>
-              </div>
-              <div>
-                <Label>Preço (R$)</Label>
-                <Input type="number" min="0" step="0.50" value={newRegion.price} onChange={e => setNewRegion(p => ({ ...p, price: e.target.value }))} />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setConfigOpen(false); setDrawingPoints([]); }}>Cancelar</Button>
-              <Button onClick={saveNewRegion} disabled={createRegion.isPending}>
-                {createRegion.isPending ? "Salvando..." : "Salvar Região"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit modal */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Editar Região</DialogTitle>
-          </DialogHeader>
-          {selectedRegion && (
-            <div className="space-y-4">
-              <div>
-                <Label>Nome</Label>
-                <Input value={selectedRegion.name} onChange={e => setSelectedRegion(p => p ? { ...p, name: e.target.value } : p)} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Cor</Label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={selectedRegion.color} onChange={e => setSelectedRegion(p => p ? { ...p, color: e.target.value } : p)} className="w-10 h-10 rounded border-0 cursor-pointer" />
-                  </div>
-                </div>
-                <div>
-                  <Label>Preço (R$)</Label>
-                  <Input type="number" min="0" step="0.50" value={selectedRegion.price} onChange={e => setSelectedRegion(p => p ? { ...p, price: parseFloat(e.target.value) || 0 } : p)} />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
-                <Button onClick={handleEditSave} disabled={updateRegion.isPending}>
-                  {updateRegion.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </AdminLayout>
   );
 }
