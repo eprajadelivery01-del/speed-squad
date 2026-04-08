@@ -13,7 +13,6 @@ const navItems = [
   { label: "Corridas (OS)", icon: Truck, href: "/admin/deliveries" },
   { label: "Chat", icon: MessageSquare, href: "/admin/chat" },
   { label: "Mapa", icon: Map, href: "/admin/map" },
-  { label: "Usuários", icon: Users, href: "/admin/users" },
   { label: "Empresas", icon: Building2, href: "/admin/companies" },
   { label: "Entregadores", icon: Bike, href: "/admin/drivers" },
   { label: "Regiões", icon: MapPin, href: "/admin/regions" },
