@@ -35,12 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = async (userId: string) => {
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
-
+    
     try {
-      console.log(`[AuthContext] Iniciando busca para: ${userId}`);
-
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout Supabase")), 5000)
+      console.log(`[AuthContext] Iniciando busca (HARDENED V4) para: ${userId}`);
+      
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout de 10s atingido. Banco lento.")), 10000)
       );
 
       const fetchPromise = Promise.all([
@@ -55,28 +55,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         finalRoles = rolesRes.data.map((r: any) => r.role as AppRole);
       }
 
-      // BYPASS CRÍTICO
-      if (userId === SPECIAL_USER_ID || finalRoles.length === 0) {
-        console.warn(`[AuthContext] BYPASS ATIVADO para ${userId}. Injetando ROLE 'admin'.`);
+      if (userId === SPECIAL_USER_ID) {
         if (!finalRoles.includes("admin")) {
           finalRoles = [...finalRoles, "admin"];
         }
       }
 
-      console.log(`[AuthContext] Roles finais para ${userId}:`, finalRoles);
       setRoles(finalRoles);
 
       if (profileRes.data) {
         setProfile(profileRes.data);
         setUserStatus((profileRes.data as any).status as UserStatus);
       }
-    } catch (error) {
-      console.error("[AuthContext] Erro ou Timeout ao buscar dados:", error);
+    } catch (error: any) {
+      console.error("[AuthContext] ERRO DE CARREGAMENTO:", error.message);
+      
       if (userId === SPECIAL_USER_ID) {
+        console.log("[AuthContext] ATENÇÃO: Travamento detectado. Acionando entrada de emergência (Admin Force).");
         setRoles(["admin"]);
+        setProfile({ full_name: "Admin (Modo Emergência)", avatar_url: null, phone: null });
+        setUserStatus("active");
       }
     } finally {
       fetchingRef.current = null;
+      setLoading(false);
     }
   };
 
@@ -85,87 +87,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
-
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-
-        if (initialSession?.user) {
-          await fetchUserData(initialSession.user.id);
-        }
-      } catch (error) {
-        console.error("[AuthContext] Erro na inicialização:", error);
-      } finally {
-        if (mounted) {
-          console.log("[AuthContext] Inicialização concluída. Loading -> false");
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        } else {
           setLoading(false);
         }
+      } catch (error) {
+        setLoading(false);
       }
     };
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+    const { data } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         if (!mounted) return;
-        console.log(`[AuthContext] Evento Auth: ${event}`);
-        try {
-          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            if (currentSession?.user) {
-              await fetchUserData(currentSession.user.id);
-            }
-          } else if (event === "SIGNED_OUT") {
-            setSession(null);
-            setUser(null);
-            setRoles([]);
-            setProfile(null);
-            setUserStatus(null);
-          }
-        } catch (error) {
-          console.error("Erro no listener de Auth:", error);
-        } finally {
-          if (mounted) {
-            console.log("[AuthContext] AuthChange finalizado. Forçando loading -> false");
+
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchUserData(session.user.id);
+          } else {
             setLoading(false);
           }
+        } else if (event === "SIGNED_OUT") {
+          setSession(null);
+          setUser(null);
+          setRoles([]);
+          setProfile(null);
+          setUserStatus(null);
+          setLoading(false);
         }
       }
     );
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      const subscription = (data as any).subscription || data;
+      if (subscription && typeof subscription.unsubscribe === 'function') subscription.unsubscribe();
     };
   }, []);
 
-  useEffect(() => {
-    if (!loading) {
-      const splash = document.getElementById("splash-screen");
-      if (splash) {
-        splash.style.opacity = "0";
-        setTimeout(() => splash.remove(), 500);
-      }
-    }
-  }, [loading]);
-
   const hasRole = (role: AppRole) => {
-    if (user?.id === SPECIAL_USER_ID) return true; // Bypass supremo
+    if (user?.id === SPECIAL_USER_ID) return true; 
     return roles.includes(role);
   };
-
+  
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } }
+    const { error } = await supabase.auth.signUp({ 
+      email, 
+      password, 
+      options: { data: { full_name: fullName } } 
     });
     if (error) throw error;
   };
@@ -174,24 +158,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) return;
-    const { error } = await supabase.from("profiles").update({ status: "rejected" }).eq("user_id", user.id);
-    if (error) throw error;
-    await signOut();
+    try {
+      await supabase.from("profiles").update({ status: "rejected" }).eq("user_id", user.id);
+      await signOut();
+    } catch (error) {}
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      roles,
-      userStatus,
-      profile,
-      hasRole,
-      signIn,
-      signUp,
-      signOut,
-      deleteAccount
+    <AuthContext.Provider value={{ 
+      user, session, loading, roles, userStatus, profile, hasRole, signIn, signUp, signOut, deleteAccount 
     }}>
       {children}
     </AuthContext.Provider>

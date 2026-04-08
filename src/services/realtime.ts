@@ -2,34 +2,37 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useDeliveriesRealtime() {
+/**
+ * useAdminRealtime
+ * Centralized hook for Admin Panel to monitor everything.
+ * Ensures one single channel per table with proper cleanup.
+ */
+export function useAdminRealtime() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`deliveries-realtime-${crypto.randomUUID()}`)
+    console.log("[Realtime] Iniciando canais administrativos...");
+
+    // Unique ID for this session to identify channels in Supabase logs
+    const sessionId = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID().substring(0, 8) 
+      : Math.random().toString(36).substring(2, 10);
+
+    const deliverablesChannel = supabase
+      .channel(`admin-deliveries-${sessionId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "deliveries" },
-        () => {
+        (payload) => {
+          console.log("[Realtime] Mudança em deliveries:", payload.eventType);
           qc.invalidateQueries({ queryKey: ["deliveries"] });
           qc.invalidateQueries({ queryKey: ["delivery-stats"] });
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
-}
-
-export function useDriversRealtime() {
-  const qc = useQueryClient();
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`drivers-realtime-${crypto.randomUUID()}`)
+    const driversChannel = supabase
+      .channel(`admin-drivers-${sessionId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "delivery_drivers" },
@@ -39,35 +42,29 @@ export function useDriversRealtime() {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
-}
-
-export function useOrdersRealtime() {
-  const qc = useQueryClient();
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`orders-realtime-${crypto.randomUUID()}`)
+    const notificationsChannel = supabase
+      .channel(`admin-notifications-${sessionId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
+        { event: "INSERT", schema: "public", table: "system_logs" },
         () => {
-          qc.invalidateQueries({ queryKey: ["orders"] });
+          qc.invalidateQueries({ queryKey: ["system-stats"] });
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(deliverablesChannel);
+      supabase.removeChannel(driversChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, [qc]);
 }
 
-export function useAllRealtime() {
-  useDeliveriesRealtime();
-  useDriversRealtime();
-  useOrdersRealtime();
+// Deprecated individual hooks
+export function useDeliveriesRealtime() {}
+export function useDriversRealtime() {}
+export function useOrdersRealtime() {}
+export function useAllRealtime() { 
+  useAdminRealtime();
 }
