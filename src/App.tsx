@@ -52,26 +52,10 @@ const App = () => (
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/" element={<Navigate to="/driver" replace />} />
 
-                <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><DashboardPage /></ProtectedRoute>} />
-                <Route path="/admin/deliveries" element={<ProtectedRoute requiredRole="admin"><DeliveriesPage /></ProtectedRoute>} />
-                {/* <Route path="/admin/chat" element={<ProtectedRoute requiredRole="admin"><ChatPage /></ProtectedRoute>} /> */}
-                <Route path="/admin/map" element={<ProtectedRoute requiredRole="admin"><MapPage /></ProtectedRoute>} />
-                <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UsersPage /></ProtectedRoute>} />
-                <Route path="/admin/companies" element={<ProtectedRoute requiredRole="admin"><CompaniesPage /></ProtectedRoute>} />
-                <Route path="/admin/drivers" element={<ProtectedRoute requiredRole="admin"><DriversPage /></ProtectedRoute>} />
-                <Route path="/admin/regions" element={<ProtectedRoute requiredRole="admin"><RegionsPage /></ProtectedRoute>} />
-                <Route path="/admin/occurrences" element={<ProtectedRoute requiredRole="admin"><OccurrencesPage /></ProtectedRoute>} />
-                <Route path="/admin/reviews" element={<ProtectedRoute requiredRole="admin"><ReviewsPage /></ProtectedRoute>} />
-                <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><ReportsPage /></ProtectedRoute>} />
-                <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
-                <Route path="/admin/profile" element={<ProtectedRoute requiredRole="admin"><ProfilePage /></ProtectedRoute>} />
-                <Route path="/admin/logs" element={<ProtectedRoute requiredRole="admin"><SystemLogsPage /></ProtectedRoute>} />
-
                 <Route path="/driver" element={<ProtectedRoute requiredRole="driver"><DriverHomePage /></ProtectedRoute>} />
                 <Route path="/driver/deliveries" element={<ProtectedRoute requiredRole="driver"><DriverDeliveriesPage /></ProtectedRoute>} />
                 <Route path="/driver/occurrences" element={<ProtectedRoute requiredRole="driver"><DriverOccurrencesPage /></ProtectedRoute>} />
                 <Route path="/driver/profile" element={<ProtectedRoute requiredRole="driver"><ProfilePage /></ProtectedRoute>} />
-                <Route path="/business" element={<ProtectedRoute requiredRole="company"><BusinessHomePage /></ProtectedRoute>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
