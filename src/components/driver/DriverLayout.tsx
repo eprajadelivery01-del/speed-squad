@@ -41,11 +41,13 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </header>
 
       {/* Content */}
-      <main className="flex-1 p-4 pb-20 overflow-auto">
-        {children}
+      <main className="flex-1 p-4 pb-20 overflow-auto flex flex-col">
+        <div className="flex-1">
+          {children}
+        </div>
         
         {/* Global Branding Footer */}
-        <div className="w-full py-8 flex justify-center opacity-10 pointer-events-none select-none">
+        <div className="w-full py-8 flex justify-center opacity-10 pointer-events-none select-none mt-auto">
           <p className="text-[10px] font-black tracking-[0.4em] text-muted-foreground uppercase">
             BONASOFT
           </p>
