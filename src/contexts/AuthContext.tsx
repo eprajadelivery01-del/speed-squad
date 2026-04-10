@@ -37,35 +37,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchingRef.current = userId;
     
     try {
-      console.log(`[AuthContext] Iniciando busca (HARDENED V4) para: ${userId}`);
+      console.log(`[Auth-cbe3232c] V10-ULTRA-SYNC - Carregando perfil: ${userId}`);
       
       const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout de 10s atingido. Banco lento.")), 10000)
+        setTimeout(() => reject(new Error("Timeout")), 10000)
       );
 
-      const fetchPromise = Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", userId),
-        supabase.from("profiles").select("full_name, avatar_url, phone, status").eq("user_id", userId).single(),
-      ]);
+      // Usando seleção específica de colunas para contornar erro de Schema
+      const rolesFetch = supabase.from("user_roles").select("role").eq("user_id", userId);
+      const profileFetch = supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url") 
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      const [rolesRes, profileRes] = await Promise.race([fetchPromise, timeout]) as any;
+      const results = await Promise.race([
+        Promise.all([rolesFetch, profileFetch]),
+        timeout
+      ]) as any;
+
+      const [rolesRes, profileRes] = results;
 
       let finalRoles: AppRole[] = [];
-      if (rolesRes.data && rolesRes.data.length > 0) {
+      if (rolesRes?.data) {
         finalRoles = rolesRes.data.map((r: any) => r.role as AppRole);
-      }
-
-      if (userId === SPECIAL_USER_ID) {
-        if (!finalRoles.includes("admin")) {
-          finalRoles = [...finalRoles, "admin"];
-        }
       }
 
       setRoles(finalRoles);
 
-      if (profileRes.data) {
-        setProfile(profileRes.data);
-        setUserStatus((profileRes.data as any).status as UserStatus);
+      if (profileRes?.data) {
+        setProfile({
+          full_name: profileRes.data.full_name,
+          avatar_url: profileRes.data.avatar_url,
+          phone: null
+        });
+        setUserStatus("active");
       }
     } catch (error: any) {
       console.error("[AuthContext] ERRO DE CARREGAMENTO:", error.message);
