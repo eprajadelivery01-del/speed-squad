@@ -21,14 +21,11 @@ export default function LoginPage() {
       console.log(`[LoginPage] Verificando acesso para user.id: ${user.id}, roles:`, roles);
       const timer = setTimeout(() => {
         if (hasRole("admin")) {
-          console.log("[LoginPage] Role ADMIN detectada. Navegando para /admin");
+          console.log("[LoginPage - cbe3232c] Role ADMIN detectada. Navegando para /admin");
           navigate("/admin");
-        } else if (hasRole("company")) {
-          navigate("/business");
-        } else if (hasRole("driver")) {
-          navigate("/driver");
         } else {
-          console.warn("[LoginPage] Usuário sem papel detectado no redirecionamento.");
+          console.warn("[Admin - cbe3232c] Acesso negado: Perfil não administrativo.");
+          toast({ title: "Acesso Negado", description: "Este portal é exclusivo para administradores.", variant: "destructive" });
         }
       }, 800);
       return () => clearTimeout(timer);
@@ -56,9 +53,9 @@ export default function LoginPage() {
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6 rounded-2xl bg-card p-8 shadow-card">
         <div className="flex flex-col items-center gap-2">
           <img src="/logo.png" alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
-          <p className="text-sm text-muted-foreground">Painel de Gestão</p>
-          <div className="mt-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full" style={{ borderColor: APP_COLOR + '40', backgroundColor: APP_COLOR + '10' }}>
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: APP_COLOR }}>PROJETO: {APP_TYPE} ({APP_PROJECT_ID})</p>
+          <p className="text-sm text-muted-foreground font-black text-primary uppercase">Painel Administrativo Central</p>
+          <div className="mt-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">BUILD: V16-NUCLEAR-CLEANUP (cbe3232c)</p>
           </div>
         </div>
 
