@@ -15,6 +15,8 @@ export default function DriverHomePage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
+  const displayName = profile?.full_name?.trim() || metadataName || user?.email?.split("@")[0] || "";
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
@@ -123,14 +125,14 @@ export default function DriverHomePage() {
     setLoading(false);
   };
 
-  const firstName = profile?.full_name?.split(" ")[0] || "Entregador";
+  const firstName = displayName ? displayName.split(/\s+/)[0] : "";
 
   return (
     <DriverLayout>
       <div className="flex flex-col gap-6 pb-4">
         {/* Greeting */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Olá, {firstName} 👋</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Olá{firstName ? `, ${firstName}` : ""} 👋</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"}
           </p>
