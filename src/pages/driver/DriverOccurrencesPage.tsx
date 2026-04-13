@@ -3,7 +3,7 @@ import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOccurrences, useReportOccurrence } from "@/services/occurrences";
 import { useDeliveries } from "@/services/deliveries";
-import { AlertTriangle, Plus, Loader2, Calendar, FileText, CheckCircle, Clock } from "lucide-react";
+import { AlertTriangle, Plus, Loader2, FileText, CheckCircle, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export default function DriverOccurrencesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [selectedDelivery, setSelectedDelivery] = useState<string>("");
-  const [occurrenceType, setOccurrenceType] = useState<any>("other");
+  const [occurrenceType, setOccurrenceType] = useState<string>("other");
   const [description, setDescription] = useState("");
 
   const { data: occurrences, isLoading: loadingOccurrences } = useOccurrences(driverId || undefined);
@@ -88,7 +88,7 @@ export default function DriverOccurrencesPage() {
                       <SelectValue placeholder="Selecione uma entrega" />
                     </SelectTrigger>
                     <SelectContent>
-                      {myDeliveries?.data.filter(d => d.status !== "completed" && d.status !== "cancelled").map(d => (
+                      {myDeliveries?.data?.filter((d: any) => d.status !== "completed" && d.status !== "cancelled").map((d: any) => (
                         <SelectItem key={d.id} value={d.id}>{d.customer_name} - {d.address}</SelectItem>
                       ))}
                     </SelectContent>
@@ -142,7 +142,7 @@ export default function DriverOccurrencesPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {occurrences?.map((occ) => (
+            {occurrences?.map((occ: any) => (
               <div key={occ.id} className="bg-card p-5 rounded-2xl shadow-card border border-border flex flex-col gap-3">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
