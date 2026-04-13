@@ -44,8 +44,8 @@ export default function DriverDeliveriesPage() {
     let nextStatus: any = "";
     if (currentStatus === "pending" || currentStatus === "broadcasted") nextStatus = "accepted";
     else if (currentStatus === "accepted") nextStatus = "collecting";
-    else if (currentStatus === "collecting") nextStatus = "in_route";
-    else if (currentStatus === "in_route") nextStatus = "completed";
+    else if (currentStatus === "collecting") nextStatus = "in_transit";
+    else if (currentStatus === "in_transit") nextStatus = "delivered";
 
     updateStatus(
       { id: deliveryId, status: nextStatus, driverId },
@@ -73,8 +73,8 @@ export default function DriverDeliveriesPage() {
       case "broadcasted": return "Buscando";
       case "accepted": return "Aceito";
       case "collecting": return "Coletando";
-      case "in_route": return "Em Rota";
-      case "completed": return "Concluído";
+      case "in_transit": return "Em Rota";
+      case "delivered": return "Concluído";
       default: return status;
     }
   };
@@ -107,11 +107,11 @@ export default function DriverDeliveriesPage() {
           <TabsContent value="mine" className="mt-4">
             {loadingMy ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : myData?.data.filter(d => d.status !== "completed" && d.status !== "cancelled").length === 0 ? (
+            ) : myData?.data.filter(d => d.status !== "delivered" && d.status !== "cancelled").length === 0 ? (
               <EmptyState icon={<Truck className="h-10 w-10" />} title="Sua agenda está vazia" subtitle="Aceite uma entrega na aba 'Disponíveis' para começar." />
             ) : (
               <div className="grid gap-4">
-                {myData?.data.filter(d => d.status !== "completed" && d.status !== "cancelled").map((del) => (
+                {myData?.data.filter(d => d.status !== "delivered" && d.status !== "cancelled").map((del) => (
                   <DeliveryCard key={del.id} delivery={del} onAction={() => handleAction(del.id, del.status)} loading={updating} isAssigned />
                 ))}
               </div>
@@ -128,7 +128,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     if (delivery.status === "pending" || delivery.status === "broadcasted") return "Aceitar Corrida";
     if (delivery.status === "accepted") return "Cheguei no Local";
     if (delivery.status === "collecting") return "Iniciar Entrega";
-    if (delivery.status === "in_route") return "Concluir Entrega";
+    if (delivery.status === "in_transit") return "Concluir Entrega";
     return "Finalizar";
   };
 
@@ -136,7 +136,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     if (delivery.status === "pending" || delivery.status === "broadcasted") return <CheckCircle className="h-4 w-4" />;
     if (delivery.status === "accepted") return <Package className="h-4 w-4" />;
     if (delivery.status === "collecting") return <Play className="h-4 w-4" />;
-    if (delivery.status === "in_route") return <CheckCircle className="h-4 w-4" />;
+    if (delivery.status === "in_transit") return <CheckCircle className="h-4 w-4" />;
     return null;
   };
 
