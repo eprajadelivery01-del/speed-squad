@@ -25,10 +25,7 @@ import SettingsPage from "./pages/SettingsPage";
 import SystemLogsPage from "./pages/SystemLogsPage";
 import NotFound from "./pages/NotFound";
 import { PageTransition } from "@/components/shared/PageTransition";
-
-// import ChatPage from "./pages/ChatPage";
-
-import ScrollToTop from "@/components/shared/ScrollToTop";
+import DriverChatPage from "./pages/driver/DriverChatPage";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +46,7 @@ const App = () => (
 
                  <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><DashboardPage /></ProtectedRoute>} />
                  <Route path="/admin/deliveries" element={<ProtectedRoute requiredRole="admin"><DeliveriesPage /></ProtectedRoute>} />
+                 <Route path="/admin/chat" element={<ProtectedRoute requiredRole="admin"><DriverChatPage /></ProtectedRoute>} />
                  <Route path="/admin/map" element={<ProtectedRoute requiredRole="admin"><MapPage /></ProtectedRoute>} />
                  <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UsersPage /></ProtectedRoute>} />
                  <Route path="/admin/companies" element={<ProtectedRoute requiredRole="admin"><CompaniesPage /></ProtectedRoute>} />
@@ -59,6 +57,9 @@ const App = () => (
                  <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><ReportsPage /></ProtectedRoute>} />
                  <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
                  <Route path="/admin/logs" element={<ProtectedRoute requiredRole="admin"><SystemLogsPage /></ProtectedRoute>} />
+                 
+                 {/* Alias amigável para chat do entregador */}
+                 <Route path="/chat" element={<DriverChatPage />} />
 
                  <Route path="*" element={<NotFound />} />
               </Routes>
@@ -69,5 +70,7 @@ const App = () => (
     </QueryClientProvider>
   </GlobalErrorBoundary>
 );
+
+import ScrollToTop from "@/components/shared/ScrollToTop";
 
 export default App;

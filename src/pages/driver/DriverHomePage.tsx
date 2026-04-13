@@ -1,20 +1,21 @@
 import { DriverLayout } from "@/components/driver/DriverLayout";
-import { useAuth } from "@/contexts/AuthContext";
-import { Power, MapPin, Truck, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Power, MapPin, Truck, Loader2, MessageSquare } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { HeroMapSection } from "@/components/shared/HeroMapSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UnifiedMap } from "@/components/shared/UnifiedMap";
-import { useRegions, useCitiesWithRegions } from "@/services/regions";
-import { useCity, CITY_COORDS } from "@/contexts/CityContext";
-import { cn } from "@/lib/utils";
-import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { findNearestCity } from "@/utils/location";
+import { useCity } from "@/contexts/CityContext";
+import { useRegions, useCitiesWithRegions } from "@/services/regions";
+import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,7 +65,6 @@ export default function DriverHomePage() {
 
   const { selectedCity, setCity } = useCity();
 
-
   const updateLocation = useCallback(async (driverId: string) => {
     if (!navigator.geolocation) return;
     setIsDetecting(true);
@@ -72,7 +72,6 @@ export default function DriverHomePage() {
       async (pos) => {
         const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
         if (detectedCity && detectedCity !== selectedCity) {
-          console.log(`[AutoCity] Detected city: ${detectedCity}`);
           setCity(detectedCity);
         }
         setIsDetecting(false);
@@ -120,13 +119,6 @@ export default function DriverHomePage() {
     }
   }, [updateLocation, selectedCity, setCity]);
 
-  // Proactive detection on mount
-  useEffect(() => {
-    if (hasConsent && driverRecord) {
-      updateLocation(driverRecord.id);
-    }
-  }, [hasConsent, driverRecord, updateLocation]);
-
   const stopTracking = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -138,10 +130,6 @@ export default function DriverHomePage() {
     }
   }, []);
 
-  useEffect(() => {
-    return () => stopTracking();
-  }, [stopTracking]);
-
   const handleAcceptConsent = () => {
     localStorage.setItem("nexus_location_consent", "true");
     setHasConsent(true);
@@ -149,11 +137,7 @@ export default function DriverHomePage() {
   };
 
   const handleToggle = async () => {
-    if (!driverRecord) {
-      toast({ title: "Erro", description: "Registro de entregador não encontrado", variant: "destructive" });
-      return;
-    }
-
+    if (!driverRecord) return;
     setLoading(true);
     const newStatus = !isOnline;
 
@@ -179,10 +163,10 @@ export default function DriverHomePage() {
 
     if (newStatus) {
       startTracking(driverRecord.id);
-      toast({ title: "Você está online!", description: "Sua localização está sendo compartilhada" });
+      toast({ title: "Você está online!" });
     } else {
       stopTracking();
-      toast({ title: "Você está offline", description: "Localização desativada" });
+      toast({ title: "Você está offline" });
     }
 
     setIsOnline(newStatus);
@@ -194,17 +178,32 @@ export default function DriverHomePage() {
 
   return (
     <DriverLayout>
-      <HeroMapSection 
-        title={`Olá, ${profile?.full_name || "Entregador"} 👋`} 
-        subtitle={isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"} 
-        showActions={false}
-        variant="driver"
-        onExpand={() => setIsMapExpanded(true)}
-        isDetecting={isDetecting}
-      />
+      <div className="relative">
+        <HeroMapSection 
+          title={`Olá, ${profile?.full_name?.split(" ")[0] || "Entregador"} 👋`} 
+          subtitle={isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"} 
+          showActions={false}
+          variant="driver"
+          onExpand={() => setIsMapExpanded(true)}
+          isDetecting={isDetecting}
+        />
+        
+        {/* Floating Chat Button */}
+        <button 
+          onClick={() => navigate("/chat")}
+          className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-all group"
+        >
+          <div className="relative">
+            <MessageSquare className="h-6 w-6 group-hover:rotate-12 transition-transform" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-foreground"></span>
+            </span>
+          </div>
+        </button>
+      </div>
       
       <div className="flex flex-col items-center gap-6 py-6 px-4 relative z-10 bg-background">
-
         <button
           onClick={handleToggle}
           disabled={loading}
@@ -214,87 +213,43 @@ export default function DriverHomePage() {
               : "bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-primary/30"
           }`}
         >
-          {loading ? (
-            <Loader2 className="h-8 w-8 animate-spin" />
-          ) : (
-            <Power className="h-8 w-8" />
-          )}
-          {loading ? "Atualizando..." : isOnline ? "ONLINE" : "FICAR ONLINE"}
+          {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Power className="h-8 w-8" />}
+          {loading ? "..." : isOnline ? "ONLINE" : "FICAR ONLINE"}
         </button>
 
-        {/* Manual City Selector - FALLBACK */}
-        <div className="flex flex-col items-center gap-2 w-full max-w-sm px-4">
+        <div className="flex flex-col items-center gap-2 w-full max-w-sm px-4 text-center">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cidade de Operação</p>
           <select 
             value={selectedCity || ""} 
             onChange={(e) => setCity(e.target.value || null)}
-            className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none text-center"
+            className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm font-semibold outline-none appearance-none text-center"
           >
-            <option value="">{isDetecting ? "📍 Detectando..." : (loadingCities ? "🔄 Carregando cidades..." : "Selecione sua cidade")}</option>
-            {(activeCities ?? []).map(city => (
-              <option key={city} value={city}>{city}</option>
-            ))}
+            <option value="">{isDetecting ? "📍 Detectando..." : "Selecione sua cidade"}</option>
+            {(activeCities ?? []).map(city => <option key={city} value={city}>{city}</option>)}
           </select>
-          {!selectedCity && !isDetecting && !loadingCities && (
-             <p className="text-[10px] text-yellow-500 font-medium">Selecione uma das cidades atendidas acima</p>
-          )}
-          {isDetecting && (
-             <p className="text-[10px] text-primary animate-pulse font-medium">Acessando GPS do navegador...</p>
-          )}
         </div>
-
-        {isOnline && (
-          <div className="flex items-center gap-2 text-sm text-success">
-            <MapPin className="h-4 w-4 animate-pulse" />
-            Localização sendo compartilhada em tempo real
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
           <div className="bg-card rounded-2xl p-4 text-center shadow-card">
-            <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
-              <Truck className="h-3.5 w-3.5" />
-              Hoje
-            </div>
             <p className="text-2xl font-bold text-foreground">{stats.todayCount}</p>
-            <p className="text-xs text-muted-foreground">entregas</p>
+            <p className="text-xs text-muted-foreground uppercase font-black">entregas</p>
           </div>
           <div className="bg-card rounded-2xl p-4 text-center shadow-card">
-            <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
-              <MapPin className="h-3.5 w-3.5" />
-              Ganhos
-            </div>
-            <p className="text-2xl font-bold text-foreground">R$ {stats.todayEarnings.toFixed(2).replace(".", ",")}</p>
-            <p className="text-xs text-muted-foreground">hoje</p>
+            <p className="text-2xl font-bold text-foreground">R$ {stats.todayEarnings.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground uppercase font-black">ganhos</p>
           </div>
-        </div>
-
-        <div className="w-full max-w-sm bg-card rounded-2xl p-6 text-center shadow-card border border-border">
-          <Truck className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">
-            {isOnline ? "Aguardando novas corridas..." : "Fique online para ver corridas disponíveis"}
-          </p>
         </div>
       </div>
 
       <Dialog open={isMapExpanded} onOpenChange={setIsMapExpanded}>
-        <DialogContent className="max-w-[95vw] w-full h-[80vh] p-0 overflow-hidden rounded-3xl sm:rounded-3xl">
-          <DialogHeader className="p-4 absolute top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-md border-b border-border">
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-primary" />
-              Mapa de Entregas - {selectedCity || "Global"}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-[95vw] w-full h-[80vh] p-0 overflow-hidden rounded-3xl">
           <div className="w-full h-full pt-14">
             <UnifiedMap regions={regions ?? []} interactive={true} />
           </div>
         </DialogContent>
       </Dialog>
 
-      <LocationConsentDialog 
-        open={showConsent} 
-        onAccept={handleAcceptConsent} 
-      />
+      <LocationConsentDialog open={showConsent} onAccept={handleAcceptConsent} />
     </DriverLayout>
   );
 }
