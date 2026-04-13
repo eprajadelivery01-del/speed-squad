@@ -98,7 +98,7 @@ export default function DriverOccurrencesPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Tipo de Problema</label>
-                  <Select value={occurrenceType} onValueChange={setOccurrenceType}>
+                  <Select value={occurrenceType} onValueChange={(v) => setOccurrenceType(v as OccurrenceType)}>
                     <SelectTrigger className="rounded-xl">
                       <SelectValue placeholder="Tipo de problema" />
                     </SelectTrigger>
