@@ -69,17 +69,17 @@ export default function DriverOccurrencesPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Ocorrências</h1>
           
-          <UIDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <UIDialogTrigger asChild>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
               <Button className="rounded-xl flex items-center gap-2 gradient-primary shadow-md">
                 <Plus className="h-4 w-4" />
                 Relatar Problema
               </Button>
-            </UIDialogTrigger>
-            <UIDialogContent className="sm:max-w-[425px] rounded-3xl mx-4">
-              <UIDialogHeader>
-                <UIDialogTitle>Nova Ocorrência</UIDialogTitle>
-              </UIDialogHeader>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] rounded-3xl mx-4">
+              <DialogHeader>
+                <DialogTitle>Nova Ocorrência</DialogTitle>
+              </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Entrega Relacionada (opcional)</label>
@@ -126,8 +126,8 @@ export default function DriverOccurrencesPage() {
                   Enviar Relato
                 </Button>
               </form>
-            </UIDialogContent>
-          </UIDialog>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {loadingOccurrences ? (
