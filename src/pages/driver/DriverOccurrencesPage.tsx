@@ -5,6 +5,7 @@ import { useOccurrences, useReportOccurrence } from "@/services/occurrences";
 import { useDeliveries } from "@/services/deliveries";
 import { AlertTriangle, Plus, Loader2, FileText, CheckCircle, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import type { OccurrenceType } from "@/types/models";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
