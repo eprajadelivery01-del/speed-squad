@@ -30,7 +30,7 @@ export default function DriverDeliveriesPage() {
 
   // Available deliveries (no driver_id)
   const { data: availableData, isLoading: loadingAvailable } = useDeliveries({
-    status: "pending",
+    status: ["pending", "broadcasted"],
   });
 
   // My tasks (assigned to me)
