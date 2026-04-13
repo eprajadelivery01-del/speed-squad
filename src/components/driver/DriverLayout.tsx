@@ -31,7 +31,11 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   useAllRealtime();
 
   const location = useLocation();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
+  const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
+  const displayName = profile?.full_name?.trim() || metadataName || user?.email?.split("@")[0] || "";
+  const firstName = displayName ? displayName.split(/\s+/)[0] : "";
+  const avatarInitial = displayName.charAt(0).toUpperCase();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -92,7 +96,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
               <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300">
                 <p className="text-[10px] text-primary leading-none mb-1 font-black uppercase tracking-[0.2em]">Painel Entregador</p>
                 <h2 className="text-base font-black text-foreground leading-tight truncate">
-                  {profile?.full_name?.split(" ")[0] || "Motorista"}
+                  {firstName || "-"}
                 </h2>
               </div>
             )}
@@ -158,12 +162,12 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
           
           <div className="flex items-center gap-3">
              <div className="hidden sm:flex flex-col items-end mr-2">
-                <span className="text-xs font-black text-foreground leading-none">{profile?.full_name?.split(" ")[0]}</span>
+                 <span className="text-xs font-black text-foreground leading-none">{firstName || "-"}</span>
                 <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">Motorista</span>
              </div>
              <Link to="/driver/profile" className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 hover:scale-105 transition-transform">
                 <span className="text-sm font-black text-primary uppercase">
-                   {profile?.full_name?.charAt(0) || "M"}
+                    {avatarInitial || "?"}
                 </span>
              </Link>
           </div>

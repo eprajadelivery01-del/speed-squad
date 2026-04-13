@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ProfilePage() {
-  const { user, profile, deleteAccount } = useAuth();
+  const { user, profile, deleteAccount, syncProfile } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,6 +34,12 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    setFullName(profile?.full_name || "");
+    setPhone(profile?.phone || "");
+    setAvatarUrl(profile?.avatar_url || "");
+  }, [profile]);
 
   const handleDeleteAccount = async () => {
     setDeleting(true);
@@ -55,6 +61,7 @@ export default function ProfilePage() {
     try {
       const url = await uploadAvatar(user.id, file);
       setAvatarUrl(url);
+      syncProfile({ avatar_url: url });
       toast({ title: "Foto atualizada!" });
     } catch (err: any) {
       toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
@@ -68,7 +75,10 @@ export default function ProfilePage() {
     if (!user) return;
     setSaving(true);
     try {
-      await updateProfile(user.id, { full_name: fullName, phone });
+      const updatedProfile = await updateProfile(user.id, { full_name: fullName.trim(), phone });
+      syncProfile(updatedProfile);
+      setFullName(updatedProfile.full_name || "");
+      setPhone(updatedProfile.phone || "");
       toast({ title: "Perfil atualizado!" });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });

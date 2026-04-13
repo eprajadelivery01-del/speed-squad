@@ -1,9 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 type AppRole = "admin" | "company" | "driver" | "customer";
 type UserStatus = "pending" | "active" | "rejected";
+type ProfileData = { full_name: string; avatar_url: string | null; phone: string | null };
 
 interface AuthContextType {
   user: User | null;
@@ -11,8 +12,9 @@ interface AuthContextType {
   loading: boolean;
   roles: AppRole[];
   userStatus: UserStatus | null;
-  profile: { full_name: string; avatar_url: string | null; phone: string | null } | null;
+  profile: ProfileData | null;
   hasRole: (role: AppRole) => boolean;
+  syncProfile: (nextProfile: Partial<ProfileData>) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -22,6 +24,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SPECIAL_USER_ID = "1044ade5-6510-4aa5-96e6-6c5fb3aaa8b3";
+const normalizeName = (value: unknown) => typeof value === "string" ? value.trim() : "";
+
+const buildProfile = (
+  profileData?: Partial<ProfileData> | null,
+  authUser?: User | null,
+): ProfileData | null => {
+  const full_name = normalizeName(profileData?.full_name) || normalizeName(authUser?.user_metadata?.full_name);
+  const avatar_url = profileData?.avatar_url ?? null;
+  const phone = profileData?.phone ?? null;
+
+  if (!full_name && !avatar_url && !phone) return null;
+
+  return { full_name, avatar_url, phone };
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -29,12 +45,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
-  const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const fetchingRef = useRef<string | null>(null);
 
-  const fetchUserData = async (userId: string) => {
+  const syncProfile = useCallback((nextProfile: Partial<ProfileData>) => {
+    setProfile((currentProfile) => buildProfile({
+      full_name: nextProfile.full_name ?? currentProfile?.full_name ?? null,
+      avatar_url: nextProfile.avatar_url ?? currentProfile?.avatar_url ?? null,
+      phone: nextProfile.phone ?? currentProfile?.phone ?? null,
+    }, user));
+  }, [user]);
+
+  const fetchUserData = async (authUser: User) => {
+    const userId = authUser.id;
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
+    setLoading(true);
     
     try {
       console.log(`[Auth-cbe3232c] V10-ULTRA-SYNC - Carregando perfil: ${userId}`);
@@ -47,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const rolesFetch = supabase.from("user_roles").select("role").eq("user_id", userId);
       const profileFetch = supabase
         .from("profiles")
-        .select("id, full_name, avatar_url") 
+        .select("id, full_name, avatar_url, phone, status") 
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -65,18 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setRoles(finalRoles);
 
-      if (profileRes?.data) {
-        setProfile({
-          full_name: profileRes.data.full_name,
-          avatar_url: profileRes.data.avatar_url,
-          phone: null
-        });
-        setUserStatus("active");
-      }
+      const nextProfile = buildProfile(profileRes?.data ?? null, authUser);
+      setProfile(nextProfile);
+      setUserStatus((profileRes?.data?.status as UserStatus | null) ?? (nextProfile ? "active" : null));
     } catch (error: any) {
       console.error("[AuthContext] ERRO DE CARREGAMENTO:", error.message);
+      setProfile(buildProfile(null, authUser));
       
-      if (userId === SPECIAL_USER_ID) {
+      if (authUser.id === SPECIAL_USER_ID) {
         console.log("[AuthContext] ATENÇÃO: Travamento detectado. Acionando entrada de emergência (Admin Force).");
         setRoles(["admin"]);
         setProfile({ full_name: "Admin (Modo Emergência)", avatar_url: null, phone: null });
@@ -100,8 +122,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchUserData(session.user.id);
+          await fetchUserData(session.user);
         } else {
+          setRoles([]);
+          setProfile(null);
+          setUserStatus(null);
           setLoading(false);
         }
       } catch (error) {
@@ -119,8 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(session);
           setUser(session?.user ?? null);
           if (session?.user) {
-            await fetchUserData(session.user.id);
+            await fetchUserData(session.user);
           } else {
+            setRoles([]);
+            setProfile(null);
+            setUserStatus(null);
             setLoading(false);
           }
         } else if (event === "SIGNED_OUT") {
@@ -173,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, session, loading, roles, userStatus, profile, hasRole, signIn, signUp, signOut, deleteAccount 
+      user, session, loading, roles, userStatus, profile, hasRole, syncProfile, signIn, signUp, signOut, deleteAccount 
     }}>
       {children}
     </AuthContext.Provider>
