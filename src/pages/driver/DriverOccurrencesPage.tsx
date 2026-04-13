@@ -4,8 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOccurrences, useReportOccurrence } from "@/services/occurrences";
 import { useDeliveries } from "@/services/deliveries";
 import { AlertTriangle, Plus, Loader2, Calendar, FileText, CheckCircle, Clock } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/tabs"; // Using tabs as a fallback if dialog has issues, but dialog is preferred. Looking at App.tsx imports.
-import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader as UIDialogHeader, DialogTitle as UIDialogTitle, DialogTrigger as UIDialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";

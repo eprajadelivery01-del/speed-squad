@@ -182,10 +182,6 @@ export default function DriverHomePage() {
         <HeroMapSection 
           title={`Olá, ${profile?.full_name?.split(" ")[0] || "Entregador"} 👋`} 
           subtitle={isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"} 
-          showActions={false}
-          variant="driver"
-          onExpand={() => setIsMapExpanded(true)}
-          isDetecting={isDetecting}
         />
         
         {/* Floating Chat Button */}

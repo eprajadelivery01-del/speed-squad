@@ -49,9 +49,9 @@ export function useDeliveries(params?: UseDeliveriesParams) {
 
       if (status && status !== "all") {
         if (Array.isArray(status)) {
-          query = query.in("status", status);
+          query = query.in("status", status as any);
         } else {
-          query = query.eq("status", status as DeliveryStatus);
+          query = query.eq("status", status as any);
         }
       }
       if (search) query = query.ilike("customer_name", `%${search}%`);
@@ -115,7 +115,7 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.completed_at = new Date().toISOString(); // Keep completed_at if that's what's in this project's types
+      if (status === "completed") updates.completed_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);

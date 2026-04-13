@@ -75,10 +75,10 @@ function NewDeliveryForm({ onClose, userId }: { onClose: () => void; userId?: st
 
     const { error } = await supabase.from("deliveries").insert([{
       customer_name: customerName,
-      pickup_address: pickupAddress,
-      dropoff_address: dropoffAddress,
+      address: `${pickupAddress} → ${dropoffAddress}`,
+      company_id: userId || "",
       notes: notes || null,
-    }]);
+    }] as any);
 
     if (error) {
       toast({ title: "Erro ao criar entrega", description: error.message, variant: "destructive" });

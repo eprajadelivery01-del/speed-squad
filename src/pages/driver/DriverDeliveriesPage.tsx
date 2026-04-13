@@ -107,11 +107,11 @@ export default function DriverDeliveriesPage() {
           <TabsContent value="mine" className="mt-4">
             {loadingMy ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : myData?.data.filter(d => d.status !== "delivered" && d.status !== "cancelled").length === 0 ? (
+            ) : myData?.data.filter(d => d.status !== "completed" && d.status !== "cancelled").length === 0 ? (
               <EmptyState icon={<Truck className="h-10 w-10" />} title="Sua agenda está vazia" subtitle="Aceite uma entrega na aba 'Disponíveis' para começar." />
             ) : (
               <div className="grid gap-4">
-                {myData?.data.filter(d => d.status !== "delivered" && d.status !== "cancelled").map((del) => (
+                {myData?.data.filter(d => d.status !== "completed" && d.status !== "cancelled").map((del) => (
                   <DeliveryCard key={del.id} delivery={del} onAction={() => handleAction(del.id, del.status)} loading={updating} isAssigned />
                 ))}
               </div>
