@@ -18,7 +18,7 @@ export default function DriverOccurrencesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [selectedDelivery, setSelectedDelivery] = useState<string>("");
-  const [occurrenceType, setOccurrenceType] = useState<string>("other");
+  const [occurrenceType, setOccurrenceType] = useState<OccurrenceType>("other");
   const [description, setDescription] = useState("");
 
   const { data: occurrences, isLoading: loadingOccurrences } = useOccurrences(driverId || undefined);
