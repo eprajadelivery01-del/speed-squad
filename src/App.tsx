@@ -6,8 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CityProvider } from "@/contexts/CityContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
+import ScrollToTop from "@/components/shared/ScrollToTop";
+
 import LoginPage from "./pages/LoginPage";
 import InvitePage from "./pages/InvitePage";
 import ProfilePage from "./pages/ProfilePage";
@@ -24,8 +25,10 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import SystemLogsPage from "./pages/SystemLogsPage";
 import NotFound from "./pages/NotFound";
-import { PageTransition } from "@/components/shared/PageTransition";
 import DriverChatPage from "./pages/driver/DriverChatPage";
+import DriverHomePage from "./pages/driver/DriverHomePage";
+import DriverDeliveriesPage from "./pages/driver/DriverDeliveriesPage";
+import DriverOccurrencesPage from "./pages/driver/DriverOccurrencesPage";
 
 const queryClient = new QueryClient();
 
@@ -40,28 +43,34 @@ const App = () => (
           <CityProvider>
             <AuthProvider>
               <Routes>
-                 <Route path="/login" element={<LoginPage />} />
-                 <Route path="/invite/:token" element={<InvitePage />} />
-                 <Route path="/" element={<Navigate to="/admin" replace />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/invite/:token" element={<InvitePage />} />
+                <Route path="/" element={<Navigate to="/driver" replace />} />
 
-                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><DashboardPage /></ProtectedRoute>} />
-                 <Route path="/admin/deliveries" element={<ProtectedRoute requiredRole="admin"><DeliveriesPage /></ProtectedRoute>} />
-                 <Route path="/admin/chat" element={<ProtectedRoute requiredRole="admin"><DriverChatPage /></ProtectedRoute>} />
-                 <Route path="/admin/map" element={<ProtectedRoute requiredRole="admin"><MapPage /></ProtectedRoute>} />
-                 <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UsersPage /></ProtectedRoute>} />
-                 <Route path="/admin/companies" element={<ProtectedRoute requiredRole="admin"><CompaniesPage /></ProtectedRoute>} />
-                 <Route path="/admin/drivers" element={<ProtectedRoute requiredRole="admin"><DriversPage /></ProtectedRoute>} />
-                 <Route path="/admin/regions" element={<ProtectedRoute requiredRole="admin"><RegionsPage /></ProtectedRoute>} />
-                 <Route path="/admin/occurrences" element={<ProtectedRoute requiredRole="admin"><OccurrencesPage /></ProtectedRoute>} />
-                 <Route path="/admin/reviews" element={<ProtectedRoute requiredRole="admin"><ReviewsPage /></ProtectedRoute>} />
-                 <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><ReportsPage /></ProtectedRoute>} />
-                 <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
-                 <Route path="/admin/logs" element={<ProtectedRoute requiredRole="admin"><SystemLogsPage /></ProtectedRoute>} />
-                 
-                 {/* Alias amigável para chat do entregador */}
-                 <Route path="/chat" element={<DriverChatPage />} />
+                {/* Driver routes */}
+                <Route path="/driver" element={<DriverHomePage />} />
+                <Route path="/driver/deliveries" element={<DriverDeliveriesPage />} />
+                <Route path="/driver/occurrences" element={<DriverOccurrencesPage />} />
+                <Route path="/driver/chat" element={<DriverChatPage />} />
+                <Route path="/driver/profile" element={<ProfilePage />} />
 
-                 <Route path="*" element={<NotFound />} />
+                {/* Admin routes */}
+                <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><DashboardPage /></ProtectedRoute>} />
+                <Route path="/admin/deliveries" element={<ProtectedRoute requiredRole="admin"><DeliveriesPage /></ProtectedRoute>} />
+                <Route path="/admin/chat" element={<ProtectedRoute requiredRole="admin"><DriverChatPage /></ProtectedRoute>} />
+                <Route path="/admin/map" element={<ProtectedRoute requiredRole="admin"><MapPage /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><UsersPage /></ProtectedRoute>} />
+                <Route path="/admin/companies" element={<ProtectedRoute requiredRole="admin"><CompaniesPage /></ProtectedRoute>} />
+                <Route path="/admin/drivers" element={<ProtectedRoute requiredRole="admin"><DriversPage /></ProtectedRoute>} />
+                <Route path="/admin/regions" element={<ProtectedRoute requiredRole="admin"><RegionsPage /></ProtectedRoute>} />
+                <Route path="/admin/occurrences" element={<ProtectedRoute requiredRole="admin"><OccurrencesPage /></ProtectedRoute>} />
+                <Route path="/admin/reviews" element={<ProtectedRoute requiredRole="admin"><ReviewsPage /></ProtectedRoute>} />
+                <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><ReportsPage /></ProtectedRoute>} />
+                <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><SettingsPage /></ProtectedRoute>} />
+                <Route path="/admin/logs" element={<ProtectedRoute requiredRole="admin"><SystemLogsPage /></ProtectedRoute>} />
+
+                <Route path="/chat" element={<DriverChatPage />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthProvider>
           </CityProvider>
@@ -70,7 +79,5 @@ const App = () => (
     </QueryClientProvider>
   </GlobalErrorBoundary>
 );
-
-import ScrollToTop from "@/components/shared/ScrollToTop";
 
 export default App;
