@@ -13,6 +13,7 @@ import { HeroMapSection } from "@/components/shared/HeroMapSection";
 import {
   Package, Bike, Building2, DollarSign, TrendingUp, Clock, CheckCircle, Search, MapPin, Loader2, Navigation, ChevronRight
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
 
@@ -92,42 +93,33 @@ export default function DashboardPage() {
                 Cidades de Atendimento
               </h3>
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-1 bg-muted rounded-full">
-                {Array.from(new Set(regions?.map(r => r.city) || [])).length} Cidades Ativas
+                {regions?.length ?? 0} Regiões Ativas
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Array.from(new Set(regions?.map(r => r.city) || [])).sort().map(city => {
-                const cityRegions = regions?.filter(r => r.city === city) || [];
-                const isActive = selectedCity === city;
+              {(regions || []).map(region => {
                 return (
                   <button
-                    key={city}
-                    onClick={() => setCity(city)}
+                    key={region.id}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 group",
-                      isActive 
-                        ? "bg-primary/5 border-primary shadow-lg shadow-primary/5" 
-                        : "bg-background/50 border-border hover:border-primary/50 hover:bg-muted/30"
+                      "bg-background/50 border-border hover:border-primary/50 hover:bg-muted/30"
                     )}
                   >
                     <div className="flex items-center gap-4">
                       <div className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                        isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
+                        "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
                       )}>
                         <Navigation className="h-5 w-5" />
                       </div>
                       <div className="text-left">
-                        <p className={cn("text-sm font-black", isActive ? "text-primary" : "text-foreground")}>{city}</p>
-                        <p className="text-[10px] font-medium text-muted-foreground">{cityRegions.length} Regiões cadastradas</p>
+                        <p className={cn("text-sm font-black", "text-foreground")}>{region.name}</p>
+                        <p className="text-[10px] font-medium text-muted-foreground">R$ {region.price.toFixed(2)}</p>
                       </div>
                     </div>
-                    {isActive ? (
-                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 );
               })}
