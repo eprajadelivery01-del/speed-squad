@@ -133,25 +133,30 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center justify-around py-2 px-2">
-        {tabs.map((tab) => {
-          const active = isActive(tab.href);
-          return (
-            <Link
-              key={tab.href}
-              to={tab.href}
-              className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[60px]",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <tab.icon className={cn("h-5 w-5", active && "stroke-[2.5px]")} />
-              <span className={cn("text-[10px] font-bold", active && "font-extrabold")}>
-                {tab.label}
-              </span>
-            </Link>
-          );
-        })}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 w-full border-t border-border bg-background pb-safe">
+        <div className="flex h-16 items-center justify-around px-2">
+          {tabs.map((tab) => {
+            const active = isActive(tab.href);
+            return (
+              <Link
+                key={tab.href}
+                to={tab.href}
+                className="group flex flex-1 flex-col items-center justify-center gap-1 h-full"
+              >
+                <tab.icon className={cn(
+                  'h-[22px] w-[22px] transition-all duration-200',
+                  active ? 'text-foreground stroke-[2.5px]' : 'text-muted-foreground stroke-[1.5px]'
+                )} />
+                <span className={cn(
+                  "text-[10px] transition-all duration-200",
+                  active ? "text-foreground font-bold" : "text-muted-foreground font-medium"
+                )}>
+                  {tab.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );
