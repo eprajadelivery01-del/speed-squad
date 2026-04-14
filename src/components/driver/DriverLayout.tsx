@@ -4,6 +4,8 @@ import { Home, Truck, AlertTriangle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
+import { useDriverNotifications } from "@/hooks/useDriverNotifications";
+import logoEpraja from "@/assets/logo.jpeg";
 
 const tabs = [
   { label: "Início", icon: Home, href: "/driver" },
