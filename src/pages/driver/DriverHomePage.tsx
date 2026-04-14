@@ -198,7 +198,7 @@ export default function DriverHomePage() {
             className="flex-1 bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-semibold outline-none appearance-none text-foreground"
           >
             <option value="">{isDetecting ? "📍 Detectando..." : "Selecione a cidade"}</option>
-            {(activeCities ?? []).map(city => <option key={city} value={city}>{city}</option>)}
+            {((activeCities ?? []) as string[]).map(city => <option key={city} value={city}>{city}</option>)}
           </select>
         </div>
 
