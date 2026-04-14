@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">NexusPro Entregador</string>
-    <string name="title_activity_main">NexusPro Entregador</string>
+    <string name="app_name">É Pra Já - Entregador</string>
+    <string name="title_activity_main">É Pra Já - Entregador</string>
     <string name="package_name">com.epraja.driver</string>
     <string name="custom_url_scheme">com.epraja.driver</string>
 </resources>
