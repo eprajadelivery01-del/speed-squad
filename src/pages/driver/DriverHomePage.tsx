@@ -46,7 +46,7 @@ export default function DriverHomePage() {
             .eq("driver_id", data.id)
             .gte("created_at", today.toISOString());
           if (deliveries) {
-            const completed = deliveries.filter(d => d.status === "completed");
+            const completed = deliveries.filter(d => d.status === ("delivered" as any));
             setStats({
               todayCount: deliveries.length,
               todayEarnings: completed.reduce((acc, d) => acc + (Number(d.commission) || 0), 0)

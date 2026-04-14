@@ -18,7 +18,7 @@ export async function fetchCitiesWithRegions() {
   const { data, error } = await supabase
     .from("regions")
     .select("name")
-    .eq("is_active", true);
+    .eq("active" as any, true);
   
   if (error) throw error;
   
