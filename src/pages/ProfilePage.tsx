@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isDriver = location.pathname.startsWith("/driver");
-  const Layout = isDriver ? DriverLayout : AdminLayout;
+  const Layout = DriverLayout;
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [phone, setPhone] = useState(profile?.phone || "");
