@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authUser.id === SPECIAL_USER_ID) {
         console.log("[AuthContext] ATENÇÃO: Travamento detectado. Acionando entrada de emergência (Admin Force).");
         setRoles(["admin"]);
-        setProfile({ full_name: "Admin (Modo Emergência)", avatar_url: null, phone: null });
+        setProfile((prev) => prev || { full_name: "Admin (Modo Emergência)", avatar_url: null, phone: null });
         setUserStatus("active");
       }
     } finally {
