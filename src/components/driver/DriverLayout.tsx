@@ -133,7 +133,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 w-full border-t border-border bg-background pb-safe">
+      <nav className="sticky bottom-0 z-50 w-full border-t border-border bg-background pb-safe mt-auto">
         <div className="flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {
             const active = isActive(tab.href);
