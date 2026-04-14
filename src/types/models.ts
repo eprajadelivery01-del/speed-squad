@@ -40,7 +40,7 @@ export interface Delivery {
   latitude: number | null;
   longitude: number | null;
   status: DeliveryStatus;
-  value: number;
+  price: number;
   commission: number;
   notes: string | null;
   region_id: string | null;
