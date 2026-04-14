@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile, uploadAvatar } from "@/services/users";
