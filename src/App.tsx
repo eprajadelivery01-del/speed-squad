@@ -8,6 +8,7 @@ import { CityProvider } from "@/contexts/CityContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import ScrollToTop from "@/components/shared/ScrollToTop";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 import LoginPage from "./pages/LoginPage";
 import InvitePage from "./pages/InvitePage";
@@ -30,22 +31,42 @@ const App = () => (
           <ScrollToTop />
           <CityProvider>
             <AuthProvider>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/invite/:token" element={<InvitePage />} />
-                <Route path="/" element={<Navigate to="/driver" replace />} />
+              <NotificationProvider>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/invite/:token" element={<InvitePage />} />
+                  <Route path="/" element={<Navigate to="/driver" replace />} />
 
-                {/* Driver routes */}
-                <Route path="/driver" element={<DriverHomePage />} />
-                <Route path="/driver/deliveries" element={<DriverDeliveriesPage />} />
-                <Route path="/driver/occurrences" element={<DriverOccurrencesPage />} />
-                <Route path="/driver/chat" element={<DriverChatPage />} />
-                <Route path="/driver/profile" element={<ProfilePage />} />
+                  {/* Driver routes */}
+                  <Route path="/driver" element={
+                    <ProtectedRoute>
+                      <DriverHomePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/driver/deliveries" element={
+                    <ProtectedRoute>
+                      <DriverDeliveriesPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/driver/occurrences" element={
+                    <ProtectedRoute>
+                      <DriverOccurrencesPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/driver/profile" element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/driver/chat" element={
+                    <ProtectedRoute>
+                      <DriverChatPage />
+                    </ProtectedRoute>
+                  } />
 
-
-                <Route path="/chat" element={<DriverChatPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </NotificationProvider>
             </AuthProvider>
           </CityProvider>
         </BrowserRouter>

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 /**
  * Hook that listens for new deliveries assigned to the current driver
@@ -10,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
   const permissionRef = useRef<NotificationPermission>("default");
 
   // Request notification permission on mount
@@ -62,6 +64,15 @@ export function useDriverNotifications() {
                 : "Uma nova entrega foi atribuída a você",
             });
 
+            // Add to notification history
+            addNotification({
+              type: "delivery",
+              title: "Nova corrida atribuída",
+              description: delivery.pickup_address 
+                ? `Retirada: ${delivery.pickup_address}` 
+                : "Confira os detalhes na aba de entregas.",
+            });
+
             // Browser notification
             if (permissionRef.current === "granted") {
               try {
@@ -105,13 +116,68 @@ export function useDriverNotifications() {
       return channel;
     };
 
-    let channelRef: any = null;
+    const setupChat = async () => {
+      // Get all active delivery IDs for this driver
+      const { data: activeDeliveries } = await supabase
+        .from("deliveries")
+        .select("id")
+        .eq("driver_id", driverId)
+        .in("status", ["accepted", "picked_up"]);
+
+      if (!activeDeliveries || activeDeliveries.length === 0) return;
+
+      const deliveryIds = activeDeliveries.map(d => d.id);
+
+      // Get conversations for these deliveries
+      const { data: convs } = await supabase
+        .from("conversations")
+        .select("id, order_id")
+        .in("order_id", deliveryIds);
+
+      if (!convs) return;
+
+      const channels = convs.map(conv => {
+        return supabase
+          .channel(`notifications-chat-${conv.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "messages",
+              filter: `conversation_id=eq.${conv.id}`,
+            },
+            (payload) => {
+              const msg = payload.new as any;
+              if (msg.sender_id !== user.id) {
+                toast({
+                  title: "💬 Nova mensagem",
+                  description: msg.content,
+                });
+                addNotification({
+                  type: "chat",
+                  title: "Nova mensagem no chat",
+                  description: msg.content,
+                });
+              }
+            }
+          )
+          .subscribe();
+      });
+
+      return channels;
+    };
+
+    let channelsRef: any[] = [];
     setup().then((ch) => {
-      channelRef = ch;
+      if (ch) channelsRef.push(ch);
+      setupChat().then((chatChs) => {
+        if (chatChs) channelsRef.push(...chatChs);
+      });
     });
 
     return () => {
-      if (channelRef) supabase.removeChannel(channelRef);
+      channelsRef.forEach(ch => supabase.removeChannel(ch));
     };
-  }, [user?.id, toast]);
+  }, [user?.id, toast, addNotification]);
 }
