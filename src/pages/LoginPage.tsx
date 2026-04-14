@@ -20,12 +20,16 @@ export default function LoginPage() {
     if (!authLoading && user) {
       console.log(`[LoginPage] Verificando acesso para user.id: ${user.id}, roles:`, roles);
       const timer = setTimeout(() => {
-        if (hasRole("admin")) {
-          console.log("[LoginPage - cbe3232c] Role ADMIN detectada. Navegando para /admin");
-          navigate("/admin");
+        if (hasRole("driver") || hasRole("admin")) {
+          console.log("[LoginPage] Acesso permitido. Navegando para /driver");
+          navigate("/driver");
         } else {
-          console.warn("[Admin - cbe3232c] Acesso negado: Perfil não administrativo.");
-          toast({ title: "Acesso Negado", description: "Este portal é exclusivo para administradores.", variant: "destructive" });
+          console.warn("[Auth] Acesso negado: Perfil sem permissão de entregador.");
+          toast({ 
+            title: "Acesso Negado", 
+            description: "Este portal é exclusivo para entregadores credenciados.", 
+            variant: "destructive" 
+          });
         }
       }, 800);
       return () => clearTimeout(timer);
@@ -52,11 +56,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6 rounded-2xl bg-card p-8 shadow-card">
         <div className="flex flex-col items-center gap-2">
-          <img src="/logo.png" alt="É Pra Já Delivery" className="h-20 w-auto rounded-xl" />
-          <p className="text-sm text-muted-foreground font-black text-primary uppercase">Painel Administrativo Central</p>
-          <div className="mt-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">BUILD: V16-NUCLEAR-CLEANUP (cbe3232c)</p>
-          </div>
+          <img src="/logo.png" alt="É Pra Já Delivery" className="h-24 w-auto rounded-xl mb-2" />
+          <h1 className="text-xl font-extrabold text-foreground tracking-tight">É Pra Já</h1>
+          <p className="text-xs text-muted-foreground font-black text-primary uppercase tracking-widest">Entregador</p>
         </div>
 
         <div className="space-y-4">
@@ -107,8 +109,8 @@ export default function LoginPage() {
           <span>{loading ? "Entrando..." : "Entrar"}</span>
         </button>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Acesso exclusivo por convite do administrador
+        <p className="text-center text-[10px] text-muted-foreground">
+          Acesso via convite oficial É Pra Já
         </p>
       </form>
     </div>
