@@ -67,11 +67,12 @@ export default function DriverHomePage() {
         const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
         if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
         setIsDetecting(false);
-        await supabase.from("delivery_drivers").update({
+        const { error: locError } = await supabase.from("delivery_drivers").update({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           updated_at: new Date().toISOString(),
         }).eq("id", driverId);
+        if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
       },
       (err) => { console.warn("Geolocation error:", err); setIsDetecting(false); },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -86,11 +87,12 @@ export default function DriverHomePage() {
         async (pos) => {
           const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
           if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
-          await supabase.from("delivery_drivers").update({
+          const { error: locError } = await supabase.from("delivery_drivers").update({
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             updated_at: new Date().toISOString(),
           }).eq("id", driverId);
+          if (locError) console.error("Erro ao atualizar GPS (watch) no BD:", locError);
         },
         () => {},
         { enableHighAccuracy: true, maximumAge: 5000 }
