@@ -106,7 +106,7 @@ export default function DriverHomePage() {
   }, []);
 
   const handleAcceptConsent = () => {
-    localStorage.setItem("nexus_location_consent", "true");
+    localStorage.setItem("epraja_location_consent", "true");
     setHasConsent(true);
     setShowConsent(false);
   };
