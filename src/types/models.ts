@@ -46,7 +46,7 @@ export interface Delivery {
   region_id: string | null;
   accepted_at: string | null;
   collected_at: string | null;
-  completed_at: string | null;
+  delivered_at: string | null;
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;

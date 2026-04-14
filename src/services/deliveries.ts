@@ -16,7 +16,7 @@ export interface DeliveryWithRelations {
   region_id: string | null;
   accepted_at: string | null;
   collected_at: string | null;
-  completed_at: string | null;
+  delivered_at: string | null;
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
@@ -114,7 +114,7 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.completed_at = new Date().toISOString();
+      if (status === "delivered") updates.delivered_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
