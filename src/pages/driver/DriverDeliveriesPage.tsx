@@ -47,18 +47,28 @@ export default function DriverDeliveriesPage() {
     else if (currentStatus === "collecting") nextStatus = "in_route";
     else if (currentStatus === "in_route") nextStatus = "completed";
 
+    if (!nextStatus) {
+      console.error(`[DeliveryFlow] Status desconhecido para transição: ${currentStatus}`);
+      toast({
+        title: "Atenção",
+        description: `Não foi possível determinar o próximo passo para o status "${currentStatus}".`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     updateStatus(
       { id: deliveryId, status: nextStatus, driverId },
       {
         onSuccess: () => {
           toast({
             title: "Sucesso!",
-            description: `Entrega atualizada para ${nextStatus}`,
+            description: "A entrega foi atualizada com sucesso.",
           });
         },
         onError: (error: any) => {
           toast({
-            title: "Erro",
+            title: "Erro no servidor",
             description: error.message,
             variant: "destructive",
           });
@@ -125,19 +135,27 @@ export default function DriverDeliveriesPage() {
 
 function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
   const getButtonText = () => {
-    if (delivery.status === "pending" || delivery.status === "broadcasted") return "Aceitar Corrida";
-    if (delivery.status === "accepted") return "Cheguei no Local";
-    if (delivery.status === "collecting") return "Iniciar Entrega";
-    if (delivery.status === "in_route") return "Concluir Entrega";
-    return "Finalizar";
+    switch (delivery.status) {
+      case "pending":
+      case "broadcasted": return "Aceitar Corrida";
+      case "accepted": return "Cheguei no Local";
+      case "collecting": return "Iniciar Entrega";
+      case "in_route": return "Concluir Entrega";
+      case "completed": return "Concluído";
+      case "cancelled": return "Cancelado";
+      default: return "Finalizar";
+    }
   };
 
   const getButtonIcon = () => {
-    if (delivery.status === "pending" || delivery.status === "broadcasted") return <CheckCircle className="h-4 w-4" />;
-    if (delivery.status === "accepted") return <Package className="h-4 w-4" />;
-    if (delivery.status === "collecting") return <Play className="h-4 w-4" />;
-    if (delivery.status === "in_route") return <CheckCircle className="h-4 w-4" />;
-    return null;
+    switch (delivery.status) {
+      case "pending":
+      case "broadcasted": return <CheckCircle className="h-4 w-4" />;
+      case "accepted": return <Package className="h-4 w-4" />;
+      case "collecting": return <Play className="h-4 w-4" />;
+      case "in_route": return <CheckCircle className="h-4 w-4" />;
+      default: return null;
+    }
   };
 
   return (
