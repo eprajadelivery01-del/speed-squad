@@ -1,6 +1,6 @@
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Bell } from "lucide-react";
+import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Truck } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
