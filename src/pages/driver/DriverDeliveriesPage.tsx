@@ -44,8 +44,8 @@ export default function DriverDeliveriesPage() {
     let nextStatus: any = "";
     if (currentStatus === "pending" || currentStatus === "broadcasted") nextStatus = "accepted";
     else if (currentStatus === "accepted") nextStatus = "collecting";
-    else if (currentStatus === "collecting") nextStatus = "in_transit";
-    else if (currentStatus === "in_transit") nextStatus = "delivered";
+    else if (currentStatus === "collecting") nextStatus = "in_route";
+    else if (currentStatus === "in_route") nextStatus = "completed";
 
     updateStatus(
       { id: deliveryId, status: nextStatus, driverId },
@@ -73,8 +73,8 @@ export default function DriverDeliveriesPage() {
       case "broadcasted": return "Buscando";
       case "accepted": return "Aceito";
       case "collecting": return "Coletando";
-      case "in_transit": return "Em Rota";
-      case "delivered": return "Concluído";
+      case "in_route": return "Em Rota";
+      case "completed": return "Concluído";
       default: return status;
     }
   };
@@ -128,7 +128,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     if (delivery.status === "pending" || delivery.status === "broadcasted") return "Aceitar Corrida";
     if (delivery.status === "accepted") return "Cheguei no Local";
     if (delivery.status === "collecting") return "Iniciar Entrega";
-    if (delivery.status === "in_transit") return "Concluir Entrega";
+    if (delivery.status === "in_route") return "Concluir Entrega";
     return "Finalizar";
   };
 
@@ -136,7 +136,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     if (delivery.status === "pending" || delivery.status === "broadcasted") return <CheckCircle className="h-4 w-4" />;
     if (delivery.status === "accepted") return <Package className="h-4 w-4" />;
     if (delivery.status === "collecting") return <Play className="h-4 w-4" />;
-    if (delivery.status === "in_transit") return <CheckCircle className="h-4 w-4" />;
+    if (delivery.status === "in_route") return <CheckCircle className="h-4 w-4" />;
     return null;
   };
 
