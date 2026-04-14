@@ -42,14 +42,14 @@ export default function DriverHomePage() {
           today.setHours(0, 0, 0, 0);
           const { data: deliveries } = await supabase
             .from("deliveries")
-            .select("price, status")
+            .select("commission, status")
             .eq("driver_id", data.id)
             .gte("created_at", today.toISOString());
           if (deliveries) {
             const completed = deliveries.filter(d => d.status === "completed");
             setStats({
               todayCount: deliveries.length,
-              todayEarnings: completed.reduce((acc, d) => acc + (Number(d.price) || 0), 0)
+              todayEarnings: completed.reduce((acc, d) => acc + (Number(d.commission) || 0), 0)
             });
           }
         }

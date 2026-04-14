@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile, uploadAvatar } from "@/services/users";
@@ -26,7 +25,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isDriver = location.pathname.startsWith("/driver");
-  const Layout = isDriver ? DriverLayout : AdminLayout;
+  const Layout = DriverLayout;
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [phone, setPhone] = useState(profile?.phone || "");
