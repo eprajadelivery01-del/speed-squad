@@ -11,7 +11,6 @@ export interface DeliveryWithRelations {
   latitude: number | null;
   longitude: number | null;
   status: DeliveryStatus;
-  price: number;
   commission: number;
   notes: string | null;
   region_id: string | null;
@@ -84,7 +83,7 @@ export function useDeliveryStats() {
       today.setHours(0, 0, 0, 0);
 
       const [todayRes, totalRes] = await Promise.all([
-        supabase.from("deliveries").select("status, price").gte("created_at", today.toISOString()),
+        supabase.from("deliveries").select("status, commission").gte("created_at", today.toISOString()),
         supabase.from("deliveries").select("id", { count: "exact", head: true }),
       ]);
 
@@ -98,7 +97,7 @@ export function useDeliveryStats() {
         inRoute: data.filter((d) => d.status === "in_route").length,
         completed: data.filter((d) => d.status === "completed").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.price ?? 0), 0),
+        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
       };
     },
     refetchInterval: 30000,
