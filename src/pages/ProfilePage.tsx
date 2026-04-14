@@ -74,7 +74,11 @@ export default function ProfilePage() {
     if (!user) return;
     setSaving(true);
     try {
-      const updatedProfile = await updateProfile(user.id, { full_name: fullName.trim(), phone });
+      const updatedProfile = await updateProfile(user.id, { 
+        id: profile?.id,
+        full_name: fullName.trim(), 
+        phone 
+      });
       syncProfile(updatedProfile);
       setFullName(updatedProfile.full_name || "");
       setPhone(updatedProfile.phone || "");

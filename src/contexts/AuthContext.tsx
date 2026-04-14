@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type AppRole = "admin" | "company" | "driver" | "customer";
 type UserStatus = "pending" | "active" | "rejected";
-type ProfileData = { full_name: string; avatar_url: string | null; phone: string | null };
+type ProfileData = { id?: string; full_name: string; avatar_url: string | null; phone: string | null };
 
 interface AuthContextType {
   user: User | null;
@@ -29,14 +29,14 @@ const normalizeName = (value: unknown) => typeof value === "string" ? value.trim
 const buildProfile = (
   profileData?: Partial<ProfileData> | null,
   authUser?: User | null,
-): ProfileData | null => {
+  const id = profileData?.id ?? null;
   const full_name = normalizeName(profileData?.full_name) || normalizeName(authUser?.user_metadata?.full_name);
   const avatar_url = profileData?.avatar_url ?? null;
   const phone = profileData?.phone ?? null;
 
   if (!full_name && !avatar_url && !phone) return null;
 
-  return { full_name, avatar_url, phone };
+  return { id, full_name, avatar_url, phone };
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const syncProfile = useCallback((nextProfile: Partial<ProfileData>) => {
     setProfile((currentProfile) => {
       const merged = {
+        id: currentProfile?.id ?? null,
         full_name: nextProfile.full_name ?? currentProfile?.full_name ?? null,
         avatar_url: nextProfile.avatar_url ?? currentProfile?.avatar_url ?? null,
         phone: nextProfile.phone ?? currentProfile?.phone ?? null,

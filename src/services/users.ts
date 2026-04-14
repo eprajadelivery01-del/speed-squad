@@ -40,11 +40,15 @@ export async function rejectUser(userId: string) {
   if (error) throw error;
 }
 
-export async function updateProfile(userId: string, updates: { full_name?: string; phone?: string; document?: string; avatar_url?: string }) {
+export async function updateProfile(userId: string, updates: { id?: string; full_name?: string; phone?: string; document?: string; avatar_url?: string }) {
   console.log(`[Service] Atualizando perfil: ${userId}`, updates);
   const { data, error } = await supabase
     .from("profiles")
-    .upsert({ user_id: userId, ...updates, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    .upsert({ 
+      user_id: userId, 
+      ...updates, 
+      updated_at: new Date().toISOString() 
+    }, { onConflict: 'user_id' })
     .select()
     .single();
     
