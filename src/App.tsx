@@ -39,27 +39,27 @@ const App = () => (
 
                   {/* Driver routes */}
                   <Route path="/driver" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredRole="driver">
                       <DriverHomePage />
                     </ProtectedRoute>
                   } />
                   <Route path="/driver/deliveries" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredRole="driver">
                       <DriverDeliveriesPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/driver/occurrences" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredRole="driver">
                       <DriverOccurrencesPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/driver/profile" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredRole="driver">
                       <ProfilePage />
                     </ProtectedRoute>
                   } />
                   <Route path="/driver/chat" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredRole="driver">
                       <DriverChatPage />
                     </ProtectedRoute>
                   } />

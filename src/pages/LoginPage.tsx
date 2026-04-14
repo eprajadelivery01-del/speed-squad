@@ -22,7 +22,7 @@ export default function LoginPage() {
       const timer = setTimeout(() => {
         if (hasRole("driver") || hasRole("admin")) {
           console.log("[LoginPage] Acesso permitido. Navegando para /driver");
-          navigate("/driver");
+          navigate("/driver", { replace: true });
         } else {
           console.warn("[Auth] Acesso negado: Perfil sem permissão de entregador.");
           toast({ 
