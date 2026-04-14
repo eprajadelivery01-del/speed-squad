@@ -94,10 +94,10 @@ export function useDeliveryStats() {
         today: data.length,
         total: totalRes.count ?? 0,
         pending: data.filter((d) => d.status === "pending").length,
-        inRoute: data.filter((d) => d.status === "in_route").length,
-        completed: data.filter((d) => d.status === "completed").length,
+        inTransit: data.filter((d) => d.status === "in_transit").length,
+        delivered: data.filter((d) => d.status === "delivered").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
+        todayRevenue: data.filter((d) => d.status === "delivered").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
       };
     },
     refetchInterval: 30000,
@@ -114,7 +114,7 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "completed") updates.completed_at = new Date().toISOString();
+      if (status === "delivered") updates.completed_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
