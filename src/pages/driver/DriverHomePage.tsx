@@ -46,7 +46,7 @@ export default function DriverHomePage() {
             .eq("driver_id", data.id)
             .gte("created_at", today.toISOString());
           if (deliveries) {
-            const completed = deliveries.filter(d => d.status === "completed");
+            const completed = deliveries.filter(d => d.status === ("delivered" as any));
             setStats({
               todayCount: deliveries.length,
               todayEarnings: completed.reduce((acc, d) => acc + (Number(d.commission) || 0), 0)
@@ -198,7 +198,7 @@ export default function DriverHomePage() {
             className="flex-1 bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-semibold outline-none appearance-none text-foreground"
           >
             <option value="">{isDetecting ? "📍 Detectando..." : "Selecione a cidade"}</option>
-            {(activeCities ?? []).map(city => <option key={city} value={city}>{city}</option>)}
+            {((activeCities ?? []) as string[]).map(city => <option key={city} value={city}>{city}</option>)}
           </select>
         </div>
 

@@ -89,7 +89,7 @@ export default function DriverOccurrencesPage() {
                       <SelectValue placeholder="Selecione uma entrega" />
                     </SelectTrigger>
                     <SelectContent>
-                      {myDeliveries?.data?.filter((d: any) => d.status !== "completed" && d.status !== "cancelled").map((d: any) => (
+                      {myDeliveries?.data?.filter((d: any) => d.status !== "delivered" && d.status !== "cancelled").map((d: any) => (
                         <SelectItem key={d.id} value={d.id}>{d.customer_name} - {d.address}</SelectItem>
                       ))}
                     </SelectContent>

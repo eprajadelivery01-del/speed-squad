@@ -15,10 +15,10 @@ export async function fetchRegions(city?: string) {
 }
 
 export async function fetchCitiesWithRegions() {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("regions")
-    .select("name")
-    .eq("is_active", true);
+    .select("name") as any)
+    .eq("active", true);
   
   if (error) throw error;
   
