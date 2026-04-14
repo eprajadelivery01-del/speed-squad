@@ -16,7 +16,7 @@ export interface DeliveryWithRelations {
   region_id: string | null;
   accepted_at: string | null;
   collected_at: string | null;
-  delivered_at: string | null;
+  completed_at: string | null;
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
@@ -94,10 +94,10 @@ export function useDeliveryStats() {
         today: data.length,
         total: totalRes.count ?? 0,
         pending: data.filter((d) => d.status === "pending").length,
-        inTransit: data.filter((d) => d.status === "in_transit").length,
-        delivered: data.filter((d) => d.status === "delivered").length,
+        inTransit: data.filter((d) => d.status === "in_route").length,
+        delivered: data.filter((d) => d.status === "completed").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === "delivered").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
+        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
       };
     },
     refetchInterval: 30000,
@@ -114,7 +114,7 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.delivered_at = new Date().toISOString();
+      if (status === "completed") updates.completed_at = new Date().toISOString();
       if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
