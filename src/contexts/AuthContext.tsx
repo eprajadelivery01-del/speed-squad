@@ -49,11 +49,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchingRef = useRef<string | null>(null);
 
   const syncProfile = useCallback((nextProfile: Partial<ProfileData>) => {
-    setProfile((currentProfile) => buildProfile({
-      full_name: nextProfile.full_name ?? currentProfile?.full_name ?? null,
-      avatar_url: nextProfile.avatar_url ?? currentProfile?.avatar_url ?? null,
-      phone: nextProfile.phone ?? currentProfile?.phone ?? null,
-    }, user));
+    setProfile((currentProfile) => {
+      const merged = {
+        full_name: nextProfile.full_name ?? currentProfile?.full_name ?? null,
+        avatar_url: nextProfile.avatar_url ?? currentProfile?.avatar_url ?? null,
+        phone: nextProfile.phone ?? currentProfile?.phone ?? null,
+      };
+      
+      // If it's the special user, we ensure the emergency name isn't lost unless specified
+      if (user?.id === SPECIAL_USER_ID && !merged.full_name) {
+        merged.full_name = "Admin (Modo Emergência)";
+      }
+
+      return buildProfile(merged, user);
+    });
   }, [user]);
 
   const fetchUserData = async (authUser: User) => {
@@ -99,9 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(buildProfile(null, authUser));
       
       if (authUser.id === SPECIAL_USER_ID) {
-        console.log("[AuthContext] ATENÇÃO: Travamento detectado. Acionando entrada de emergência (Admin Force).");
         setRoles(["admin"]);
-        setProfile((prev) => prev || { full_name: "Admin (Modo Emergência)", avatar_url: null, phone: null });
+        setProfile((prev) => ({ 
+          full_name: prev?.full_name || "Admin (Modo Emergência)", 
+          avatar_url: prev?.avatar_url || null, 
+          phone: prev?.phone || null 
+        }));
         setUserStatus("active");
       }
     } finally {
