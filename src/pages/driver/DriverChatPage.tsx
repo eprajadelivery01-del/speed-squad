@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MessageSquare, User, Loader2, Send, Paperclip, Smile, Search, ArrowLeft, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useMessages, useSendMessage } from "@/services/chat";
+import { useMessages, useSendMessage, getDirectConversation, getAdminId } from "@/services/chat";
 import { useAuth } from "@/hooks/useAuth";
 import { WhatsAppBubble } from "@/components/chat/WhatsAppBubble";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +41,26 @@ export default function DriverChatPage() {
     },
     enabled: !!user?.id
   });
+
+  // Fetch Admin ID
+  const { data: adminId } = useQuery({
+    queryKey: ["admin-id"],
+    queryFn: getAdminId
+  });
+
+  const handleStartAdminChat = async () => {
+    if (!user?.id || !adminId) {
+      console.error("User or Admin ID missing", { userId: user?.id, adminId });
+      return;
+    }
+    try {
+      const conv = await getDirectConversation(user.id, adminId);
+      qc.invalidateQueries({ queryKey: ["driver-conversations", user.id] });
+      setSelectedConv(conv);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const { data: messages, isLoading: loadingMessages } = useMessages(selectedConv?.id);
   const sendMessageMutation = useSendMessage();
@@ -87,9 +107,17 @@ export default function DriverChatPage() {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-muted rounded-full">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex gap-4 text-muted-foreground">
-            <MessageSquare className="h-5 w-5 cursor-pointer" />
-            <MoreVertical className="h-5 w-5 cursor-pointer" />
+          <div className="flex gap-2 items-center">
+            <button 
+              onClick={handleStartAdminChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[0.65rem] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
+            >
+              Falar com Admin
+            </button>
+            <div className="flex gap-4 text-muted-foreground ml-2">
+              <MessageSquare className="h-5 w-5 cursor-pointer" />
+              <MoreVertical className="h-5 w-5 cursor-pointer" />
+            </div>
           </div>
         </div>
 
