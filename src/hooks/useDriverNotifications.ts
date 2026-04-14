@@ -141,7 +141,7 @@ export function useDriverNotifications() {
         .from("deliveries")
         .select("id")
         .eq("driver_id", driverId)
-        .in("status", ["accepted", "collecting", "in_transit"]);
+        .in("status", ["accepted", "collecting", "in_transit"] as any);
 
       if (!activeDeliveries || activeDeliveries.length === 0) return;
 
