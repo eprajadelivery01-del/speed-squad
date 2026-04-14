@@ -1,6 +1,6 @@
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { Power, Loader2, MessageSquare, MapPin } from "lucide-react";
+import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Bell } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,76 +129,123 @@ export default function DriverHomePage() {
 
   return (
     <DriverLayout>
-      <div className="flex flex-col gap-6 pb-4">
+      <div className="flex flex-col gap-5">
         {/* Greeting */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Olá{firstName ? `, ${firstName}` : ""} 👋</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isOnline ? "Você está online e recebendo corridas" : "Fique online para receber corridas"}
+          <h2 className="text-2xl font-extrabold text-foreground">
+            Olá, {firstName || "Entregador"} 👋
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isOnline ? "Você está recebendo corridas" : "Fique online para receber corridas"}
           </p>
         </div>
 
-        {/* Status badge */}
+        {/* Status Bar */}
         <div className={cn(
-          "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold w-fit",
-          isOnline 
-            ? "bg-success/10 text-success border border-success/20" 
-            : "bg-muted text-muted-foreground border border-border"
+          "flex items-center justify-between rounded-2xl px-4 py-3 border",
+          isOnline
+            ? "bg-success/10 border-success/20"
+            : "bg-muted border-border"
         )}>
-          <div className={cn("w-2.5 h-2.5 rounded-full", isOnline ? "bg-success animate-pulse" : "bg-muted-foreground")} />
-          {isOnline ? "Online" : "Offline"}
-        </div>
-
-        {/* Power Button */}
-        <div className="flex justify-center py-4">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-3 h-3 rounded-full",
+              isOnline ? "bg-success animate-pulse" : "bg-muted-foreground"
+            )} />
+            <div>
+              <p className={cn(
+                "text-sm font-bold",
+                isOnline ? "text-success" : "text-muted-foreground"
+              )}>
+                {isOnline ? "Online" : "Offline"}
+              </p>
+              {isOnline && (
+                <p className="text-[10px] text-success/70 font-medium flex items-center gap-1">
+                  <MapPin className="h-2.5 w-2.5" /> GPS ativo
+                </p>
+              )}
+            </div>
+          </div>
           <button
             onClick={handleToggle}
             disabled={loading}
             className={cn(
-              "w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 text-base font-bold transition-all duration-300 shadow-lg",
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all",
               isOnline
-                ? "bg-success text-success-foreground shadow-success/30"
-                : "bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-primary/30"
+                ? "text-primary hover:bg-primary/10"
+                : "bg-primary text-primary-foreground shadow-md hover:opacity-90"
             )}
           >
-            {loading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Power className="h-7 w-7" />}
-            {loading ? "..." : isOnline ? "ONLINE" : "FICAR ONLINE"}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Power className="h-4 w-4" />
+            )}
+            {isOnline ? "Desligar" : "Ligar"}
           </button>
         </div>
 
-        {/* City selector */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Cidade de Operação</p>
+        {/* City Selector */}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <MapPin className="h-4 w-4 text-primary" />
           </div>
           <select
             value={selectedCity || ""}
             onChange={(e) => setCity(e.target.value || null)}
-            className="w-full max-w-xs bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-semibold outline-none appearance-none text-center"
+            className="flex-1 bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-semibold outline-none appearance-none text-foreground"
           >
-            <option value="">{isDetecting ? "📍 Detectando..." : "Selecione sua cidade"}</option>
+            <option value="">{isDetecting ? "📍 Detectando..." : "Selecione a cidade"}</option>
             {(activeCities ?? []).map(city => <option key={city} value={city}>{city}</option>)}
           </select>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card rounded-2xl p-4 text-center shadow-card border border-border">
-            <p className="text-2xl font-bold text-foreground">{stats.todayCount}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">Entregas hoje</p>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <Truck className="h-3.5 w-3.5" />
+              <p className="text-[10px] font-bold uppercase tracking-wide">Entregas hoje</p>
+            </div>
+            <p className="text-2xl font-extrabold text-foreground">{stats.todayCount}</p>
           </div>
-          <div className="bg-card rounded-2xl p-4 text-center shadow-card border border-border">
-            <p className="text-2xl font-bold text-foreground">R$ {stats.todayEarnings.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">Ganhos hoje</p>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <span className="text-xs">💰</span>
+              <p className="text-[10px] font-bold uppercase tracking-wide">Ganhos hoje</p>
+            </div>
+            <p className="text-2xl font-extrabold text-primary">R$ {stats.todayEarnings.toFixed(2)}</p>
           </div>
         </div>
+
+        {/* Available Deliveries Card */}
+        <button
+          onClick={() => navigate("/driver/deliveries")}
+          className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors text-left"
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Truck className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground">Ver entregas disponíveis</p>
+            <p className="text-xs text-muted-foreground">Aceite corridas e comece a entregar</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+        </button>
+
+        {/* Waiting Banner */}
+        {isOnline && (
+          <div className="bg-primary/10 border border-primary/20 rounded-2xl px-4 py-3.5 text-center">
+            <p className="text-sm font-bold text-foreground">Aguardando novas corridas...</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Você será notificado quando houver entregas</p>
+          </div>
+        )}
       </div>
 
       {/* Floating Chat Button */}
       <button
         onClick={() => navigate("/driver/chat")}
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-all"
+        className="fixed bottom-20 right-5 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-all"
       >
         <MessageSquare className="h-6 w-6" />
       </button>
