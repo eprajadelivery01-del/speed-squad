@@ -4,6 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 
+// Standard Notification Sound (Glass Ping)
+const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+
 /**
  * Hook that listens for new deliveries assigned to the current driver
  * and sends a browser push notification + in-app toast.
@@ -13,6 +16,21 @@ export function useDriverNotifications() {
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const permissionRef = useRef<NotificationPermission>("default");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio(NOTIFICATION_SOUND);
+  }, []);
+
+  const playNotificationSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {
+        // Autoplay policy might block this if user hasn't interacted
+        console.warn("Audio playback blocked by browser policies.");
+      });
+    }
+  };
 
   // Request notification permission on mount
   useEffect(() => {
@@ -57,6 +75,7 @@ export function useDriverNotifications() {
             const delivery = payload.new as any;
 
             // In-app toast
+            playNotificationSound();
             toast({
               title: "🏍️ Nova corrida!",
               description: delivery.pickup_address
@@ -150,6 +169,7 @@ export function useDriverNotifications() {
             (payload) => {
               const msg = payload.new as any;
               if (msg.sender_id !== user.id) {
+                playNotificationSound();
                 toast({
                   title: "💬 Nova mensagem",
                   description: msg.content,
