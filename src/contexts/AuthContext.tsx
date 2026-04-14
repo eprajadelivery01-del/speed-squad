@@ -29,6 +29,7 @@ const normalizeName = (value: unknown) => typeof value === "string" ? value.trim
 const buildProfile = (
   profileData?: Partial<ProfileData> | null,
   authUser?: User | null,
+): ProfileData | null => {
   const id = profileData?.id ?? null;
   const full_name = normalizeName(profileData?.full_name) || normalizeName(authUser?.user_metadata?.full_name);
   const avatar_url = profileData?.avatar_url ?? null;
