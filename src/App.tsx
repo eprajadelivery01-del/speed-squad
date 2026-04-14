@@ -12,7 +12,6 @@ import ScrollToTop from "@/components/shared/ScrollToTop";
 import LoginPage from "./pages/LoginPage";
 import InvitePage from "./pages/InvitePage";
 import ProfilePage from "./pages/ProfilePage";
-import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import DriverChatPage from "./pages/driver/DriverChatPage";
 import DriverHomePage from "./pages/driver/DriverHomePage";

@@ -12,7 +12,7 @@ export function useDriverRealtime(driverId?: string, regionId?: string) {
   useEffect(() => {
     console.log("[Realtime] Iniciando canais do entregador...");
 
-    const sessionId = typeof crypto !== 'undefined' && crypto.randomUUID 
+    const sessionId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
       ? crypto.randomUUID().substring(0, 8) 
       : Math.random().toString(36).substring(2, 10);
 
