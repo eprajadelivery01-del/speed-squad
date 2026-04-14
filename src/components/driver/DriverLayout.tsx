@@ -21,6 +21,7 @@ interface DriverLayoutProps {
 
 export function DriverLayout({ children, title }: DriverLayoutProps) {
   useAllRealtime();
+  useDriverNotifications();
   const location = useLocation();
   const { profile, user } = useAuth();
   const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
@@ -40,7 +41,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       <header className="flex-none bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src="/favicon.jpeg"
+            src={logoEpraja}
             alt="ÉpraJá"
             className="w-10 h-10 rounded-full object-cover border-2 border-primary/20"
           />
