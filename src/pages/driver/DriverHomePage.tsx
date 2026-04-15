@@ -1,7 +1,7 @@
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Truck, DollarSign, CheckCircle, Package } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,11 @@ export default function DriverHomePage() {
   const [isDetecting, setIsDetecting] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const todayStartIso = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return start.toISOString();
+  }, []);
 
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
 
@@ -48,7 +53,10 @@ export default function DriverHomePage() {
   const driverId = driverRecord?.id;
   const { data: todayStatsData } = useDeliveries({
     driverId: driverId || undefined,
-    dateFrom: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })(),
+    dateFrom: todayStartIso,
+    enabled: !!driverId,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const stats = {
@@ -61,6 +69,9 @@ export default function DriverHomePage() {
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
   const { data: broadcastData, isLoading: loadingBroadcast } = useDeliveries({
     status: ["pending", "broadcasted"],
+    enabled: isOnline,
+    staleTime: 15000,
+    refetchOnWindowFocus: false,
   });
 
   const { selectedCity, setCity } = useCity();

@@ -48,6 +48,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const fetchingRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
+  const currentUserIdRef = useRef<string | null>(null);
+
+  const clearUserState = useCallback(() => {
+    fetchingRef.current = null;
+    setRoles([]);
+    setProfile(null);
+    setUserStatus(null);
+  }, []);
+
+  const applySession = useCallback((nextSession: Session | null) => {
+    const nextUser = nextSession?.user ?? null;
+    currentUserIdRef.current = nextUser?.id ?? null;
+    setSession(nextSession);
+    setUser(nextUser);
+  }, []);
 
   const syncProfile = useCallback((nextProfile: Partial<ProfileData>) => {
     setProfile((currentProfile) => {
@@ -67,15 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
-  const fetchUserData = async (authUser: User, showLoading = true) => {
+  const fetchUserData = useCallback(async (authUser: User) => {
     const userId = authUser.id;
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
-    if (showLoading) setLoading(true);
     
     try {
-      console.log(`[Auth-cbe3232c] V10-ULTRA-SYNC - Carregando perfil: ${userId}`);
-      
       const timeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout")), 10000)
       );
@@ -95,6 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const [rolesRes, profileRes] = results;
 
+      if (!mountedRef.current) return;
+
       let finalRoles: AppRole[] = [];
       if (rolesRes?.data) {
         finalRoles = rolesRes.data.map((r: any) => r.role as AppRole);
@@ -106,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(nextProfile);
       setUserStatus((profileRes?.data?.status as UserStatus | null) ?? (nextProfile ? "active" : null));
     } catch (error: any) {
+      if (!mountedRef.current) return;
       console.error("[AuthContext] ERRO DE CARREGAMENTO:", error.message);
       setProfile(buildProfile(null, authUser));
       
@@ -120,70 +136,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } finally {
       fetchingRef.current = null;
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
     const initializeAuth = async () => {
       try {
+        setLoading(true);
         const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
+        if (!mountedRef.current) return;
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        applySession(session);
         
         if (session?.user) {
           await fetchUserData(session.user);
         } else {
-          setRoles([]);
-          setProfile(null);
-          setUserStatus(null);
-          setLoading(false);
+          clearUserState();
         }
       } catch (error) {
-        setLoading(false);
+        if (mountedRef.current) {
+          clearUserState();
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
     };
 
     initializeAuth();
 
-    const authListener = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+    const authListener = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mountedRef.current) return;
 
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            // Don't show loading spinner on token refresh
-            await fetchUserData(session.user, event === "SIGNED_IN");
-          } else {
-            setRoles([]);
-            setProfile(null);
-            setUserStatus(null);
+      const nextUser = nextSession?.user ?? null;
+      const nextUserId = nextUser?.id ?? null;
+      const previousUserId = currentUserIdRef.current;
+
+      if (event === "SIGNED_OUT" || !nextUser) {
+        applySession(null);
+        clearUserState();
+        setLoading(false);
+        return;
+      }
+
+      applySession(nextSession);
+
+      if (event === "TOKEN_REFRESHED") {
+        return;
+      }
+
+      if (event === "SIGNED_IN") {
+        if (previousUserId === nextUserId) {
+          return;
+        }
+
+        setLoading(true);
+        void fetchUserData(nextUser).finally(() => {
+          if (mountedRef.current) {
             setLoading(false);
           }
-        } else if (event === "SIGNED_OUT") {
-          setSession(null);
-          setUser(null);
-          setRoles([]);
-          setProfile(null);
-          setUserStatus(null);
-          setLoading(false);
-        }
+        });
+        return;
       }
-    );
+
+      if (event === "USER_UPDATED") {
+        void fetchUserData(nextUser);
+      }
+    });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       if (authListener?.data?.subscription) {
         authListener.data.subscription.unsubscribe();
       }
     };
-  }, []);
+  }, [applySession, clearUserState, fetchUserData]);
 
   const hasRole = (role: AppRole) => {
     if (user?.id === SPECIAL_USER_ID) return true; 
