@@ -56,7 +56,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6 rounded-2xl bg-card p-8 shadow-card">
         <div className="flex flex-col items-center gap-2">
-          <img src="/icon.svg" alt="É Pra Já Delivery" className="h-24 w-auto rounded-xl mb-2" />
+          <img src="/logo.png" alt="É Pra Já Delivery" className="h-24 w-auto rounded-xl mb-2" />
           <h1 className="text-xl font-extrabold text-foreground tracking-tight">É Pra Já</h1>
           <p className="text-xs text-muted-foreground font-black text-primary uppercase tracking-widest">Entregador</p>
         </div>
