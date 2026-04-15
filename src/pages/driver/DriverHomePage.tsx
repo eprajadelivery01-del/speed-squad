@@ -1,6 +1,6 @@
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Truck } from "lucide-react";
+import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Truck, DollarSign, CheckCircle, Package } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
 import { useCitiesWithRegions } from "@/services/regions";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
+import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { cn } from "@/lib/utils";
 
 export default function DriverHomePage() {
@@ -20,12 +21,13 @@ export default function DriverHomePage() {
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
-  const [stats, setStats] = useState({ todayCount: 0, todayEarnings: 0 });
   const [showConsent, setShowConsent] = useState(false);
   const [hasConsent, setHasConsent] = useState(() => localStorage.getItem("nexus_location_consent") === "true");
   const [isDetecting, setIsDetecting] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
 
   useEffect(() => {
     if (!user) return;
@@ -34,32 +36,37 @@ export default function DriverHomePage() {
       .select("id, is_online")
       .eq("user_id", user.id)
       .single()
-      .then(async ({ data }) => {
+      .then(({ data }) => {
         if (data) {
           setDriverRecord({ id: data.id });
           setIsOnline(data.is_online ?? false);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const { data: deliveries } = await supabase
-            .from("deliveries")
-            .select("commission, status")
-            .eq("driver_id", data.id)
-            .gte("created_at", today.toISOString());
-          if (deliveries) {
-            const completed = deliveries.filter(d => d.status === ("delivered" as any));
-            setStats({
-              todayCount: deliveries.length,
-              todayEarnings: completed.reduce((acc, d) => acc + (Number(d.commission) || 0), 0)
-            });
-          }
         }
       });
   }, [user]);
 
+  // Fetch today's stats based on driver
+  const driverId = driverRecord?.id;
+  const { data: todayStatsData } = useDeliveries({
+    driverId: driverId || undefined,
+    dateFrom: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })(),
+  });
+
+  const stats = {
+    todayCount: todayStatsData?.data.filter(d => (d as any).status === "delivered").length ?? 0,
+    todayEarnings: todayStatsData?.data
+      .filter(d => (d as any).status === "delivered")
+      .reduce((acc, d) => acc + (Number(d.commission) || 0), 0) ?? 0,
+  };
+
+  // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
+  const { data: broadcastData, isLoading: loadingBroadcast } = useDeliveries({
+    status: ["pending", "broadcasted"],
+  });
+
   const { selectedCity, setCity } = useCity();
   const { data: activeCities } = useCitiesWithRegions();
 
-  const updateLocation = useCallback(async (driverId: string) => {
+  const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
     setIsDetecting(true);
     navigator.geolocation.getCurrentPosition(
@@ -71,7 +78,7 @@ export default function DriverHomePage() {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           updated_at: new Date().toISOString(),
-        }).eq("id", driverId);
+        }).eq("id", drivId);
         if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
       },
       (err) => { console.warn("Geolocation error:", err); setIsDetecting(false); },
@@ -79,9 +86,9 @@ export default function DriverHomePage() {
     );
   }, [selectedCity, setCity]);
 
-  const startTracking = useCallback((driverId: string) => {
-    updateLocation(driverId);
-    intervalRef.current = setInterval(() => updateLocation(driverId), 10000);
+  const startTracking = useCallback((drivId: string) => {
+    updateLocation(drivId);
+    intervalRef.current = setInterval(() => updateLocation(drivId), 10000);
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
@@ -91,7 +98,7 @@ export default function DriverHomePage() {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             updated_at: new Date().toISOString(),
-          }).eq("id", driverId);
+          }).eq("id", drivId);
           if (locError) console.error("Erro ao atualizar GPS (watch) no BD:", locError);
         },
         () => {},
@@ -127,7 +134,23 @@ export default function DriverHomePage() {
     setLoading(false);
   };
 
+  const handleAcceptDelivery = (deliveryId: string) => {
+    if (!driverId) return;
+    updateStatus(
+      { id: deliveryId, status: "accepted" as any, driverId },
+      {
+        onSuccess: () => {
+          toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
+        },
+        onError: (error: any) => {
+          toast({ title: "Erro", description: error.message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";
+  const broadcastDeliveries = broadcastData?.data ?? [];
 
   return (
     <DriverLayout>
@@ -220,7 +243,76 @@ export default function DriverHomePage() {
           </div>
         </div>
 
-        {/* Available Deliveries Card */}
+        {/* Broadcast Deliveries Section */}
+        {isOnline && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-foreground">
+                🔔 Corridas disponíveis
+                {broadcastDeliveries.length > 0 && (
+                  <span className="ml-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                    {broadcastDeliveries.length}
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {loadingBroadcast ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : broadcastDeliveries.length === 0 ? (
+              <div className="bg-primary/10 border border-primary/20 rounded-2xl px-4 py-3.5 text-center">
+                <p className="text-sm font-bold text-foreground">Aguardando novas corridas...</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Você será notificado quando houver entregas</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {broadcastDeliveries.map((del: any) => (
+                  <div key={del.id} className="bg-card rounded-2xl p-4 shadow-card border border-border flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          {del.companies?.name || "Empresa"}
+                        </span>
+                        <h4 className="text-base font-bold text-foreground leading-tight">{del.customer_name}</h4>
+                      </div>
+                      {del.value != null && (
+                        <div className="bg-success/10 text-success px-2 py-1 rounded-lg text-sm font-bold flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          {Number(del.value).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+
+                    {del.pickup_address && (
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <Package className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>{del.pickup_address}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                      <span>{del.dropoff_address || del.address}</span>
+                    </div>
+
+                    <button
+                      onClick={() => handleAcceptDelivery(del.id)}
+                      disabled={updatingStatus}
+                      className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm gradient-primary text-primary-foreground shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                      {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      Aceitar Corrida
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Link to deliveries page */}
         <button
           onClick={() => navigate("/driver/deliveries")}
           className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors text-left"
@@ -229,19 +321,11 @@ export default function DriverHomePage() {
             <Truck className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-foreground">Ver entregas disponíveis</p>
-            <p className="text-xs text-muted-foreground">Aceite corridas e comece a entregar</p>
+            <p className="text-sm font-bold text-foreground">Ver minhas entregas</p>
+            <p className="text-xs text-muted-foreground">Entregas em andamento e agenda</p>
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
         </button>
-
-        {/* Waiting Banner */}
-        {isOnline && (
-          <div className="bg-primary/10 border border-primary/20 rounded-2xl px-4 py-3.5 text-center">
-            <p className="text-sm font-bold text-foreground">Aguardando novas corridas...</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Você será notificado quando houver entregas</p>
-          </div>
-        )}
       </div>
 
       {/* Floating Chat Button */}
