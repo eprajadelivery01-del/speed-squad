@@ -7,15 +7,15 @@
     "icons":  [
                   {
                       "purpose":  "any maskable",
-                      "type":  "image/svg+xml",
+                      "type":  "image/png",
                       "sizes":  "192x192",
-                      "src":  "/icon.svg"
+                      "src":  "/logo.png"
                   },
                   {
                       "purpose":  "any maskable",
-                      "type":  "image/svg+xml",
+                      "type":  "image/png",
                       "sizes":  "512x512",
-                      "src":  "/icon.svg"
+                      "src":  "/logo.png"
                   }
               ],
     "start_url":  "."
