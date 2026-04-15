@@ -1,4 +1,4 @@
-import { useState, useEffect, useState as useStateReact } from "react";
+import { useState, useEffect } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
@@ -133,7 +133,7 @@ export default function DriverDeliveriesPage() {
 }
 
 function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {  
-  const [showInfo, setShowInfo] = useStateReact(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const getButtonText = () => {
     switch (delivery.status) {
