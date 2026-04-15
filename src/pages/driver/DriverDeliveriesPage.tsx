@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
-import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, FileText, X, MessageCircle } from "lucide-react";
+import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, X, MessageCircle, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -203,6 +203,19 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
         </div>
       </div>
 
+      {/* Valor a cobrar do cliente */}
+      {delivery.estimated_value != null && Number(delivery.estimated_value) > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="h-4 w-4 text-amber-600" />
+            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Cobrar do cliente</span>
+          </div>
+          <span className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
+            R$ {Number(delivery.estimated_value).toFixed(2)}
+          </span>
+        </div>
+      )}
+
       {!isDone && (
         <div className="flex items-center gap-2 mt-2 pt-4 border-t border-border">
           <button
@@ -227,7 +240,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
         <div className="bg-muted/50 rounded-xl p-4 flex flex-col gap-3 border border-border animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <User className="h-4 w-4 text-primary" /> Informações do Cliente
+              <Phone className="h-4 w-4 text-primary" /> Contato
             </h4>
             <button onClick={() => setShowInfo(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground">
               <X className="h-4 w-4" />
@@ -261,42 +274,26 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               </a>
             )}
 
-            {delivery.customer_cpf && (
-              <div className="flex items-center gap-2">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">CPF: <span className="font-semibold text-foreground">{delivery.customer_cpf}</span></span>
-              </div>
-            )}
-
-            {delivery.notes && (
-              <div className="flex items-start gap-2 pt-1 border-t border-border">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                <span className="text-muted-foreground">{delivery.notes}</span>
-              </div>
-            )}
-
             {delivery.companies?.phone && (
               <div className="flex items-center gap-2 pt-1 border-t border-border">
                 <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <span className="text-muted-foreground text-xs">Loja: </span>
-                <a href={`tel:${delivery.companies.phone}`} className="text-primary font-semibold underline text-xs">
+                <a href={`tel:${delivery.companies.phone}`} className="text-primary font-semibold underline text-sm">
                   {delivery.companies.phone}
                 </a>
               </div>
             )}
 
-            {delivery.estimated_value != null && (
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">Valor do pedido: <span className="font-semibold text-foreground">R$ {Number(delivery.estimated_value).toFixed(2)}</span></span>
-              </div>
-            )}
-
-            {delivery.difficulty && (
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">Dificuldade: <span className="font-semibold text-foreground">{delivery.difficulty}</span></span>
-              </div>
+            {delivery.companies?.phone && (
+              <a
+                href={`https://wa.me/55${delivery.companies.phone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp da Loja
+              </a>
             )}
           </div>
         </div>

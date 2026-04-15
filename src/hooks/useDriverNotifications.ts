@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 
-const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+const NOTIFICATION_SOUND = "/notification.mp3";
+const FALLBACK_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export function useDriverNotifications() {
   const { user } = useAuth();
@@ -15,19 +16,25 @@ export function useDriverNotifications() {
   const channelsRef = useRef<any[]>([]);
 
   useEffect(() => {
-    audioRef.current = new Audio(NOTIFICATION_SOUND);
+    const audio = new Audio(NOTIFICATION_SOUND);
+    audio.addEventListener("error", () => {
+      audioRef.current = new Audio(FALLBACK_SOUND);
+      audioRef.current.load();
+    });
+    audio.load();
+    audioRef.current = audio;
   }, []);
 
   const playNotificationSound = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {
-        console.warn("Audio playback blocked by browser policies.");
+      audioRef.current.play().catch((err) => {
+        console.warn("[Notifications] Audio blocked:", err.message);
       });
     }
     // Vibration API
     if ("vibrate" in navigator) {
-      navigator.vibrate([200, 100, 200]);
+      navigator.vibrate([300, 150, 300, 150, 300]);
     }
   }, []);
 
