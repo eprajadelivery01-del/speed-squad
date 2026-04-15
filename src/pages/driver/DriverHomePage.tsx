@@ -7,9 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
-import { useCitiesWithRegions } from "@/services/regions";
-import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
+import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
+import { cn } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function DriverHomePage() {
@@ -75,7 +75,7 @@ export default function DriverHomePage() {
   });
 
   const { selectedCity, setCity } = useCity();
-  const { data: activeCities } = useCitiesWithRegions();
+  
 
   const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
