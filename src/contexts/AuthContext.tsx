@@ -158,7 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(session);
           setUser(session?.user ?? null);
           if (session?.user) {
-            await fetchUserData(session.user);
+            // Don't show loading spinner on token refresh
+            await fetchUserData(session.user, event === "SIGNED_IN");
           } else {
             setRoles([]);
             setProfile(null);
