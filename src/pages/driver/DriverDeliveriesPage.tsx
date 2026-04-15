@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
-import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, FileText, X, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,7 +132,9 @@ export default function DriverDeliveriesPage() {
   );
 }
 
-function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
+function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {  
+  const [showInfo, setShowInfo] = useState(false);
+
   const getButtonText = () => {
     switch (delivery.status) {
       case "pending":
@@ -214,9 +216,89 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : getButtonIcon()}
             {getButtonText()}
           </button>
-          <button className="p-3 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors">
+          <button onClick={() => setShowInfo(!showInfo)} className="p-3 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors">
             <AlertCircle className="h-5 w-5" />
           </button>
+        </div>
+      )}
+
+      {/* Customer Info Panel */}
+      {showInfo && (
+        <div className="bg-muted/50 rounded-xl p-4 flex flex-col gap-3 border border-border animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+              <User className="h-4 w-4 text-primary" /> Informações do Cliente
+            </h4>
+            <button onClick={() => setShowInfo(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2.5 text-sm">
+            <div className="flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="font-semibold text-foreground">{delivery.customer_name || "—"}</span>
+            </div>
+
+            {delivery.customer_phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <a href={`tel:${delivery.customer_phone}`} className="text-primary font-semibold underline">
+                  {delivery.customer_phone}
+                </a>
+              </div>
+            )}
+
+            {delivery.customer_phone && (
+              <a
+                href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp do Cliente
+              </a>
+            )}
+
+            {delivery.customer_cpf && (
+              <div className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">CPF: <span className="font-semibold text-foreground">{delivery.customer_cpf}</span></span>
+              </div>
+            )}
+
+            {delivery.notes && (
+              <div className="flex items-start gap-2 pt-1 border-t border-border">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <span className="text-muted-foreground">{delivery.notes}</span>
+              </div>
+            )}
+
+            {delivery.companies?.phone && (
+              <div className="flex items-center gap-2 pt-1 border-t border-border">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground text-xs">Loja: </span>
+                <a href={`tel:${delivery.companies.phone}`} className="text-primary font-semibold underline text-xs">
+                  {delivery.companies.phone}
+                </a>
+              </div>
+            )}
+
+            {delivery.estimated_value != null && (
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">Valor do pedido: <span className="font-semibold text-foreground">R$ {Number(delivery.estimated_value).toFixed(2)}</span></span>
+              </div>
+            )}
+
+            {delivery.difficulty && (
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground">Dificuldade: <span className="font-semibold text-foreground">{delivery.difficulty}</span></span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
