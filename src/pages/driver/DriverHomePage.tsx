@@ -10,7 +10,6 @@ import { useCity } from "@/contexts/CityContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
