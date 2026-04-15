@@ -217,8 +217,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : getButtonIcon()}
             {getButtonText()}
           </button>
-          <button className="p-3 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors">
-            onClick={() => setShowInfo(!showInfo)}
+          <button onClick={() => setShowInfo(!showInfo)} className="p-3 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors">
             <AlertCircle className="h-5 w-5" />
           </button>
         </div>
