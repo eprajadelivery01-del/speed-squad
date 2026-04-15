@@ -16,11 +16,30 @@ export interface DeliveryWithRelations {
   region_id: string | null;
   accepted_at: string | null;
   collected_at: string | null;
-  completed_at: string | null;
+  delivered_at: string | null;
+  completed_at?: string | null;
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
   companies?: { name: string; phone: string | null } | null;
+}
+
+const APP_TO_DB_STATUS: Record<string, string> = {
+  in_transit: "in_route",
+  delivered: "completed",
+};
+
+const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
+  in_route: "in_transit",
+  completed: "delivered",
+};
+
+function toDbStatus(status: string) {
+  return APP_TO_DB_STATUS[status] ?? status;
+}
+
+function toAppStatus(status: string) {
+  return (DB_TO_APP_STATUS[status] ?? status) as DeliveryStatus;
 }
 
 interface UseDeliveriesParams {
@@ -66,9 +85,9 @@ export function useDeliveries(params?: UseDeliveriesParams) {
 
       if (status && status !== "all") {
         if (Array.isArray(status)) {
-          query = query.in("status", status as any);
+          query = query.in("status", status.map(toDbStatus) as any);
         } else {
-          query = query.eq("status", status as any);
+          query = query.eq("status", toDbStatus(status) as any);
         }
       }
       if (search) query = query.ilike("customer_name", `%${search}%`);
@@ -88,7 +107,14 @@ export function useDeliveries(params?: UseDeliveriesParams) {
 
       const { data, error, count } = await query;
       if (error) throw error;
-      return { data: (data ?? []) as DeliveryWithRelations[], count: count || 0 };
+
+      const normalizedData = (data ?? []).map((delivery: any) => ({
+        ...delivery,
+        status: toAppStatus(delivery.status),
+        delivered_at: delivery.delivered_at ?? delivery.completed_at ?? null,
+      }));
+
+      return { data: normalizedData as DeliveryWithRelations[], count: count || 0 };
     },
   });
 }
@@ -127,12 +153,7 @@ export function useUpdateDeliveryStatus() {
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
       const now = new Date().toISOString();
-      // Map app status names to DB enum values
-      const dbStatusMap: Record<string, string> = {
-        in_transit: "in_route",
-        delivered: "completed",
-      };
-      const dbStatus = dbStatusMap[status] || status;
+      const dbStatus = toDbStatus(status);
 
       const updates: Record<string, string> = { status: dbStatus, updated_at: now };
 
@@ -141,8 +162,8 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = now;
-      if (status === "delivered") updates.completed_at = now;
-      if (status === "cancelled") updates.cancelled_at = now;
+      if (dbStatus === "completed") updates.delivered_at = now;
+      if (dbStatus === "cancelled") updates.cancelled_at = now;
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
