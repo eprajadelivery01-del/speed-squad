@@ -127,15 +127,14 @@ export function useUpdateDeliveryStatus() {
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
       const now = new Date().toISOString();
-      const updates: {
-        status: DeliveryStatus;
-        updated_at: string;
-        accepted_at?: string;
-        driver_id?: string;
-        collected_at?: string;
-        completed_at?: string;
-        cancelled_at?: string;
-      } = { status, updated_at: now };
+      // Map app status names to DB enum values
+      const dbStatusMap: Record<string, string> = {
+        in_transit: "in_route",
+        delivered: "completed",
+      };
+      const dbStatus = dbStatusMap[status] || status;
+
+      const updates: Record<string, string> = { status: dbStatus, updated_at: now };
 
       if (status === "accepted") {
         updates.accepted_at = now;
@@ -145,7 +144,7 @@ export function useUpdateDeliveryStatus() {
       if (status === "delivered") updates.completed_at = now;
       if (status === "cancelled") updates.cancelled_at = now;
 
-      const { error } = await supabase.from("deliveries").update(updates).eq("id", id);
+      const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
