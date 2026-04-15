@@ -67,11 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
-  const fetchUserData = async (authUser: User) => {
+  const fetchUserData = async (authUser: User, showLoading = true) => {
     const userId = authUser.id;
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     
     try {
       console.log(`[Auth-cbe3232c] V10-ULTRA-SYNC - Carregando perfil: ${userId}`);
