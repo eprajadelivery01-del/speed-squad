@@ -66,7 +66,7 @@ export function BusinessLayout({ children, title }: BusinessLayoutProps) {
         <div className="px-5 py-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-md p-1">
-              <img src="/logo.png" alt="É Pra Já" className="w-full h-full object-contain" />
+              <img src="/icon.svg" alt="É Pra Já" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground leading-none mb-0.5 font-bold uppercase tracking-widest">É Pra Já</p>

@@ -99,7 +99,7 @@ export function useDriverNotifications() {
                   body: delivery.pickup_address
                     ? `Retirada: ${delivery.pickup_address}`
                     : "Uma nova entrega foi atribuída a você",
-                  icon: "/favicon.png",
+                  icon: "/icon.svg",
                   tag: `delivery-${delivery.id}`,
                 });
               } catch {

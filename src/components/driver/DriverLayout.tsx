@@ -51,7 +51,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       <header className="flex-none bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src="/logo.png"
+            src="/icon.svg"
             alt="ÉpraJá"
             className="w-10 h-10 rounded-xl object-contain"
           />
