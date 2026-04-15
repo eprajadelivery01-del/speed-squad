@@ -67,11 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
-  const fetchUserData = async (authUser: User) => {
+  const fetchUserData = async (authUser: User, showLoading = true) => {
     const userId = authUser.id;
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     
     try {
       console.log(`[Auth-cbe3232c] V10-ULTRA-SYNC - Carregando perfil: ${userId}`);
@@ -158,7 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(session);
           setUser(session?.user ?? null);
           if (session?.user) {
-            await fetchUserData(session.user);
+            // Don't show loading spinner on token refresh
+            await fetchUserData(session.user, event === "SIGNED_IN");
           } else {
             setRoles([]);
             setProfile(null);
