@@ -32,13 +32,31 @@ interface UseDeliveriesParams {
   dateTo?: string;
   pageSize?: number;
   page?: number;
+  enabled?: boolean;
+  staleTime?: number;
+  refetchOnWindowFocus?: boolean;
 }
 
 export function useDeliveries(params?: UseDeliveriesParams) {
-  const { status, search, companyId, driverId, dateFrom, dateTo, pageSize = 50, page = 0 } = params || {};
+  const {
+    status,
+    search,
+    companyId,
+    driverId,
+    dateFrom,
+    dateTo,
+    pageSize = 50,
+    page = 0,
+    enabled = true,
+    staleTime = 0,
+    refetchOnWindowFocus = true,
+  } = params || {};
 
   return useQuery({
     queryKey: ["deliveries", status, search, companyId, driverId, dateFrom, dateTo, page, pageSize],
+    enabled,
+    staleTime,
+    refetchOnWindowFocus,
     queryFn: async () => {
       let query = supabase
         .from("deliveries")
