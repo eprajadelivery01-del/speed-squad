@@ -112,10 +112,10 @@ export function useDeliveryStats() {
         today: data.length,
         total: totalRes.count ?? 0,
         pending: data.filter((d) => d.status === "pending").length,
-        inTransit: data.filter((d) => d.status === ("in_transit" as any)).length,
-        delivered: data.filter((d) => d.status === ("delivered" as any)).length,
+        inTransit: data.filter((d) => d.status === "in_route").length,
+        delivered: data.filter((d) => d.status === "completed").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === ("delivered" as any)).reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
+        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
       };
     },
     refetchInterval: 30000,
