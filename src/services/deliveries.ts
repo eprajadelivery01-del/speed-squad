@@ -126,16 +126,26 @@ export function useUpdateDeliveryStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
-      const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      const now = new Date().toISOString();
+      const updates: {
+        status: DeliveryStatus;
+        updated_at: string;
+        accepted_at?: string;
+        driver_id?: string;
+        collected_at?: string;
+        completed_at?: string;
+        cancelled_at?: string;
+      } = { status, updated_at: now };
+
       if (status === "accepted") {
-        updates.accepted_at = new Date().toISOString();
+        updates.accepted_at = now;
         if (driverId) updates.driver_id = driverId;
       }
-      if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.completed_at = new Date().toISOString();
-      if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
+      if (status === "collecting") updates.collected_at = now;
+      if (status === "delivered") updates.completed_at = now;
+      if (status === "cancelled") updates.cancelled_at = now;
 
-      const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
+      const { error } = await supabase.from("deliveries").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
