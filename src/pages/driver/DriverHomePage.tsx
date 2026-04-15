@@ -7,9 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
-import { useCitiesWithRegions } from "@/services/regions";
-import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
+import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
 
 export default function DriverHomePage() {
@@ -75,7 +74,7 @@ export default function DriverHomePage() {
   });
 
   const { selectedCity, setCity } = useCity();
-  const { data: activeCities } = useCitiesWithRegions();
+  
 
   const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
@@ -221,20 +220,15 @@ export default function DriverHomePage() {
           </button>
         </div>
 
-        {/* City Selector */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <MapPin className="h-4 w-4 text-primary" />
+        {/* City Auto-detected */}
+        {isOnline && (
+          <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5">
+            <MapPin className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-sm font-semibold text-foreground">
+              {isDetecting ? "📍 Detectando localização..." : selectedCity ? `📍 ${selectedCity}` : "📍 Aguardando GPS..."}
+            </p>
           </div>
-          <select
-            value={selectedCity || ""}
-            onChange={(e) => setCity(e.target.value || null)}
-            className="flex-1 bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-semibold outline-none appearance-none text-foreground"
-          >
-            <option value="">{isDetecting ? "📍 Detectando..." : "Selecione a cidade"}</option>
-            {((activeCities ?? []) as string[]).map(city => <option key={city} value={city}>{city}</option>)}
-          </select>
-        </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
