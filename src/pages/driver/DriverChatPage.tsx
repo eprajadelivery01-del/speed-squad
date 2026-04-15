@@ -16,6 +16,7 @@ export default function DriverChatPage() {
   
   const [selectedConv, setSelectedConv] = useState<any>(null);
   const [message, setMessage] = useState("");
+  const [autoOpened, setAutoOpened] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Fetch profiles for participants
@@ -48,11 +49,18 @@ export default function DriverChatPage() {
     queryFn: getAdminId
   });
 
+  // Auto-open admin chat on mount
+  useEffect(() => {
+    if (autoOpened || !user?.id || !adminId) return;
+    setAutoOpened(true);
+    getDirectConversation(user.id, adminId).then((conv) => {
+      setSelectedConv(conv);
+      qc.invalidateQueries({ queryKey: ["driver-conversations", user.id] });
+    }).catch(console.error);
+  }, [user?.id, adminId, autoOpened, qc]);
+
   const handleStartAdminChat = async () => {
-    if (!user?.id || !adminId) {
-      console.error("User or Admin ID missing", { userId: user?.id, adminId });
-      return;
-    }
+    if (!user?.id || !adminId) return;
     try {
       const conv = await getDirectConversation(user.id, adminId);
       qc.invalidateQueries({ queryKey: ["driver-conversations", user.id] });
