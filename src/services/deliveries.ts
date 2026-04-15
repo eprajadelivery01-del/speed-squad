@@ -112,10 +112,10 @@ export function useDeliveryStats() {
         today: data.length,
         total: totalRes.count ?? 0,
         pending: data.filter((d) => d.status === "pending").length,
-        inTransit: data.filter((d) => d.status === ("in_transit" as any)).length,
-        delivered: data.filter((d) => d.status === ("delivered" as any)).length,
+        inTransit: data.filter((d) => d.status === "in_route").length,
+        delivered: data.filter((d) => d.status === "completed").length,
         cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === ("delivered" as any)).reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
+        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
       };
     },
     refetchInterval: 30000,
@@ -126,14 +126,23 @@ export function useUpdateDeliveryStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
-      const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      const now = new Date().toISOString();
+      // Map app status names to DB enum values
+      const dbStatusMap: Record<string, string> = {
+        in_transit: "in_route",
+        delivered: "completed",
+      };
+      const dbStatus = dbStatusMap[status] || status;
+
+      const updates: Record<string, string> = { status: dbStatus, updated_at: now };
+
       if (status === "accepted") {
-        updates.accepted_at = new Date().toISOString();
+        updates.accepted_at = now;
         if (driverId) updates.driver_id = driverId;
       }
-      if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.completed_at = new Date().toISOString();
-      if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
+      if (status === "collecting") updates.collected_at = now;
+      if (status === "delivered") updates.completed_at = now;
+      if (status === "cancelled") updates.cancelled_at = now;
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
