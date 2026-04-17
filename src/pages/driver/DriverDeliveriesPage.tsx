@@ -27,18 +27,21 @@ export default function DriverDeliveriesPage() {
     }
   }, [user]);
 
-  // "Andamento" tab: deliveries the driver accepted/is working on (accepted, collecting, in_transit)
-  const { data: inProgressData, isLoading: loadingInProgress } = useDeliveries({
+  // Unified deliveries fetch for the driver
+  const { data: myData, isLoading: loadingDeliveries } = useDeliveries({
     driverId: driverId || undefined,
-    status: ["accepted", "collecting", "in_transit"],
     enabled: !!driverId,
   });
 
-  // "Minha Agenda" tab: all deliveries assigned directly to me (all statuses)
-  const { data: myData, isLoading: loadingMy } = useDeliveries({
-    driverId: driverId || undefined,
-    enabled: !!driverId,
-  });
+  // Filter "Andamento": accepted and being worked on
+  const inProgressDeliveries = myData?.data.filter(d => 
+    ["accepted", "collecting", "in_transit"].includes(d.status)
+  ) ?? [];
+
+  // Filter "Minha Agenda": assigned directly (pending/broadcasted) but not yet accepted
+  const agendaDeliveries = myData?.data.filter(d => 
+    ["pending", "broadcasted"].includes(d.status)
+  ) ?? [];
 
   const handleAction = (deliveryId: string, currentStatus: string) => {
     if (!driverId) return;
@@ -71,11 +74,7 @@ export default function DriverDeliveriesPage() {
     );
   };
 
-  // Filter "Minha Agenda" to only show deliveries directly assigned (not broadcast-accepted)
-  // These are deliveries where assignment_type is "direct" or similar
-  const agendaDeliveries = myData?.data.filter(d =>
-    d.status !== ("delivered" as any) && d.status !== "cancelled"
-  ) ?? [];
+  // We no longer need this separate filter here as we merged them above
 
   return (
     <DriverLayout>
@@ -86,28 +85,35 @@ export default function DriverDeliveriesPage() {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="in-progress">
               Andamento
-              {(inProgressData?.data?.length ?? 0) > 0 && (
+              {inProgressDeliveries.length > 0 && (
                 <span className="ml-1.5 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {inProgressData?.data.length}
+                  {inProgressDeliveries.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="mine">Minha Agenda</TabsTrigger>
+            <TabsTrigger value="mine">
+              Minha Agenda
+              {agendaDeliveries.length > 0 && (
+                <span className="ml-1.5 bg-muted-foreground/20 text-muted-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {agendaDeliveries.length}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Andamento: deliveries in progress (accepted by driver) */}
           <TabsContent value="in-progress" className="mt-4">
-            {loadingInProgress || !driverId ? (
+            {loadingDeliveries || !driverId ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : (inProgressData?.data?.length ?? 0) === 0 ? (
+            ) : inProgressDeliveries.length === 0 ? (
               <EmptyState
                 icon={<Truck className="h-10 w-10" />}
                 title="Nenhuma entrega em andamento"
-                subtitle="Aceite corridas na tela inicial para vê-las aqui."
+                subtitle="Aceite corridas na agenda ou na tela inicial para vê-las aqui."
               />
             ) : (
               <div className="grid gap-4">
-                {inProgressData?.data.map((del) => (
+                {inProgressDeliveries.map((del) => (
                   <DeliveryCard key={del.id} delivery={del} onAction={() => handleAction(del.id, del.status)} loading={updating} isAssigned />
                 ))}
               </div>
@@ -116,7 +122,7 @@ export default function DriverDeliveriesPage() {
 
           {/* Minha Agenda: direct assignments */}
           <TabsContent value="mine" className="mt-4">
-            {loadingMy || !driverId ? (
+            {loadingDeliveries || !driverId ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : agendaDeliveries.length === 0 ? (
               <EmptyState icon={<Package className="h-10 w-10" />} title="Sua agenda está vazia" subtitle="Entregas direcionadas a você aparecerão aqui." />
