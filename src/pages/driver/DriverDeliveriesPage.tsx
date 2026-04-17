@@ -31,11 +31,13 @@ export default function DriverDeliveriesPage() {
   const { data: inProgressData, isLoading: loadingInProgress } = useDeliveries({
     driverId: driverId || undefined,
     status: ["accepted", "collecting", "in_transit"],
+    enabled: !!driverId,
   });
 
   // "Minha Agenda" tab: all deliveries assigned directly to me (all statuses)
   const { data: myData, isLoading: loadingMy } = useDeliveries({
     driverId: driverId || undefined,
+    enabled: !!driverId,
   });
 
   const handleAction = (deliveryId: string, currentStatus: string) => {
@@ -95,7 +97,7 @@ export default function DriverDeliveriesPage() {
 
           {/* Andamento: deliveries in progress (accepted by driver) */}
           <TabsContent value="in-progress" className="mt-4">
-            {loadingInProgress ? (
+            {loadingInProgress || !driverId ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : (inProgressData?.data?.length ?? 0) === 0 ? (
               <EmptyState
@@ -114,7 +116,7 @@ export default function DriverDeliveriesPage() {
 
           {/* Minha Agenda: direct assignments */}
           <TabsContent value="mine" className="mt-4">
-            {loadingMy ? (
+            {loadingMy || !driverId ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : agendaDeliveries.length === 0 ? (
               <EmptyState icon={<Package className="h-10 w-10" />} title="Sua agenda está vazia" subtitle="Entregas direcionadas a você aparecerão aqui." />
