@@ -171,9 +171,9 @@ export function useUpdateDeliveryStatus() {
       // Update linked order status to keep customer informed
       if (delivery?.order_id) {
         let orderStatus = "";
-        if (status === "accepted") orderStatus = "ready";
-        if (status === "collecting") orderStatus = "ready";
-        if (status === "in_transit") orderStatus = "in_route";
+        if (status === "accepted") orderStatus = "confirmed";
+        if (status === "collecting") orderStatus = "preparing";
+        if (status === "in_transit") orderStatus = "delivering";
         if (status === "delivered") orderStatus = "delivered";
         if (dbStatus === "cancelled") orderStatus = "cancelled";
 
