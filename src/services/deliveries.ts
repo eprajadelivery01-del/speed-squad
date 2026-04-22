@@ -24,13 +24,11 @@ export interface DeliveryWithRelations {
   companies?: { name: string; phone: string | null } | null;
 }
 
-const APP_TO_DB_STATUS: Record<string, string> = {
-  in_transit: "in_route",
-  delivered: "completed",
-};
+// DB enum uses: pending, broadcasted, accepted, collecting, in_transit, delivered, cancelled, returned
+// Some legacy rows may still contain "completed" — normalize it to "delivered" for the UI.
+const APP_TO_DB_STATUS: Record<string, string> = {};
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
-  in_route: "in_transit",
   completed: "delivered",
 };
 
