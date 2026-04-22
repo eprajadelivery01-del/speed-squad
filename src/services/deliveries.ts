@@ -24,13 +24,11 @@ export interface DeliveryWithRelations {
   companies?: { name: string; phone: string | null } | null;
 }
 
-const APP_TO_DB_STATUS: Record<string, string> = {
-  in_transit: "in_route",
-  delivered: "completed",
-};
+// DB enum uses: pending, broadcasted, accepted, collecting, in_transit, delivered, cancelled, returned
+// Some legacy rows may still contain "completed" — normalize it to "delivered" for the UI.
+const APP_TO_DB_STATUS: Record<string, string> = {};
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
-  in_route: "in_transit",
   completed: "delivered",
 };
 
@@ -137,11 +135,11 @@ export function useDeliveryStats() {
       return {
         today: data.length,
         total: totalRes.count ?? 0,
-        pending: data.filter((d) => d.status === "pending").length,
-        inTransit: data.filter((d) => d.status === "in_route").length,
-        delivered: data.filter((d) => d.status === "completed").length,
-        cancelled: data.filter((d) => d.status === "cancelled").length,
-        todayRevenue: data.filter((d) => d.status === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
+        pending: data.filter((d) => (d.status as string) === "pending" || (d.status as string) === "broadcasted").length,
+        inTransit: data.filter((d) => (d.status as string) === "in_transit" || (d.status as string) === "collecting" || (d.status as string) === "accepted").length,
+        delivered: data.filter((d) => (d.status as string) === "delivered" || (d.status as string) === "completed").length,
+        cancelled: data.filter((d) => (d.status as string) === "cancelled").length,
+        todayRevenue: data.filter((d) => (d.status as string) === "delivered" || (d.status as string) === "completed").reduce((sum, d) => sum + Number(d.commission ?? 0), 0),
       };
     },
     refetchInterval: 30000,
@@ -162,7 +160,7 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = now;
-      if (dbStatus === "completed") updates.delivered_at = now;
+      if (status === "delivered") updates.delivered_at = now;
       if (dbStatus === "cancelled") updates.cancelled_at = now;
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
