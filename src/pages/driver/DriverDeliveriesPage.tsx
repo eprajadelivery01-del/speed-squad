@@ -209,6 +209,27 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
           <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <span>{delivery.dropoff_address || delivery.address}</span>
         </div>
+
+        {delivery.notes && (
+          <div className={cn(
+            "p-3 rounded-xl border border-border text-sm leading-relaxed",
+            delivery.notes.includes("[ITENS:") ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+          )}>
+            <div className="flex items-start gap-2">
+              <Package className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                {delivery.notes.includes("[ITENS:") ? (
+                  <>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Itens do Pedido</p>
+                    <p className="font-bold text-foreground">{delivery.notes.replace(/\[ITENS:\s*(.*?)\]/g, '$1')}</p>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">{delivery.notes}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Valor a cobrar do cliente */}

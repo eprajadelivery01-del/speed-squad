@@ -302,6 +302,27 @@ export default function DriverHomePage() {
                       <span>{del.dropoff_address || del.address}</span>
                     </div>
 
+                    {del.notes && (
+                      <div className={cn(
+                        "p-2.5 rounded-xl border border-border text-[11px] leading-relaxed",
+                        del.notes.includes("[ITENS:") ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+                      )}>
+                        <div className="flex items-start gap-2">
+                          <Package className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                          <div>
+                            {del.notes.includes("[ITENS:") ? (
+                              <>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-0.5">Itens do Pedido</p>
+                                <p className="font-bold text-foreground leading-tight">{del.notes.replace(/\[ITENS:\s*(.*?)\]/g, '$1')}</p>
+                              </>
+                            ) : (
+                              <p className="text-muted-foreground">{del.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => handleAcceptDelivery(del.id)}
                       disabled={updatingStatus}
