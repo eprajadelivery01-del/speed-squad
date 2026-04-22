@@ -160,7 +160,7 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = now;
-      if (dbStatus === "completed") updates.delivered_at = now;
+      if (status === "delivered") updates.delivered_at = now;
       if (dbStatus === "cancelled") updates.cancelled_at = now;
 
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
