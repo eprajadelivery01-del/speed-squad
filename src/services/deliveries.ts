@@ -163,8 +163,24 @@ export function useUpdateDeliveryStatus() {
       if (status === "delivered") updates.delivered_at = now;
       if (dbStatus === "cancelled") updates.cancelled_at = now;
 
+      const { data: delivery, error: fetchErr } = await supabase.from("deliveries").select("order_id").eq("id", id).maybeSingle();
+      
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
+
+      // Update linked order status to keep customer informed
+      if (delivery?.order_id) {
+        let orderStatus = "";
+        if (status === "accepted") orderStatus = "ready";
+        if (status === "collecting") orderStatus = "ready";
+        if (status === "in_transit") orderStatus = "in_route";
+        if (status === "delivered") orderStatus = "delivered";
+        if (dbStatus === "cancelled") orderStatus = "cancelled";
+
+        if (orderStatus) {
+          await supabase.from("orders").update({ status: orderStatus }).eq("id", delivery.order_id);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveries"] });
