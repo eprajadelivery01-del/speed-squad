@@ -28,12 +28,12 @@ export interface DeliveryWithRelations {
 // Some legacy rows may still contain "completed" — normalize it to "delivered" for the UI.
 const APP_TO_DB_STATUS: Record<string, string> = {
   delivered: "completed",
-  in_transit: "in_route",
+  in_transit: "in_transit",
 };
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
   completed: "delivered",
-  in_route: "in_transit" as any,
+  in_transit: "in_transit" as any,
 };
 
 function toDbStatus(status: string) {
