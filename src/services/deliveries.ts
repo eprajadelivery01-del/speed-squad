@@ -190,7 +190,6 @@ export function useUpdateDeliveryStatus() {
         // Also update by delivery_id as a fallback/backup
         await supabase.from("orders").update({ status: orderStatus }).eq("delivery_id", id);
       }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveries"] });
