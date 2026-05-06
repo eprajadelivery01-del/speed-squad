@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
+import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
 
@@ -160,7 +161,8 @@ export default function DriverHomePage() {
   };
 
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";
-  const broadcastDeliveries = broadcastData?.data ?? [];
+  const rawBroadcastDeliveries = broadcastData?.data ?? [];
+  const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
 
   return (
     <DriverLayout>

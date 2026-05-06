@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 
 export default function DriverDeliveriesPage() {
   const { user } = useAuth();
@@ -27,21 +28,22 @@ export default function DriverDeliveriesPage() {
     }
   }, [user]);
 
-  // Unified deliveries fetch for the driver
   const { data: myData, isLoading: loadingDeliveries } = useDeliveries({
     driverId: driverId || undefined,
     enabled: !!driverId,
   });
+  const rawMyDeliveries = myData?.data ?? [];
+  const myDeliveries = useUniqueDeliveries(rawMyDeliveries);
 
   // Filter "Andamento": accepted and being worked on
-  const inProgressDeliveries = myData?.data.filter(d => 
+  const inProgressDeliveries = myDeliveries.filter(d => 
     ["accepted", "collecting", "in_transit"].includes(d.status)
-  ) ?? [];
+  );
 
   // Filter "Minha Agenda": assigned directly (pending/broadcasted) but not yet accepted
-  const agendaDeliveries = myData?.data.filter(d => 
+  const agendaDeliveries = myDeliveries.filter(d => 
     ["pending", "broadcasted"].includes(d.status)
-  ) ?? [];
+  );
 
   const handleAction = (deliveryId: string, currentStatus: string) => {
     if (!driverId) return;
