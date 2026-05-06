@@ -167,6 +167,8 @@ export function useUpdateDeliveryStatus() {
       if (status === "delivered") updates.delivered_at = now;
       if (dbStatus === "cancelled") updates.cancelled_at = now;
 
+      if (!id) throw new Error("ID da entrega é obrigatório");
+
       const { data: delivery, error: fetchErr } = await supabase.from("deliveries").select("order_id").eq("id", id).maybeSingle();
       
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
