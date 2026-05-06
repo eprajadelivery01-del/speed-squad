@@ -175,17 +175,21 @@ export function useUpdateDeliveryStatus() {
       if (error) throw error;
 
       // Update linked order status to keep customer informed
-      if (delivery?.order_id) {
-        let orderStatus = "";
-        if (status === "accepted") orderStatus = "confirmed";
-        if (status === "collecting") orderStatus = "preparing";
-        if (status === "in_transit") orderStatus = "delivering";
-        if (status === "delivered") orderStatus = "delivered";
-        if (dbStatus === "cancelled") orderStatus = "cancelled";
+      let orderStatus = "";
+      if (status === "accepted") orderStatus = "confirmed";
+      if (status === "collecting") orderStatus = "preparing";
+      if (status === "in_transit") orderStatus = "delivering";
+      if (status === "delivered") orderStatus = "delivered";
+      if (dbStatus === "cancelled") orderStatus = "cancelled";
 
-        if (orderStatus) {
+      if (orderStatus) {
+        // Try updating by order_id if available
+        if (delivery?.order_id) {
           await supabase.from("orders").update({ status: orderStatus }).eq("id", delivery.order_id);
         }
+        // Also update by delivery_id as a fallback/backup
+        await supabase.from("orders").update({ status: orderStatus }).eq("delivery_id", id);
+      }
       }
     },
     onSuccess: () => {
