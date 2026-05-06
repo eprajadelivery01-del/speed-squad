@@ -22,7 +22,7 @@ export function useUniqueDeliveries(deliveries: DeliveryWithRelations[]) {
       const timestamp = new Date(delivery.created_at).getTime();
       const secondTimestamp = Math.floor(timestamp / 1000);
       
-      const fuzzyKey = `${delivery.company_id}-${delivery.customer_name}-${delivery.value || delivery.commission}-${secondTimestamp}`;
+      const fuzzyKey = `${delivery.company_id}-${delivery.customer_name}-${delivery.commission}-${secondTimestamp}`;
       
       if (fuzzySeen.has(fuzzyKey)) {
         console.warn(`[Deduplication] Item duplicado ocultado no app: ${delivery.id} (${fuzzyKey})`);
