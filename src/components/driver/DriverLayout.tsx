@@ -46,7 +46,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   const currentTab = tabs.find(t => isActive(t.href));
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans">
+    <div className="h-screen bg-background flex flex-col font-sans overflow-hidden">
       {/* Top Header */}
       <header className="flex-none bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -128,7 +128,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </header>
 
       {/* Page content */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24">
+      <main className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-24">
         <div className="max-w-lg mx-auto">{children}</div>
       </main>
 

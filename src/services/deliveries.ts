@@ -185,11 +185,12 @@ export function useUpdateDeliveryStatus() {
       if (orderStatus) {
         // Try updating by order_id if available
         if (delivery?.order_id) {
-          await supabase.from("orders").update({ status: orderStatus }).eq("id", delivery.order_id);
+          const { error: err1 } = await supabase.from("orders").update({ status: orderStatus }).eq("id", delivery.order_id);
+          if (err1) console.error("Error updating order by id:", err1);
         }
         // Also update by delivery_id as a fallback/backup
-        await supabase.from("orders").update({ status: orderStatus }).eq("delivery_id", id);
-      }
+        const { error: err2 } = await supabase.from("orders").update({ status: orderStatus }).eq("delivery_id", id);
+        if (err2) console.error("Error updating order by delivery_id:", err2);
       }
     },
     onSuccess: () => {
