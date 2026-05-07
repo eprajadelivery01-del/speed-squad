@@ -169,8 +169,6 @@ export function useUpdateDeliveryStatus() {
 
       if (!id) throw new Error("ID da entrega é obrigatório");
 
-      const { data: delivery, error: fetchErr } = await supabase.from("deliveries").select("order_id").eq("id", id).maybeSingle();
-      
       const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
       if (error) throw error;
 
@@ -183,14 +181,7 @@ export function useUpdateDeliveryStatus() {
       if (dbStatus === "cancelled") orderStatus = "cancelled";
 
       if (orderStatus) {
-        // Try updating by order_id if available
-        if (delivery?.order_id) {
-          const { error: err1 } = await supabase.from("orders").update({ status: orderStatus }).eq("id", delivery.order_id);
-          if (err1) console.error("Error updating order by id:", err1);
-        }
-        // Also update by delivery_id as a fallback/backup
-        const { error: err2 } = await supabase.from("orders").update({ status: orderStatus }).eq("delivery_id", id);
-        if (err2) console.error("Error updating order by delivery_id:", err2);
+        await supabase.from("orders").update({ status: orderStatus as any }).eq("delivery_id", id);
       }
     },
     onSuccess: () => {
