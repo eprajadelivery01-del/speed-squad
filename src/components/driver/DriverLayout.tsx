@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Truck, AlertTriangle, User, Bell, Trash2 } from "lucide-react";
+import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
@@ -24,6 +24,7 @@ const tabs = [
   { label: "Entregas", icon: Truck, href: "/driver/deliveries" },
   { label: "Ocorrências", icon: AlertTriangle, href: "/driver/occurrences" },
   { label: "Perfil", icon: User, href: "/driver/profile" },
+  { label: "Suporte", icon: MessageSquare, href: "https://wa.me/5565996112999", external: true },
 ];
 
 interface DriverLayoutProps {
@@ -137,7 +138,20 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
         <div className="flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {
             const active = isActive(tab.href);
-            return (
+            return tab.external ? (
+              <a
+                key={tab.label}
+                href={tab.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-1 flex-col items-center justify-center gap-1 h-full"
+              >
+                <tab.icon className="h-[22px] w-[22px] text-muted-foreground stroke-[1.5px]" />
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {tab.label}
+                </span>
+              </a>
+            ) : (
               <Link
                 key={tab.href}
                 to={tab.href}

@@ -13,6 +13,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import LoginPage from "./pages/LoginPage";
 import InvitePage from "./pages/InvitePage";
 import ProfilePage from "./pages/ProfilePage";
+import LegalPage from "./pages/LegalPage";
 import NotFound from "./pages/NotFound";
 import DriverChatPage from "./pages/driver/DriverChatPage";
 import DriverHomePage from "./pages/driver/DriverHomePage";
@@ -35,6 +36,8 @@ const App = () => (
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/invite/:token" element={<InvitePage />} />
+                  <Route path="/terms" element={<LegalPage />} />
+                  <Route path="/privacy" element={<LegalPage />} />
                   <Route path="/" element={<Navigate to="/driver" replace />} />
 
                   {/* Driver routes */}

@@ -3,7 +3,7 @@ import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile, uploadAvatar } from "@/services/users";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Save, Loader2, User, Phone, Trash2, AlertCircle } from "lucide-react";
+import { Camera, Save, Loader2, User, Phone, Trash2, AlertCircle, FileText, ShieldCheck, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { 
   AlertDialog, 
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ProfilePage() {
-  const { user, profile, deleteAccount, syncProfile } = useAuth();
+  const { user, profile, deleteAccount, syncProfile, signOut } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -147,6 +147,37 @@ export default function ProfilePage() {
             {saving ? "Salvando..." : "Salvar alterações"}
           </button>
         </form>
+
+        {/* Legal Links */}
+        <div className="grid grid-cols-2 gap-3 mt-8">
+          <button 
+            onClick={() => navigate("/terms")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border hover:bg-muted transition-colors group"
+          >
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Termos</span>
+          </button>
+          <button 
+            onClick={() => navigate("/privacy")}
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-card border border-border hover:bg-muted transition-colors group"
+          >
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Privacidade</span>
+          </button>
+        </div>
+
+        {/* Sign Out Button */}
+        <button 
+          onClick={signOut}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-muted text-muted-foreground font-bold hover:text-destructive hover:bg-destructive/5 transition-all"
+        >
+          <LogOut className="h-5 w-5" />
+          Sair da Conta
+        </button>
 
         {/* Danger Zone */}
         <div className="pt-8 mt-8 border-t border-border">

@@ -109,9 +109,27 @@ export default function LoginPage() {
           <span>{loading ? "Entrando..." : "Entrar"}</span>
         </button>
 
-        <p className="text-center text-[10px] text-muted-foreground">
-          Acesso via convite oficial É Pra Já
-        </p>
+        <div className="space-y-4">
+          <p className="text-center text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+            Acesso via convite oficial É Pra Já
+          </p>
+          <div className="flex justify-center gap-4">
+            <button 
+              type="button"
+              onClick={() => navigate("/privacy")}
+              className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider"
+            >
+              Privacidade
+            </button>
+            <button 
+              type="button"
+              onClick={() => navigate("/terms")}
+              className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider"
+            >
+              Termos de Uso
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   );
