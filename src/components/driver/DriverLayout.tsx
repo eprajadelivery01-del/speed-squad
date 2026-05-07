@@ -60,7 +60,9 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
             <h1 className="text-base font-extrabold text-foreground leading-tight">
               {currentTab?.label || title || "Início"}
             </h1>
-            <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Entregador</p>
+            <p className="text-[10px] font-bold text-primary uppercase tracking-widest truncate max-w-[150px]">
+              {profile?.full_name || "Entregador"}
+            </p>
           </div>
         </div>
 
