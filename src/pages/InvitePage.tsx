@@ -6,10 +6,13 @@ export default function InvitePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Invitations system not yet implemented
-    const timer = setTimeout(() => navigate("/login"), 3000);
+    // Redirect to central invitation system in Admin Panel
+    const centralInviteUrl = "https://admin.epraja.com.br" + window.location.pathname;
+    const timer = setTimeout(() => {
+       window.location.href = centralInviteUrl;
+    }, 2000);
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
