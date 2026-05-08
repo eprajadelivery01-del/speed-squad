@@ -16,3 +16,23 @@ export function useCompanies() {
     queryFn: fetchCompanies,
   });
 }
+
+export async function fetchCompanyByUserId(userId: string) {
+  const { data, error } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("user_id", userId);
+  
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  
+  return data.find(c => !c.name.toLowerCase().includes("teste")) || data[0];
+}
+
+export function useCompany(userId?: string) {
+  return useQuery({
+    queryKey: ["company", userId],
+    queryFn: () => (userId ? fetchCompanyByUserId(userId) : null),
+    enabled: !!userId,
+  });
+}

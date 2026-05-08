@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
+import { useCompany } from "@/services/companies";
 import { useState } from "react";
 
 const tabs = [
@@ -36,7 +37,8 @@ export function BusinessLayout({ children, title }: BusinessLayoutProps) {
   useAllRealtime();
   
   const location = useLocation();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
+  const { data: companyData } = useCompany(user?.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isActive = (href: string) => {
@@ -65,13 +67,19 @@ export function BusinessLayout({ children, title }: BusinessLayoutProps) {
         {/* Brand */}
         <div className="px-5 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-md p-1">
-              <img src="/logo.png" alt="É Pra Já" className="w-full h-full object-contain" />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md p-0.5 border border-border shrink-0 overflow-hidden">
+              {companyData?.logo_url ? (
+                <img src={companyData.logo_url} alt="Logo" className="h-full w-full object-cover rounded-lg" />
+              ) : (
+                <div className="w-full h-full gradient-primary flex items-center justify-center rounded-lg">
+                  <ShoppingBag className="h-5 w-5 text-white" />
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted-foreground leading-none mb-0.5 font-bold uppercase tracking-widest">É Pra Já</p>
               <p className="text-sm font-semibold text-foreground leading-none truncate max-w-[130px] mt-0.5">
-                {profile?.full_name || "Lojista"}
+                {companyData?.name || profile?.full_name || "Lojista"}
               </p>
             </div>
           </div>

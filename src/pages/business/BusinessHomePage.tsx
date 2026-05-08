@@ -5,9 +5,11 @@ import { Plus, Truck, Clock, CheckCircle, Loader2, ArrowLeft } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCompany } from "@/services/companies";
 
 export default function BusinessHomePage() {
   const { user, profile } = useAuth();
+  const { data: companyData } = useCompany(user?.id);
   const [showNewDelivery, setShowNewDelivery] = useState(false);
 
   return (
@@ -18,7 +20,7 @@ export default function BusinessHomePage() {
         <div className="space-y-6">
           <div className="text-center pt-4">
             <h1 className="text-2xl font-bold text-foreground">
-              Olá, {profile?.full_name || "Lojista"} 👋
+              Olá, {companyData?.name || profile?.full_name || "Lojista"} 👋
             </h1>
             <p className="text-muted-foreground">Gerencie suas entregas</p>
           </div>
