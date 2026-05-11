@@ -69,9 +69,11 @@ export default function DriverHomePage() {
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
   const { data: broadcastData, isLoading: loadingBroadcast } = useDeliveries({
     status: ["pending", "broadcasted"],
+    driverId: driverId || undefined,
     enabled: isOnline,
-    staleTime: 15000,
-    refetchOnWindowFocus: false,
+    staleTime: 5000,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   });
 
   const { selectedCity, setCity } = useCity();

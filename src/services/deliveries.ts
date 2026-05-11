@@ -95,7 +95,12 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       if (search) query = query.ilike("customer_name", `%${search}%`);
       if (companyId) query = query.eq("company_id", companyId);
       if (driverId) {
-        query = query.eq("driver_id", driverId);
+        if (status && (status === "pending" || (Array.isArray(status) && status.includes("pending")) || (Array.isArray(status) && status.includes("broadcasted")))) {
+          // Show both unassigned and specifically assigned to this driver
+          query = query.or(`driver_id.is.null,driver_id.eq.${driverId}`);
+        } else {
+          query = query.eq("driver_id", driverId);
+        }
       } else if (status && (status === "pending" || (Array.isArray(status) && status.includes("pending")))) {
         // Only show items with no driver assigned when looking for pending/available
         query = query.is("driver_id", null);
