@@ -79,8 +79,11 @@ export function useDeliveries(params?: UseDeliveriesParams) {
     staleTime,
     refetchOnWindowFocus,
     queryFn: async () => {
+      const isAvailableOnly = (status === "pending" || (Array.isArray(status) && status.includes("pending") && status.length === 1)) && !driverId;
+      const targetTable = isAvailableOnly ? "available_deliveries" : "deliveries";
+
       let query = supabase
-        .from("deliveries")
+        .from(targetTable as any)
         .select("*, companies(name, phone)", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
