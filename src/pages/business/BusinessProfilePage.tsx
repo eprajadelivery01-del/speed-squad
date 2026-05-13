@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { BusinessLayout } from "@/components/business/BusinessLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -221,7 +221,7 @@ export default function BusinessProfilePage() {
                      <div className="flex items-center gap-2 mt-1">
                         <div className={cn("h-2.5 w-2.5 rounded-full", isOpen ? "bg-green-500 animate-pulse" : "bg-red-500")} />
                         <span className={cn("text-[11px] font-black uppercase tracking-widest", isOpen ? "text-green-600" : "text-red-600")}>
-                           {isOpen ? "Sua Loja estÃ¡ aberta" : "Sua Loja estÃ¡ fechada"}
+                           {isOpen ? "Sua Loja está aberta" : "Sua Loja está fechada"}
                         </span>
                       </div>
                   </div>
@@ -236,7 +236,7 @@ export default function BusinessProfilePage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-border/50">
                   <div className="space-y-6">
                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                        <Info className="h-3 w-3" /> Sobre o NegÃ³cio
+                        <Info className="h-3 w-3" /> Sobre o Negócio
                      </div>
                      <div className="space-y-4">
                         <div className="space-y-2">
@@ -244,8 +244,8 @@ export default function BusinessProfilePage() {
                            <input value={storeName} onChange={(e) => setStoreName(e.target.value)} className="w-full px-5 py-3.5 rounded-2xl border border-border bg-background focus:ring-4 focus:ring-primary/5 transition-all outline-none font-bold" />
                         </div>
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Bio / DescriÃ§Ã£o</label>
-                           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Fale um pouco sobre o que vocÃª vende..." className="w-full px-5 py-3.5 rounded-2xl border border-border bg-background focus:ring-4 focus:ring-primary/5 transition-all outline-none font-medium text-sm min-h-[100px] resize-none" />
+                           <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Bio / Descrição</label>
+                           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Fale um pouco sobre o que você vende..." className="w-full px-5 py-3.5 rounded-2xl border border-border bg-background focus:ring-4 focus:ring-primary/5 transition-all outline-none font-medium text-sm min-h-[100px] resize-none" />
                         </div>
                      </div>
                   </div>
@@ -306,7 +306,7 @@ export default function BusinessProfilePage() {
                           <p className="text-[7px] text-muted-foreground font-bold italic">{address}</p>
                        </div>
                        <div className="h-14 bg-muted/40 rounded-xl p-2">
-                          <p className="text-[7px] text-muted-foreground italic leading-tight">{description || "Sua descriÃ§Ã£o aqui..."}</p>
+                          <p className="text-[7px] text-muted-foreground italic leading-tight">{description || "Sua descrição aqui..."}</p>
                        </div>
                     </div>
                  </div>

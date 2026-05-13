@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { useEffect, useRef, useState } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -209,7 +209,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-3 gap-0 border border-border rounded-2xl overflow-hidden bg-card">
             {[
               { value: driverStats.deliveries, label: 'Entregas', icon: Package },
-              { value: driverStats.rating.toFixed(1), label: 'AvaliaÃ§Ã£o', icon: Star },
+              { value: driverStats.rating.toFixed(1), label: 'Avaliação', icon: Star },
               { value: `R$0`, label: 'Esta semana', icon: TrendingUp },
             ].map((stat, i) => (
               <div
@@ -259,7 +259,7 @@ export default function ProfilePage() {
               <AlertCircle className="h-4 w-4" /> Zona de Perigo
             </h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Ao excluir sua conta, todos os dados sÃ£o removidos permanentemente.
+              Ao excluir sua conta, todos os dados são removidos permanentemente.
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -270,7 +270,7 @@ export default function ProfilePage() {
               <AlertDialogContent className="rounded-3xl max-w-[90vw] sm:max-w-lg">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                  <AlertDialogDescription>Esta aÃ§Ã£o nÃ£o pode ser desfeita.</AlertDialogDescription>
+                  <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col gap-2">
                   <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
@@ -328,7 +328,7 @@ export default function ProfilePage() {
                 className="w-full py-4 rounded-2xl gradient-primary text-primary-foreground font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {saving ? "Salvando..." : "Salvar AlteraÃ§Ãµes"}
+                {saving ? "Salvando..." : "Salvar Alterações"}
               </button>
             </div>
           </div>
