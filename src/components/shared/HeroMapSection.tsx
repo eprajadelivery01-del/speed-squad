@@ -69,7 +69,7 @@ export function HeroMapSection({
       {/* Floating Controls */}
       <div className="absolute top-8 right-8 z-30 flex flex-col gap-3">
         <button 
-          onClick={() => navigate("/admin/map")}
+          onClick={() => navigate("/driver")}
           className="p-4 rounded-2xl bg-background/80 backdrop-blur-xl border border-border shadow-2xl hover:scale-110 active:scale-95 transition-all group"
           title="Abrir Mapa em Tela Cheia"
         >

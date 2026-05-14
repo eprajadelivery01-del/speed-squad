@@ -235,7 +235,7 @@ export function UnifiedMap({
             Disponível
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button onclick="window.location.href='/admin/chat?recipient=${driver.user_id}'" style="
+            <button onclick="window.location.href='/driver/chat?recipient=${driver.user_id}'" style="
               cursor: pointer;
               background: #3b82f6;
               color: white;
