@@ -9,7 +9,6 @@ import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
-import { WhatsAppBubble } from "@/components/chat/WhatsAppBubble";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
 
@@ -17,43 +16,13 @@ export default function DriverHomePage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [wakeLock, setWakeLock] = useState<any>(null);
-
-  // Request Wake Lock to keep screen on
-  const requestWakeLock = async () => {
-    if ('wakeLock' in navigator) {
-      try {
-        const lock = await (navigator as any).wakeLock.request('screen');
-        setWakeLock(lock);
-        console.log('[WakeLock] Screen Wake Lock is active');
-      } catch (err: any) {
-        console.error(`[WakeLock] ${err.name}, ${err.message}`);
-      }
-    }
-  };
-
-  const releaseWakeLock = () => {
-    if (wakeLock) {
-      wakeLock.release().then(() => {
-        setWakeLock(null);
-        console.log('[WakeLock] Screen Wake Lock was released');
-      });
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      releaseWakeLock();
-    };
-  }, []);
-
   const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const displayName = profile?.full_name?.trim() || metadataName || user?.email?.split("@")[0] || "";
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
   const [showConsent, setShowConsent] = useState(false);
-  const [hasConsent, setHasConsent] = useState(() => localStorage.getItem("epraja_location_consent") === "true");
+  const [hasConsent, setHasConsent] = useState(() => localStorage.getItem("nexus_location_consent") === "true");
   const [isDetecting, setIsDetecting] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -109,24 +78,18 @@ export default function DriverHomePage() {
 
   const { selectedCity, setCity } = useCity();
   
+
   const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
     setIsDetecting(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        // Basic sanity check to avoid (0,0) or invalid GPS defaults
-        if (latitude === 0 && longitude === 0) {
-          setIsDetecting(false);
-          return;
-        }
-
-        const detectedCity = findNearestCity(latitude, longitude);
+        const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
         if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
         setIsDetecting(false);
         const { error: locError } = await supabase.from("delivery_drivers").update({
-          latitude,
-          longitude,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
           updated_at: new Date().toISOString(),
         }).eq("id", drivId);
         if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
@@ -142,14 +105,11 @@ export default function DriverHomePage() {
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          if (latitude === 0 && longitude === 0) return;
-
-          const detectedCity = findNearestCity(latitude, longitude);
+          const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
           if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
           const { error: locError } = await supabase.from("delivery_drivers").update({
-            latitude,
-            longitude,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
             updated_at: new Date().toISOString(),
           }).eq("id", drivId);
           if (locError) console.error("Erro ao atualizar GPS (watch) no BD:", locError);
@@ -181,16 +141,8 @@ export default function DriverHomePage() {
       ...(newStatus ? {} : { latitude: null, longitude: null }),
     }).eq("id", driverRecord.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); setLoading(false); return; }
-    if (newStatus) { 
-      startTracking(driverRecord.id); 
-      requestWakeLock();
-      toast({ title: "Você está online!", description: "Novas entregas aparecerão aqui." }); 
-    }
-    else { 
-      stopTracking(); 
-      releaseWakeLock();
-      toast({ title: "Você está offline", description: "Fique online para receber pedidos." }); 
-    }
+    if (newStatus) { startTracking(driverRecord.id); toast({ title: "Você está online!" }); }
+    else { stopTracking(); toast({ title: "Você está offline" }); }
     setIsOnline(newStatus);
     setLoading(false);
   };
@@ -216,111 +168,98 @@ export default function DriverHomePage() {
 
   return (
     <DriverLayout>
-      <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        {/* Header Section with Profile & Status */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <h2 className="text-3xl font-black text-foreground tracking-tight">
-                Olá, <span className="text-primary">{firstName || "Entregador"}</span>!
-              </h2>
-              <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">
-                {isOnline ? "✅ Você está captando rotas" : "😴 Fique online para trabalhar"}
-              </p>
-            </div>
-            <div className="relative">
-              <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500",
-                isOnline ? "bg-primary text-white shadow-xl shadow-primary/30" : "bg-muted text-muted-foreground"
+      <div className="flex flex-col gap-5">
+        {/* Greeting */}
+        <div>
+          <h2 className="text-2xl font-extrabold text-foreground">
+            Olá, {firstName || "Entregador"} 👋
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isOnline ? "Você está recebendo corridas" : "Fique online para receber corridas"}
+          </p>
+        </div>
+
+        {/* Status Bar */}
+        <div className={cn(
+          "flex items-center justify-between rounded-2xl px-4 py-3 border",
+          isOnline
+            ? "bg-success/10 border-success/20"
+            : "bg-muted border-border"
+        )}>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-3 h-3 rounded-full",
+              isOnline ? "bg-success animate-pulse" : "bg-muted-foreground"
+            )} />
+            <div>
+              <p className={cn(
+                "text-sm font-bold",
+                isOnline ? "text-success" : "text-muted-foreground"
               )}>
-                {isOnline ? <Truck className="h-6 w-6 animate-bounce" /> : <Power className="h-6 w-6" />}
-              </div>
+                {isOnline ? "Online" : "Offline"}
+              </p>
               {isOnline && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full border-2 border-background animate-pulse" />
+                <p className="text-[10px] text-success/70 font-medium flex items-center gap-1">
+                  <MapPin className="h-2.5 w-2.5" /> GPS ativo
+                </p>
               )}
             </div>
           </div>
-
-          {/* Quick Toggle Button - Premium Style */}
           <button
             onClick={handleToggle}
             disabled={loading}
             className={cn(
-              "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg",
-              isOnline 
-                ? "bg-muted text-foreground border border-border" 
-                : "bg-primary text-white shadow-primary/20 hover:shadow-primary/40"
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all",
+              isOnline
+                ? "text-primary hover:bg-primary/10"
+                : "bg-primary text-primary-foreground shadow-md hover:opacity-90"
             )}
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <Power className="h-5 w-5" />
-                {isOnline ? "Encerrar Expediente" : "Ficar Online Agora"}
-              </>
+              <Power className="h-4 w-4" />
             )}
+            {isOnline ? "Desligar" : "Ligar"}
           </button>
         </div>
 
-        {/* Dynamic Location Bar */}
+        {/* City Auto-detected */}
         {isOnline && (
-          <div className="bg-foreground/[0.03] border border-foreground/[0.05] rounded-2xl p-4 flex items-center gap-3 animate-in zoom-in-95 duration-500">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <MapPin className="h-4 w-4 text-primary" />
-            </div>
-            <p className="text-xs font-bold text-foreground">
-              {isDetecting ? "Buscando localização..." : selectedCity ? `Atuando em ${selectedCity}` : "Aguardando GPS..."}
+          <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5">
+            <MapPin className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-sm font-semibold text-foreground">
+              {isDetecting ? "📍 Detectando localização..." : selectedCity ? `📍 ${selectedCity}` : "📍 Aguardando GPS..."}
             </p>
-            <div className="ml-auto flex gap-1">
-              <div className="w-1 h-1 rounded-full bg-success animate-pulse" />
-              <div className="w-1 h-1 rounded-full bg-success animate-pulse delay-75" />
-              <div className="w-1 h-1 rounded-full bg-success animate-pulse delay-150" />
-            </div>
           </div>
         )}
 
-        {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-card border border-border rounded-3xl p-5 shadow-sm hover:border-primary/20 transition-all group">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Truck className="h-4 w-4 text-primary" />
-              </div>
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Entregas</span>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <Truck className="h-3.5 w-3.5" />
+              <p className="text-[10px] font-bold uppercase tracking-wide">Entregas hoje</p>
             </div>
-            <p className="text-3xl font-black text-foreground tracking-tighter">{stats.todayCount}</p>
-            <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-wider">Total de hoje</p>
+            <p className="text-2xl font-extrabold text-foreground">{stats.todayCount}</p>
           </div>
-
-          <div className="bg-card border border-border rounded-3xl p-5 shadow-sm hover:border-primary/20 transition-all group">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <DollarSign className="h-4 w-4 text-success" />
-              </div>
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Ganhos</span>
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <span className="text-xs">💰</span>
+              <p className="text-[10px] font-bold uppercase tracking-wide">Ganhos hoje</p>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-black text-success">R$</span>
-              <p className="text-3xl font-black text-foreground tracking-tighter">{stats.todayEarnings.toFixed(2).replace(".", ",")}</p>
-              {isOnline && wakeLock && (
-                <span className="text-[8px] font-black text-success bg-success/10 px-1.5 py-0.5 rounded-full ml-1 uppercase tracking-tighter">
-                  Always On
-                </span>
-              )}
-            </div>
-            <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-wider">Saldo do dia</p>
+            <p className="text-2xl font-extrabold text-primary">R$ {stats.todayEarnings.toFixed(2)}</p>
           </div>
         </div>
 
-        {/* Available Deliveries - The "Core" of the App */}
+        {/* Broadcast Deliveries Section */}
         {isOnline && (
-          <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-2">
-                🚀 Corridas Disponíveis
+              <h3 className="text-base font-bold text-foreground">
+                🔔 Corridas disponíveis
                 {broadcastDeliveries.length > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-black text-white animate-pulse">
+                  <span className="ml-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                     {broadcastDeliveries.length}
                   </span>
                 )}
@@ -328,86 +267,73 @@ export default function DriverHomePage() {
             </div>
 
             {loadingBroadcast ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-xs font-bold uppercase tracking-widest">Varrendo mapa...</p>
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : broadcastDeliveries.length === 0 ? (
-              <div className="bg-muted/50 border-2 border-dashed border-border rounded-3xl p-10 text-center">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4 opacity-50">
-                  <Package className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-black text-foreground">Sem chamados ativos</p>
-                <p className="text-[11px] text-muted-foreground mt-1 px-4 leading-relaxed font-bold">
-                  Continue online. Novas corridas aparecerão aqui automaticamente.
-                </p>
+              <div className="bg-primary/10 border border-primary/20 rounded-2xl px-4 py-3.5 text-center">
+                <p className="text-sm font-bold text-foreground">Aguardando novas corridas...</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Você será notificado quando houver entregas</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
+              <div className="grid gap-3">
                 {broadcastDeliveries.map((del: any) => (
-                  <div key={del.id} className="bg-card border-2 border-border rounded-[2.5rem] p-6 shadow-xl hover:border-primary/30 transition-all flex flex-col gap-5 relative overflow-hidden group">
-                    {/* Price Tag Header */}
+                  <div key={del.id} className="bg-card rounded-2xl p-4 shadow-card border border-border flex flex-col gap-3">
                     <div className="flex justify-between items-start">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-primary" />
-                          <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-                            {del.companies?.name || "Marketplace"}
-                          </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          {del.companies?.name || "Empresa"}
+                        </span>
+                        <h4 className="text-base font-bold text-foreground leading-tight">{del.customer_name}</h4>
+                      </div>
+                      {del.value != null && (
+                        <div className="bg-success/10 text-success px-2 py-1 rounded-lg text-sm font-bold flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          {Number(del.value).toFixed(2)}
                         </div>
-                        <h4 className="text-xl font-black text-foreground tracking-tight">{del.customer_name}</h4>
-                      </div>
-                      <div className="bg-success text-white px-4 py-2 rounded-2xl text-lg font-black tracking-tighter shadow-lg shadow-success/20 flex items-baseline gap-0.5">
-                        <span className="text-[10px]">R$</span>
-                        {Number(del.value || 0).toFixed(2).replace(".", ",")}
-                      </div>
+                      )}
                     </div>
 
-                    {/* Route Details */}
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Package className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Retirada</span>
-                          <span className="text-xs font-bold text-foreground leading-snug">{del.pickup_address || "Endereço da Loja"}</span>
-                        </div>
+                    {del.pickup_address && (
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <Package className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>{del.pickup_address}</span>
                       </div>
+                    )}
 
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
-                          <MapPin className="h-3.5 w-3.5 text-success" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Entrega</span>
-                          <span className="text-xs font-bold text-foreground leading-snug">{del.dropoff_address || del.address}</span>
-                        </div>
-                      </div>
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                      <span>{del.dropoff_address || del.address}</span>
                     </div>
 
-                    {/* Items/Notes Preview */}
                     {del.notes && (
-                      <div className="bg-muted/40 p-4 rounded-2xl border border-border/50">
+                      <div className={cn(
+                        "p-2.5 rounded-xl border border-border text-[11px] leading-relaxed",
+                        del.notes.includes("[ITENS:") ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+                      )}>
                         <div className="flex items-start gap-2">
-                          <Package className="h-4 w-4 text-primary shrink-0 opacity-50" />
-                          <p className="text-[11px] font-bold text-muted-foreground leading-tight italic">
-                            {del.notes.includes("[ITENS:") 
-                              ? del.notes.replace(/\[ITENS:\s*(.*?)\]/g, '$1')
-                              : del.notes}
-                          </p>
+                          <Package className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                          <div>
+                            {del.notes.includes("[ITENS:") ? (
+                              <>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-0.5">Itens do Pedido</p>
+                                <p className="font-bold text-foreground leading-tight">{del.notes.replace(/\[ITENS:\s*(.*?)\]/g, '$1')}</p>
+                              </>
+                            ) : (
+                              <p className="text-muted-foreground">{del.notes}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Accept Button - Big & Impactful */}
                     <button
                       onClick={() => handleAcceptDelivery(del.id)}
                       disabled={updatingStatus}
-                      className="w-full h-16 rounded-[1.5rem] bg-foreground text-background font-black text-sm uppercase tracking-widest shadow-2xl hover:bg-foreground/90 transition-all flex items-center justify-center gap-3 group-hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                      className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm gradient-primary text-primary-foreground shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
-                      {updatingStatus ? <Loader2 className="h-6 w-6 animate-spin" /> : <ChevronRight className="h-6 w-6" />}
-                      Aceitar Agora
+                      {updatingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      Aceitar Corrida
                     </button>
                   </div>
                 ))}
@@ -416,29 +342,28 @@ export default function DriverHomePage() {
           </div>
         )}
 
-        {/* Navigation Footer Shortcut */}
+        {/* Link to deliveries page */}
         <button
           onClick={() => navigate("/driver/deliveries")}
-          className="w-full h-20 bg-card border border-border rounded-3xl p-5 flex items-center gap-4 hover:border-primary/20 transition-all active:scale-[0.99]"
+          className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors text-left"
         >
-          <div className="w-12 h-12 rounded-2xl bg-foreground/5 flex items-center justify-center shrink-0">
-            <Truck className="h-6 w-6 text-foreground opacity-70" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Truck className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex flex-col text-left">
-            <p className="text-sm font-black text-foreground uppercase tracking-tight">Minhas Entregas</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Acompanhar ativas e histórico</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground">Ver minhas entregas</p>
+            <p className="text-xs text-muted-foreground">Entregas em andamento e agenda</p>
           </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
         </button>
       </div>
 
-      {/* Floating Action Button for Chat */}
+      {/* Floating Chat Button */}
       <button
         onClick={() => navigate("/driver/chat")}
-        className="fixed bottom-24 right-6 w-16 h-16 rounded-[2rem] bg-primary text-white shadow-2xl shadow-primary/40 flex items-center justify-center z-50 hover:scale-110 active:scale-90 transition-all border-4 border-white/20 backdrop-blur-sm"
+        className="fixed bottom-20 right-5 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-all"
       >
-        <MessageSquare className="h-7 w-7" />
-        {/* Badge could be added here if chat notifications are active */}
+        <MessageSquare className="h-6 w-6" />
       </button>
 
       <LocationConsentDialog open={showConsent} onAccept={handleAcceptConsent} />
