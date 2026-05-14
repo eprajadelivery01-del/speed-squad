@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import ScrollToTop from "@/components/shared/ScrollToTop";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { SoundEnabler } from "@/components/shared/SoundEnabler";
 
 import LoginPage from "./pages/LoginPage";
 import InvitePage from "./pages/InvitePage";
@@ -28,6 +29,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <SoundEnabler />
         <BrowserRouter>
           <ScrollToTop />
           <CityProvider>

@@ -27,16 +27,29 @@ export function useDriverNotifications() {
 
   const playNotificationSound = useCallback(() => {
     if (audioRef.current) {
+      console.log("[Notifications] Tentando reproduzir som...");
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch((err) => {
-        console.warn("[Notifications] Audio blocked:", err.message);
-      });
+      audioRef.current.volume = 1.0;
+      
+      const playPromise = audioRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn("[Notifications] Áudio bloqueado pelo navegador. O usuário precisa interagir com a página primeiro.", err.message);
+          // Fallback: toast alert about blocked sound
+          toast({
+            title: "🔔 Som Desativado",
+            description: "Clique em qualquer lugar da tela para ativar os alertas sonoros.",
+            variant: "default",
+          });
+        });
+      }
     }
-    // Vibration API
+    // Vibration API (Double pulse for attention)
     if ("vibrate" in navigator) {
-      navigator.vibrate([300, 150, 300, 150, 300]);
+      navigator.vibrate([400, 200, 400]);
     }
-  }, []);
+  }, [toast]);
 
   // Request notification permission
   useEffect(() => {
