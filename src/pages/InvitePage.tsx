@@ -159,10 +159,10 @@ export default function InvitePage() {
           <div className="mx-auto w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-white/10">
             <Truck className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-black tracking-tight text-white mb-2">Bem-vindo à Equipe!</CardTitle>
+          <CardTitle className="text-3xl font-black tracking-tight text-white mb-2">Bem-vindo à Equipe! v2</CardTitle>
           <CardDescription className="text-slate-400 text-base">
             Você foi convidado para se tornar um <strong>Entregador Parceiro</strong>.
-            Complete seu cadastro abaixo para começar a faturar.
+            Sistema de Convites Ativo - Versão 14/05/2026.
           </CardDescription>
         </CardHeader>
 
