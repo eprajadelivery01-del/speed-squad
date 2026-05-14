@@ -16,22 +16,33 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { user, loading: authLoading, hasRole, roles, userStatus } = useAuth();
 
+  const [isCheckingRoles, setIsCheckingRoles] = useState(false);
+
   useEffect(() => {
     if (!authLoading && user) {
       console.log(`[LoginPage] Verificando acesso para user.id: ${user.id}, roles:`, roles);
+      setIsCheckingRoles(true);
+      
       const timer = setTimeout(() => {
         if (hasRole("driver") || hasRole("admin")) {
           console.log("[LoginPage] Acesso permitido. Navegando para /driver");
           navigate("/driver", { replace: true });
-        } else {
+        } else if (roles.length > 0) {
+          // Has roles but not driver/admin
           console.warn("[Auth] Acesso negado: Perfil sem permissão de entregador.");
+          setIsCheckingRoles(false);
           toast({ 
             title: "Acesso Negado", 
             description: "Este portal é exclusivo para entregadores credenciados.", 
             variant: "destructive" 
           });
+        } else {
+          // Still no roles after timeout
+          console.warn("[Auth] Nenhuma role encontrada após timeout.");
+          setIsCheckingRoles(false);
         }
-      }, 800);
+      }, 1500); // Increased timeout to 1.5s for stability
+      
       return () => clearTimeout(timer);
     }
   }, [user, authLoading, hasRole, roles, navigate]);
@@ -96,10 +107,22 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {user && !authLoading && roles.length === 0 && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
-            <p className="text-[11px] text-destructive text-center font-bold uppercase leading-tight">
-              Acesso Negado: Seu perfil não possui permissões. Contate o administrador.
+        {user && isCheckingRoles && (
+          <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl flex flex-col items-center gap-3 animate-pulse">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <p className="text-[10px] text-primary text-center font-black uppercase tracking-widest leading-tight">
+              Validando seu perfil e permissões...
+            </p>
+          </div>
+        )}
+
+        {user && !authLoading && !isCheckingRoles && roles.length === 0 && (
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex flex-col gap-2">
+            <p className="text-[11px] text-destructive text-center font-black uppercase leading-tight tracking-wide">
+              Acesso Negado
+            </p>
+            <p className="text-[10px] text-destructive/70 text-center font-bold">
+              Seu perfil não possui permissão de entregador.
             </p>
           </div>
         )}
