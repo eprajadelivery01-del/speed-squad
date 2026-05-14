@@ -97,45 +97,10 @@ export default function LoginPage() {
         </div>
 
         {user && !authLoading && roles.length === 0 && (
-          <div className="space-y-3">
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
-              <p className="text-[11px] text-destructive text-center font-bold uppercase leading-tight">
-                Acesso Negado: Seu perfil não possui permissões.
-              </p>
-            </div>
-            
-            <button 
-              type="button"
-              onClick={async () => {
-                setLoading(true);
-                console.log("[Auth] Iniciando reparo de permissões...");
-                try {
-                  const { data, error } = await (supabase as any).rpc("fix_user_permissions");
-                  if (error) {
-                    console.error("[Auth] Erro no RPC:", error);
-                    alert("Erro no servidor: " + error.message);
-                    throw error;
-                  }
-                  
-                  console.log("[Auth] Resposta do reparo:", data);
-                  
-                  if (data?.success) {
-                    alert("Sucesso! Permissões restauradas. Clique em OK para entrar.");
-                    window.location.reload();
-                  } else {
-                    alert("Falha: " + (data?.error || "Desconhecido"));
-                  }
-                } catch (err: any) {
-                  console.error("[Auth] Erro inesperado:", err);
-                  alert("Erro inesperado: " + err.message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="w-full py-2 bg-primary/10 text-primary rounded-xl text-xs font-bold uppercase hover:bg-primary/20 transition-all border border-primary/20"
-            >
-              Corrigir Minhas Permissões
-            </button>
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+            <p className="text-[11px] text-destructive text-center font-bold uppercase leading-tight">
+              Acesso Negado: Seu perfil não possui permissões. Contate o administrador.
+            </p>
           </div>
         )}
 
