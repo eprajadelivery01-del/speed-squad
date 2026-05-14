@@ -9,6 +9,7 @@ import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
+import { WhatsAppBubble } from "@/components/chat/WhatsAppBubble";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,36 @@ export default function DriverHomePage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [wakeLock, setWakeLock] = useState<any>(null);
+
+  // Request Wake Lock to keep screen on
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        const lock = await (navigator as any).wakeLock.request('screen');
+        setWakeLock(lock);
+        console.log('[WakeLock] Screen Wake Lock is active');
+      } catch (err: any) {
+        console.error(`[WakeLock] ${err.name}, ${err.message}`);
+      }
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLock) {
+      wakeLock.release().then(() => {
+        setWakeLock(null);
+        console.log('[WakeLock] Screen Wake Lock was released');
+      });
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      releaseWakeLock();
+    };
+  }, []);
+
   const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const displayName = profile?.full_name?.trim() || metadataName || user?.email?.split("@")[0] || "";
   const [isOnline, setIsOnline] = useState(false);
@@ -141,8 +172,16 @@ export default function DriverHomePage() {
       ...(newStatus ? {} : { latitude: null, longitude: null }),
     }).eq("id", driverRecord.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); setLoading(false); return; }
-    if (newStatus) { startTracking(driverRecord.id); toast({ title: "Você está online!" }); }
-    else { stopTracking(); toast({ title: "Você está offline" }); }
+    if (newStatus) { 
+      startTracking(driverRecord.id); 
+      requestWakeLock();
+      toast({ title: "Você está online!", description: "Novas entregas aparecerão aqui." }); 
+    }
+    else { 
+      stopTracking(); 
+      releaseWakeLock();
+      toast({ title: "Você está offline", description: "Fique online para receber pedidos." }); 
+    }
     setIsOnline(newStatus);
     setLoading(false);
   };
@@ -255,6 +294,11 @@ export default function DriverHomePage() {
             <div className="flex items-baseline gap-1">
               <span className="text-xs font-black text-success">R$</span>
               <p className="text-3xl font-black text-foreground tracking-tighter">{stats.todayEarnings.toFixed(2).replace(".", ",")}</p>
+              {isOnline && wakeLock && (
+                <span className="text-[8px] font-black text-success bg-success/10 px-1.5 py-0.5 rounded-full ml-1 uppercase tracking-tighter">
+                  Always On
+                </span>
+              )}
             </div>
             <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-wider">Saldo do dia</p>
           </div>

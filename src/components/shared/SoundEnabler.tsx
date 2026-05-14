@@ -6,20 +6,29 @@ export function SoundEnabler() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const soundEnabled = sessionStorage.getItem("epj_sound_enabled");
+    const soundEnabled = sessionStorage.getItem("sound_enabled") || sessionStorage.getItem("epj_sound_enabled");
     if (!soundEnabled) {
       const timer = setTimeout(() => setIsVisible(true), 2000);
       return () => clearTimeout(timer);
     }
   }, []);
 
-  const enableSound = () => {
-    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
-    audio.volume = 0;
-    audio.play().then(() => {
-      sessionStorage.setItem("epj_sound_enabled", "true");
+  const enableSound = async () => {
+    setEnabling(true);
+    try {
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+      audio.volume = 0.5;
+      await audio.play();
+      
+      sessionStorage.setItem("sound_enabled", "true");
       setIsVisible(false);
-    }).catch(() => {});
+      toast({ title: "Som ativado!", description: "Você receberá alertas sonoros de novas entregas." });
+    } catch (error) {
+      console.error("Erro ao ativar som:", error);
+      toast({ title: "Erro ao ativar som", description: "Clique novamente para tentar.", variant: "destructive" });
+    } finally {
+      setEnabling(false);
+    }
   };
 
   if (!isVisible) return null;

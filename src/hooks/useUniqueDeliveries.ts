@@ -9,27 +9,33 @@ export function useUniqueDeliveries(deliveries: DeliveryWithRelations[]) {
   return useMemo(() => {
     if (!deliveries || deliveries.length === 0) return [];
 
-    const seen = new Set<string>();
-    const fuzzySeen = new Set<string>();
+    const seenIds = new Set<string>();
+    const fuzzyKeys = new Set<string>();
     
     return deliveries.filter((delivery) => {
-      // 1. Deduplicação por ID
-      if (seen.has(delivery.id)) return false;
-      seen.add(delivery.id);
-
-      // 2. Deduplicação por Heurística (Fuzzy Match)
-      // Mesma empresa, cliente e valor criado no mesmo segundo
-      const timestamp = new Date(delivery.created_at).getTime();
-      const secondTimestamp = Math.floor(timestamp / 1000);
-      
-      const fuzzyKey = `${delivery.company_id}-${delivery.customer_name}-${delivery.commission}-${secondTimestamp}`;
-      
-      if (fuzzySeen.has(fuzzyKey)) {
-        console.warn(`[Deduplication] Item duplicado ocultado no app: ${delivery.id} (${fuzzyKey})`);
+      // 1. Verificação Primária: ID Único
+      if (!delivery.id || seenIds.has(delivery.id)) {
         return false;
       }
+      seenIds.add(delivery.id);
+
+      // 2. Verificação Secundária (Heurística): Evita "Double Inserts" no banco/realtime
+      const createdAt = new Date(delivery.created_at).getTime();
+      const secondPrecision = Math.floor(createdAt / 1000);
       
-      fuzzySeen.add(fuzzyKey);
+      const fuzzyKey = [
+        delivery.company_id,
+        delivery.customer_name,
+        delivery.value || delivery.price || 0,
+        secondPrecision
+      ].join('|');
+
+      if (fuzzyKeys.has(fuzzyKey)) {
+        console.warn(`[Anti-Duplicidade] Entrega duplicada detectada e ocultada no app: ${delivery.id}`);
+        return false;
+      }
+
+      fuzzyKeys.add(fuzzyKey);
       return true;
     });
   }, [deliveries]);
