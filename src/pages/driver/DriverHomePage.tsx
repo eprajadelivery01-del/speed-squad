@@ -53,7 +53,7 @@ export default function DriverHomePage() {
   const [loading, setLoading] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
   const [showConsent, setShowConsent] = useState(false);
-  const [hasConsent, setHasConsent] = useState(() => localStorage.getItem("nexus_location_consent") === "true");
+  const [hasConsent, setHasConsent] = useState(() => localStorage.getItem("epraja_location_consent") === "true");
   const [isDetecting, setIsDetecting] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -109,18 +109,24 @@ export default function DriverHomePage() {
 
   const { selectedCity, setCity } = useCity();
   
-
   const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
     setIsDetecting(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
+        const { latitude, longitude } = pos.coords;
+        // Basic sanity check to avoid (0,0) or invalid GPS defaults
+        if (latitude === 0 && longitude === 0) {
+          setIsDetecting(false);
+          return;
+        }
+
+        const detectedCity = findNearestCity(latitude, longitude);
         if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
         setIsDetecting(false);
         const { error: locError } = await supabase.from("delivery_drivers").update({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+          latitude,
+          longitude,
           updated_at: new Date().toISOString(),
         }).eq("id", drivId);
         if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
@@ -136,11 +142,14 @@ export default function DriverHomePage() {
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
-          const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
+          const { latitude, longitude } = pos.coords;
+          if (latitude === 0 && longitude === 0) return;
+
+          const detectedCity = findNearestCity(latitude, longitude);
           if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
           const { error: locError } = await supabase.from("delivery_drivers").update({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
+            latitude,
+            longitude,
             updated_at: new Date().toISOString(),
           }).eq("id", drivId);
           if (locError) console.error("Erro ao atualizar GPS (watch) no BD:", locError);

@@ -175,10 +175,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextUserId = nextUser?.id ?? null;
       const previousUserId = currentUserIdRef.current;
 
-      if (event === "SIGNED_OUT" || !nextUser) {
+      if (event === "SIGNED_OUT") {
         applySession(null);
         clearUserState();
         setLoading(false);
+        return;
+      }
+
+      if (!nextSession && event !== "INITIAL_SESSION") {
+        // Prevent logout on transient null sessions during refresh
         return;
       }
 
