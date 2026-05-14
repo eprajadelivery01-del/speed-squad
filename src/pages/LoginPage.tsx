@@ -97,10 +97,36 @@ export default function LoginPage() {
         </div>
 
         {user && !authLoading && roles.length === 0 && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
-            <p className="text-[11px] text-destructive text-center font-bold uppercase leading-tight">
-              Acesso Negado: Seu perfil não possui permissões. Contate o administrador.
-            </p>
+          <div className="space-y-3">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+              <p className="text-[11px] text-destructive text-center font-bold uppercase leading-tight">
+                Acesso Negado: Seu perfil não possui permissões.
+              </p>
+            </div>
+            
+            <button 
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const { data, error } = await (supabase as any).rpc("fix_user_permissions");
+                  if (error) throw error;
+                  if (data?.success) {
+                    toast({ title: "Sucesso!", description: "Permissões restauradas. Tente entrar novamente." });
+                    window.location.reload();
+                  } else {
+                    toast({ title: "Erro", description: data?.error || "Não foi possível restaurar as permissões.", variant: "destructive" });
+                  }
+                } catch (err: any) {
+                  toast({ title: "Erro de Conexão", description: err.message, variant: "destructive" });
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="w-full py-2 bg-primary/10 text-primary rounded-xl text-xs font-bold uppercase hover:bg-primary/20 transition-all border border-primary/20"
+            >
+              Corrigir Minhas Permissões
+            </button>
           </div>
         )}
 
