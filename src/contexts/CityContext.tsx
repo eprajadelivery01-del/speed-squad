@@ -22,6 +22,18 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "Sorriso": { lat: -12.5442, lng: -55.7231 },
   "Lucas do Rio Verde": { lat: -13.06, lng: -55.91 },
   "Nova Mutum": { lat: -13.83, lng: -56.08 },
+  "Cáceres": { lat: -16.071, lng: -57.681 },
+  "Primavera do Leste": { lat: -15.559, lng: -54.296 },
+  "Barra do Bugres": { lat: -15.068, lng: -57.184 },
+  "Campo Verde": { lat: -15.547, lng: -55.166 },
+  "Poconé": { lat: -16.257, lng: -56.623 },
+  "Chapada dos Guimarães": { lat: -15.46, lng: -55.74 },
+  "Pontes e Lacerda": { lat: -15.22, lng: -59.33 },
+  "Mirassol d'Oeste": { lat: -15.68, lng: -58.11 },
+  "Jaciara": { lat: -15.96, lng: -54.96 },
+  "Guarantã do Norte": { lat: -9.78, lng: -54.91 },
+  "Juína": { lat: -11.41, lng: -58.74 },
+  "Colíder": { lat: -10.81, lng: -55.45 },
 };
 
 const CITY_STORAGE_KEY = "epj_selected_city_v2";
