@@ -108,17 +108,26 @@ export default function LoginPage() {
               type="button"
               onClick={async () => {
                 setLoading(true);
+                console.log("[Auth] Iniciando reparo de permissões...");
                 try {
                   const { data, error } = await (supabase as any).rpc("fix_user_permissions");
-                  if (error) throw error;
+                  if (error) {
+                    console.error("[Auth] Erro no RPC:", error);
+                    alert("Erro no servidor: " + error.message);
+                    throw error;
+                  }
+                  
+                  console.log("[Auth] Resposta do reparo:", data);
+                  
                   if (data?.success) {
-                    toast({ title: "Sucesso!", description: "Permissões restauradas. Tente entrar novamente." });
+                    alert("Sucesso! Permissões restauradas. Clique em OK para entrar.");
                     window.location.reload();
                   } else {
-                    toast({ title: "Erro", description: data?.error || "Não foi possível restaurar as permissões.", variant: "destructive" });
+                    alert("Falha: " + (data?.error || "Desconhecido"));
                   }
                 } catch (err: any) {
-                  toast({ title: "Erro de Conexão", description: err.message, variant: "destructive" });
+                  console.error("[Auth] Erro inesperado:", err);
+                  alert("Erro inesperado: " + err.message);
                 } finally {
                   setLoading(false);
                 }
