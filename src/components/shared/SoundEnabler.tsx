@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect } from "react";
-import { Volume2, BellRing, X } from "lucide-react";
+import { Volume2, X } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export function SoundEnabler() {
   const [isVisible, setIsVisible] = useState(false);
+  const [enabling, setEnabling] = useState(false);
 
   useEffect(() => {
     const soundEnabled = sessionStorage.getItem("sound_enabled") || sessionStorage.getItem("epj_sound_enabled");
@@ -19,7 +20,7 @@ export function SoundEnabler() {
       const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
       audio.volume = 0.5;
       await audio.play();
-      
+
       sessionStorage.setItem("sound_enabled", "true");
       setIsVisible(false);
       toast({ title: "Som ativado!", description: "Você receberá alertas sonoros de novas entregas." });
@@ -42,11 +43,12 @@ export function SoundEnabler() {
         <div className="flex-1">
           <p className="text-xs font-black">Ativar avisos sonoros?</p>
         </div>
-        <button 
+        <button
           onClick={enableSound}
-          className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+          disabled={enabling}
+          className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
         >
-          Ativar
+          {enabling ? "..." : "Ativar"}
         </button>
         <button onClick={() => setIsVisible(false)} className="p-1 opacity-50">
           <X className="h-4 w-4" />

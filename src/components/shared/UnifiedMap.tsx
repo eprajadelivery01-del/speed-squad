@@ -208,63 +208,53 @@ export function UnifiedMap({
 
       const el = document.createElement("div");
       el.className = "driver-marker";
-      el.innerHTML = `
-        <div style="
-          width: 38px; 
-          height: 38px; 
-          border-radius: 12px; 
-          background: #22c55e; 
-          border: 2px solid white; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); 
-          font-size: 18px;
-          cursor: pointer;
-          transition: transform 0.2s;
-        " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-          Status
-        </div>
-      `;
+      const badge = document.createElement("div");
+      badge.setAttribute("style", "width:38px;height:38px;border-radius:12px;background:#22c55e;border:2px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(34,197,94,0.4);font-size:18px;cursor:pointer;transition:transform 0.2s;");
+      badge.textContent = "Status";
+      badge.onmouseover = () => (badge.style.transform = "scale(1.1)");
+      badge.onmouseout = () => (badge.style.transform = "scale(1)");
+      el.appendChild(badge);
 
-      const popupContent = `
-        <div style="padding: 10px; font-family: sans-serif; min-width: 160px; text-align: left;">
-          <div style="font-weight: bold; color: #1a1a1a; margin-bottom: 2px;">${driver.profiles?.full_name || "Entregador"}</div>
-          <div style="font-size: 11px; color: #22c55e; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-            <div style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite;"></div>
-            Disponível
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button onclick="window.location.href='/driver/chat?recipient=${driver.user_id}'" style="
-              cursor: pointer;
-              background: #3b82f6;
-              color: white;
-              border: none;
-              border-radius: 8px;
-              padding: 7px;
-              font-size: 11px;
-              font-weight: 600;
-              transition: opacity 0.2s;
-            ">💬 Iniciar Chat</button>
-            <button onclick="window.open('https://wa.me/${driver.profiles?.phone?.replace(/\D/g, "")}', '_blank')" style="
-              cursor: pointer;
-              background: #22c55e;
-              color: white;
-              border: none;
-              border-radius: 8px;
-              padding: 7px;
-              font-size: 11px;
-              font-weight: 600;
-              transition: opacity 0.2s;
-            ">🟢 WhatsApp</button>
-          </div>
-          <style>@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }</style>
-        </div>
-      `;
+      // Build popup DOM safely (no HTML interpolation of user data)
+      const popupEl = document.createElement("div");
+      popupEl.setAttribute("style", "padding:10px;font-family:sans-serif;min-width:160px;text-align:left;");
+
+      const nameEl = document.createElement("div");
+      nameEl.setAttribute("style", "font-weight:bold;color:#1a1a1a;margin-bottom:2px;");
+      nameEl.textContent = driver.profiles?.full_name || "Entregador";
+      popupEl.appendChild(nameEl);
+
+      const statusEl = document.createElement("div");
+      statusEl.setAttribute("style", "font-size:11px;color:#22c55e;margin-bottom:10px;");
+      statusEl.textContent = "● Disponível";
+      popupEl.appendChild(statusEl);
+
+      const btnWrap = document.createElement("div");
+      btnWrap.setAttribute("style", "display:flex;flex-direction:column;gap:6px;");
+
+      const chatBtn = document.createElement("button");
+      chatBtn.setAttribute("style", "cursor:pointer;background:#3b82f6;color:white;border:none;border-radius:8px;padding:7px;font-size:11px;font-weight:600;");
+      chatBtn.textContent = "💬 Iniciar Chat";
+      chatBtn.onclick = () => {
+        const safeId = encodeURIComponent(String(driver.user_id ?? ""));
+        window.location.href = `/driver/chat?recipient=${safeId}`;
+      };
+      btnWrap.appendChild(chatBtn);
+
+      const phoneDigits = String(driver.profiles?.phone ?? "").replace(/\D/g, "");
+      if (phoneDigits) {
+        const waBtn = document.createElement("button");
+        waBtn.setAttribute("style", "cursor:pointer;background:#22c55e;color:white;border:none;border-radius:8px;padding:7px;font-size:11px;font-weight:600;");
+        waBtn.textContent = "🟢 WhatsApp";
+        waBtn.onclick = () => window.open(`https://wa.me/${encodeURIComponent(phoneDigits)}`, "_blank");
+        btnWrap.appendChild(waBtn);
+      }
+
+      popupEl.appendChild(btnWrap);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([driver.longitude, driver.latitude])
-        .setPopup(new maplibregl.Popup({ offset: 15, closeButton: false }).setHTML(popupContent))
+        .setPopup(new maplibregl.Popup({ offset: 15, closeButton: false }).setDOMContent(popupEl))
         .addTo(m);
 
       markersRef.current.push(marker);

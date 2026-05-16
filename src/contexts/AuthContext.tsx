@@ -23,7 +23,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SPECIAL_USER_ID = "1044ade5-6510-4aa5-96e6-6c5fb3aaa8b3";
+
 const normalizeName = (value: unknown) => typeof value === "string" ? value.trim() : "";
 
 const buildProfile = (
@@ -73,12 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar_url: nextProfile.avatar_url ?? currentProfile?.avatar_url ?? null,
         phone: nextProfile.phone ?? currentProfile?.phone ?? null,
       };
-      
-      // If it's the special user, we ensure the emergency name isn't lost unless specified
-      if (user?.id === SPECIAL_USER_ID && !merged.full_name) {
-        merged.full_name = "Admin (Modo Emergência)";
-      }
-
       return buildProfile(merged, user);
     });
   }, [user]);
@@ -124,16 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current) return;
       console.error("[AuthContext] ERRO DE CARREGAMENTO:", error.message);
       setProfile(buildProfile(null, authUser));
-      
-      if (authUser.id === SPECIAL_USER_ID) {
-        setRoles(["admin"]);
-        setProfile((prev) => ({ 
-          full_name: prev?.full_name || "Admin (Modo Emergência)", 
-          avatar_url: prev?.avatar_url || null, 
-          phone: prev?.phone || null 
-        }));
-        setUserStatus("active");
-      }
+      setRoles([]);
+      setUserStatus(null);
     } finally {
       fetchingRef.current = null;
     }
@@ -220,10 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [applySession, clearUserState, fetchUserData]);
 
-  const hasRole = (role: AppRole) => {
-    if (user?.id === SPECIAL_USER_ID) return true; 
-    return roles.includes(role);
-  };
+  const hasRole = (role: AppRole) => roles.includes(role);
   
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

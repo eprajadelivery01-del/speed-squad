@@ -38,17 +38,28 @@ export async function getTransactions(walletId: string) {
 }
 
 export async function requestWithdrawal(amount: number, userId: string) {
-  // Aqui você integraria com um serviço de PIX/Bank ou criaria uma tabela de 'withdrawals'
-  // Por enquanto, apenas registramos uma saída na carteira
+  // Validação: valor deve ser positivo e finito
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Valor de saque inválido");
+  }
+  if (amount > 100000) throw new Error("Valor de saque excede o limite permitido");
+
   const wallet = await getWallet(userId);
   if (wallet.balance < amount) throw new Error("Saldo insuficiente");
 
-  const { error: updateError } = await supabase
+  // Update condicional: só atualiza se o saldo ainda for suficiente (mitigação de race condition)
+  const { data: updated, error: updateError } = await supabase
     .from("wallets")
     .update({ balance: wallet.balance - amount })
-    .eq("id", wallet.id);
-  
+    .eq("id", wallet.id)
+    .eq("user_id", userId)
+    .gte("balance", amount)
+    .select();
+
   if (updateError) throw updateError;
+  if (!updated || updated.length === 0) {
+    throw new Error("Saldo insuficiente ou operação concorrente detectada");
+  }
 
   const { error: transError } = await supabase
     .from("financial_transactions")

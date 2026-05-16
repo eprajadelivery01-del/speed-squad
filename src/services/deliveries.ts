@@ -56,6 +56,7 @@ interface UseDeliveriesParams {
   enabled?: boolean;
   staleTime?: number;
   refetchOnWindowFocus?: boolean;
+  refetchInterval?: number | false;
 }
 
 export function useDeliveries(params?: UseDeliveriesParams) {
@@ -71,6 +72,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
     enabled = true,
     staleTime = 0,
     refetchOnWindowFocus = true,
+    refetchInterval,
   } = params || {};
 
   return useQuery({
@@ -78,6 +80,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
     enabled,
     staleTime,
     refetchOnWindowFocus,
+    refetchInterval: refetchInterval as any,
     queryFn: async () => {
       const isAvailableOnly = (status === "pending" || (Array.isArray(status) && status.includes("pending") && status.length === 1)) && !driverId;
       const targetTable = isAvailableOnly ? "available_deliveries" : "deliveries";
