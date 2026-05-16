@@ -23,7 +23,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SPECIAL_USER_ID = "1044ade5-6510-4aa5-96e6-6c5fb3aaa8b3";
+
 const normalizeName = (value: unknown) => typeof value === "string" ? value.trim() : "";
 
 const buildProfile = (
