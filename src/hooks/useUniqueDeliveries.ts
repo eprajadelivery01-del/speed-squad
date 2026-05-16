@@ -3,39 +3,21 @@ import type { DeliveryWithRelations } from "@/services/deliveries";
 
 /**
  * useUniqueDeliveries
- * Hook para deduplicar entregas na interface do entregador.
+ * Hook para deduplicar entregas na interface.
+ * Mantém apenas a verificação por ID para evitar duplicatas de race conditions (Realtime vs Polling),
+ * removendo heurísticas agressivas que podem ocultar entregas legítimas.
  */
-export function useUniqueDeliveries(deliveries: DeliveryWithRelations[]) {
+export function useUniqueDeliveries(deliveries: DeliveryWithRelations[] | undefined) {
   return useMemo(() => {
     if (!deliveries || deliveries.length === 0) return [];
 
     const seenIds = new Set<string>();
-    const fuzzyKeys = new Set<string>();
     
     return deliveries.filter((delivery) => {
-      // 1. Verificação Primária: ID Único
       if (!delivery.id || seenIds.has(delivery.id)) {
         return false;
       }
       seenIds.add(delivery.id);
-
-      // 2. Verificação Secundária (Heurística): Evita "Double Inserts" no banco/realtime
-      const createdAt = new Date(delivery.created_at).getTime();
-      const secondPrecision = Math.floor(createdAt / 1000);
-      
-      const fuzzyKey = [
-        delivery.company_id,
-        delivery.customer_name,
-        delivery.value || delivery.price || 0,
-        secondPrecision
-      ].join('|');
-
-      if (fuzzyKeys.has(fuzzyKey)) {
-        console.warn(`[Anti-Duplicidade] Entrega duplicada detectada e ocultada no app: ${delivery.id}`);
-        return false;
-      }
-
-      fuzzyKeys.add(fuzzyKey);
       return true;
     });
   }, [deliveries]);
