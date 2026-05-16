@@ -6,26 +6,19 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
-  errorInfo: React.ErrorInfo | null;
 }
 
 export class GlobalErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null,
-    errorInfo: null,
-  };
+  public state: State = { hasError: false };
 
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+  public static getDerivedStateFromError(): State {
+    return { hasError: true };
   }
 
   public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Log only to console (dev) — never expose to UI in production
     console.error("Uncaught error:", error, errorInfo);
-    this.setState({ error, errorInfo });
-    
-    // Forçar remoção do carregar se houver crash
+
     const splash = document.getElementById("splash-screen");
     if (splash) splash.remove();
   }
@@ -33,18 +26,18 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: "20px", background: "#f8d7da", color: "#721c24", height: "100vh", overflow: "auto", fontFamily: "sans-serif" }}>
-          <h1 style={{ fontSize: "24px", fontWeight: "bold" }}>A interface quebrou (React Crash)</h1>
-          <p>Tire um print ou copie o texto abaixo e envie para a Bonasoft:</p>
-          <pre style={{ background: "#fff", padding: "10px", marginTop: "10px", borderRadius: "5px", border: "1px solid red" }}>
-            {this.state.error && this.state.error.toString()}
-            {"\n\n"}
-            {this.state.errorInfo && this.state.errorInfo.componentStack}
-          </pre>
+        <div style={{ padding: "24px", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif", textAlign: "center" }}>
+          <h1 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "8px" }}>Algo deu errado</h1>
+          <p style={{ color: "#555", marginBottom: "16px" }}>Ocorreu um erro inesperado. Tente recarregar a página.</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ padding: "10px 20px", background: "#22c55e", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}
+          >
+            Recarregar
+          </button>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
