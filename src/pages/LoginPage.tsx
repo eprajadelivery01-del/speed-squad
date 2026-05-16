@@ -14,11 +14,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, loading: authLoading, hasRole, roles, userStatus } = useAuth();
+  const { user, loading: authLoading, hasRole, roles, userStatus, dataLoaded } = useAuth();
+  const [checkingAccess, setCheckingAccess] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && dataLoaded) {
       console.log(`[LoginPage] Verificando acesso para user.id: ${user.id}, roles:`, roles);
+      setCheckingAccess(true);
       const timer = setTimeout(() => {
         if (hasRole("driver") || hasRole("admin")) {
           console.log("[LoginPage] Acesso permitido. Navegando para /driver");
@@ -30,11 +32,12 @@ export default function LoginPage() {
             description: "Este portal é exclusivo para entregadores credenciados.", 
             variant: "destructive" 
           });
+          setCheckingAccess(false);
         }
-      }, 800);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [user, authLoading, hasRole, roles, navigate]);
+  }, [user, authLoading, dataLoaded, hasRole, roles, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

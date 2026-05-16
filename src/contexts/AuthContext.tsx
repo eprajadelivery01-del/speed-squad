@@ -19,6 +19,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  dataLoaded: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const fetchingRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const currentUserIdRef = useRef<string | null>(null);
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     setProfile(null);
     setUserStatus(null);
+    setDataLoaded(false);
   }, []);
 
   const applySession = useCallback((nextSession: Session | null) => {
@@ -81,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = authUser.id;
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
+    setDataLoaded(false);
     
     try {
       const timeout = new Promise((_, reject) => 
@@ -122,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserStatus(null);
     } finally {
       fetchingRef.current = null;
+      setDataLoaded(true);
     }
   }, []);
 
@@ -234,7 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, session, loading, roles, userStatus, profile, hasRole, syncProfile, signIn, signUp, signOut, deleteAccount 
+      user, session, loading, roles, userStatus, profile, hasRole, syncProfile, signIn, signUp, signOut, deleteAccount, dataLoaded 
     }}>
       {children}
     </AuthContext.Provider>
