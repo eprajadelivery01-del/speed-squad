@@ -24,15 +24,16 @@ export interface DeliveryWithRelations {
   companies?: { name: string; phone: string | null } | null;
 }
 
-// DB enum uses: pending, broadcasted, accepted, collecting, in_transit, delivered, cancelled, returned
-// Some legacy rows may still contain "completed" — normalize it to "delivered" for the UI.
+// DB enum uses: pending, broadcasted, accepted, collecting, in_route, completed, cancelled
+// Some legacy rows may still contain "completed" or "in_transit" — normalize it to the UI formats.
 const APP_TO_DB_STATUS: Record<string, string> = {
   delivered: "completed",
-  in_transit: "in_transit",
+  in_transit: "in_route",
 };
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
   completed: "delivered",
+  in_route: "in_transit",
   in_transit: "in_transit" as any,
 };
 
@@ -175,13 +176,32 @@ export function useUpdateDeliveryStatus() {
         if (driverId) updates.driver_id = driverId;
       }
       if (status === "collecting") updates.collected_at = now;
-      if (status === "delivered") updates.delivered_at = now;
+      if (status === "delivered") {
+        (updates as any).completed_at = now;
+      }
       if (dbStatus === "cancelled") updates.cancelled_at = now;
 
       if (!id) throw new Error("ID da entrega é obrigatório");
 
-      const { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
-      if (error) throw error;
+      let { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
+      
+      // Fallback try with delivered_at if completed_at failed (in case of schema variations)
+      if (error) {
+        console.warn("Update with completed_at failed, trying with delivered_at:", error);
+        const fallbackUpdates: Record<string, string> = { status: dbStatus, updated_at: now };
+        if (status === "accepted") {
+          fallbackUpdates.accepted_at = now;
+          if (driverId) fallbackUpdates.driver_id = driverId;
+        }
+        if (status === "collecting") fallbackUpdates.collected_at = now;
+        if (status === "delivered") fallbackUpdates.delivered_at = now;
+        if (dbStatus === "cancelled") fallbackUpdates.cancelled_at = now;
+        
+        const fallbackRes = await supabase.from("deliveries").update(fallbackUpdates as any).eq("id", id);
+        if (fallbackRes.error) {
+          throw error; // throw the original error if both failed
+        }
+      }
 
       // Update linked order status to keep customer informed
       let orderStatus = "";
@@ -192,7 +212,8 @@ export function useUpdateDeliveryStatus() {
       if (dbStatus === "cancelled") orderStatus = "cancelled";
 
       if (orderStatus) {
-        await supabase.from("orders").update({ status: orderStatus as any }).eq("delivery_id", id);
+        const { error: orderError } = await supabase.from("orders").update({ status: orderStatus as any }).eq("delivery_id", id);
+        if (orderError) console.error("Error updating order status:", orderError);
       }
     },
     onSuccess: () => {
