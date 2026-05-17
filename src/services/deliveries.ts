@@ -181,10 +181,10 @@ export function useUpdateDeliveryStatus() {
       if (status === "delivered") updates1.completed_at = now;
       if (dbStatus === "cancelled") updates1.cancelled_at = now;
 
-      let res = await supabase.from("deliveries").update(updates1 as any).eq("id", id);
+      const res1 = await supabase.from("deliveries").update(updates1 as any).eq("id", id);
 
-      if (res.error) {
-        console.warn("First update failed, trying fallback combination 2 (dbStatus + delivered_at):", res.error);
+      if (res1.error) {
+        console.warn("First update failed, trying fallback combination 2 (dbStatus + delivered_at):", res1.error);
 
         // Combination 2: dbStatus + delivered_at
         const updates2: Record<string, unknown> = { status: dbStatus, updated_at: now };
@@ -196,10 +196,10 @@ export function useUpdateDeliveryStatus() {
         if (status === "delivered") updates2.delivered_at = now;
         if (dbStatus === "cancelled") updates2.cancelled_at = now;
 
-        res = await supabase.from("deliveries").update(updates2 as any).eq("id", id);
+        const res2 = await supabase.from("deliveries").update(updates2 as any).eq("id", id);
 
-        if (res.error) {
-          console.warn("Second update failed, trying fallback combination 3 (appStatus + completed_at):", res.error);
+        if (res2.error) {
+          console.warn("Second update failed, trying fallback combination 3 (appStatus + completed_at):", res2.error);
 
           // Combination 3: appStatus (status) + completed_at
           const updates3: Record<string, unknown> = { status: status, updated_at: now };
@@ -211,10 +211,10 @@ export function useUpdateDeliveryStatus() {
           if (status === "delivered") updates3.completed_at = now;
           if (status === "cancelled") updates3.cancelled_at = now;
 
-          res = await supabase.from("deliveries").update(updates3 as any).eq("id", id);
+          const res3 = await supabase.from("deliveries").update(updates3 as any).eq("id", id);
 
-          if (res.error) {
-            console.warn("Third update failed, trying fallback combination 4 (appStatus + delivered_at):", res.error);
+          if (res3.error) {
+            console.warn("Third update failed, trying fallback combination 4 (appStatus + delivered_at):", res3.error);
 
             // Combination 4: appStatus (status) + delivered_at (Legacy and default database states)
             const updates4: Record<string, unknown> = { status: status, updated_at: now };
@@ -226,10 +226,10 @@ export function useUpdateDeliveryStatus() {
             if (status === "delivered") updates4.delivered_at = now;
             if (status === "cancelled") updates4.cancelled_at = now;
 
-            res = await supabase.from("deliveries").update(updates4 as any).eq("id", id);
+            const res4 = await supabase.from("deliveries").update(updates4 as any).eq("id", id);
 
-            if (res.error) {
-              throw res.error; // If all fail, propagate the error
+            if (res4.error) {
+              throw res4.error; // If all fail, propagate the error
             }
           }
         }
