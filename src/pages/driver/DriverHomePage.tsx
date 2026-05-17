@@ -11,6 +11,8 @@ import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
+import { CITY_COORDS } from "@/contexts/CityContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function DriverHomePage() {
   const { user, profile } = useAuth();
@@ -85,7 +87,10 @@ export default function DriverHomePage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
-        if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
+        const isManual = localStorage.getItem("epj_manual_city") === "true";
+        if (!isManual && detectedCity && detectedCity !== selectedCity) {
+          setCity(detectedCity);
+        }
         setIsDetecting(false);
         const { error: locError } = await supabase.from("delivery_drivers").update({
           latitude: pos.coords.latitude,
@@ -106,7 +111,10 @@ export default function DriverHomePage() {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
           const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
-          if (detectedCity && detectedCity !== selectedCity) setCity(detectedCity);
+          const isManual = localStorage.getItem("epj_manual_city") === "true";
+          if (!isManual && detectedCity && detectedCity !== selectedCity) {
+            setCity(detectedCity);
+          }
           const { error: locError } = await supabase.from("delivery_drivers").update({
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
@@ -224,12 +232,59 @@ export default function DriverHomePage() {
           </button>
         </div>
 
-        {/* City Auto-detected */}
+        {/* Seleção de Cidade */}
         {isOnline && (
-          <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5">
-            <MapPin className="h-4 w-4 text-primary shrink-0" />
-            <p className="text-sm font-semibold text-foreground">
-              {isDetecting ? "📍 Detectando localização..." : selectedCity ? `📍 ${selectedCity}` : "📍 Aguardando GPS..."}
+          <div className="flex flex-col gap-2 bg-card border border-border rounded-2xl p-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-4 w-4 text-primary shrink-0" />
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sua Cidade de Atuação</p>
+            </div>
+            
+            <div className="flex gap-2 items-center mt-1">
+              <div className="flex-1">
+                <Select
+                  value={selectedCity || ""}
+                  onValueChange={(val) => {
+                    if (val) {
+                      localStorage.setItem("epj_manual_city", "true");
+                      setCity(val);
+                      toast({ title: "Cidade alterada", description: `Atuação alterada para ${val} com sucesso.` });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full h-11 bg-background border-border rounded-xl font-semibold">
+                    <SelectValue placeholder="Selecione sua cidade..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    {Object.keys(CITY_COORDS).sort().map((cityName) => (
+                      <SelectItem key={cityName} value={cityName} className="font-medium">
+                        {cityName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {localStorage.getItem("epj_manual_city") === "true" && (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("epj_manual_city");
+                    toast({ title: "GPS Ativo", description: "Voltando para detecção automática por GPS." });
+                    if (driverRecord) updateLocation(driverRecord.id);
+                  }}
+                  className="px-3 h-11 rounded-xl bg-primary/10 text-primary text-xs font-bold shrink-0 hover:bg-primary/20 transition-colors"
+                >
+                  Usar GPS
+                </button>
+              )}
+            </div>
+            
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {localStorage.getItem("epj_manual_city") === "true" 
+                ? "💡 Você escolheu sua cidade manualmente. Para voltar à detecção automática por GPS, clique em 'Usar GPS'."
+                : isDetecting 
+                  ? "📍 Detectando sua cidade mais próxima pelo GPS..." 
+                  : `📍 Detectado automaticamente: ${selectedCity || "Aguardando GPS..."}`}
             </p>
           </div>
         )}
