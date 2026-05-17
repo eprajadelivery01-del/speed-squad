@@ -171,6 +171,24 @@ export function useUpdateDeliveryStatus() {
 
       if (!id) throw new Error("ID da entrega é obrigatório");
 
+      // 1. Try the safe, bulletproof, RLS-bypassing RPC function first
+      try {
+        const { data, error } = await supabase.rpc("update_delivery_status_safe", {
+          p_delivery_id: id,
+          p_status: status,
+          p_driver_id: driverId || null,
+        });
+
+        if (!error && data && (data as any).success) {
+          console.log("Successfully updated delivery status via safe RPC:", data);
+          return;
+        }
+        console.warn("Safe RPC returned unsuccessful or not found, trying REST fallbacks...", error || data);
+      } catch (err) {
+        console.warn("Error calling safe RPC, trying REST fallbacks...", err);
+      }
+
+      // Fallback: Original REST-based combination updates (backward compatible)
       // Combination 1: dbStatus + completed_at (Ideal normalized database state)
       const updates1: Record<string, unknown> = { status: dbStatus, updated_at: now };
       if (status === "accepted") {
@@ -181,10 +199,10 @@ export function useUpdateDeliveryStatus() {
       if (status === "delivered") updates1.completed_at = now;
       if (dbStatus === "cancelled") updates1.cancelled_at = now;
 
-      const res1 = await supabase.from("deliveries").update(updates1 as any).eq("id", id);
+      const res1 = await supabase.from("deliveries").update(updates1 as any).eq("id", id).select();
 
-      if (res1.error) {
-        console.warn("First update failed, trying fallback combination 2 (dbStatus + delivered_at):", res1.error);
+      if (res1.error || !res1.data || res1.data.length === 0) {
+        console.warn("First update failed or blocked by RLS, trying fallback combination 2 (dbStatus + delivered_at):", res1.error);
 
         // Combination 2: dbStatus + delivered_at
         const updates2: Record<string, unknown> = { status: dbStatus, updated_at: now };
@@ -196,10 +214,10 @@ export function useUpdateDeliveryStatus() {
         if (status === "delivered") updates2.delivered_at = now;
         if (dbStatus === "cancelled") updates2.cancelled_at = now;
 
-        const res2 = await supabase.from("deliveries").update(updates2 as any).eq("id", id);
+        const res2 = await supabase.from("deliveries").update(updates2 as any).eq("id", id).select();
 
-        if (res2.error) {
-          console.warn("Second update failed, trying fallback combination 3 (appStatus + completed_at):", res2.error);
+        if (res2.error || !res2.data || res2.data.length === 0) {
+          console.warn("Second update failed or blocked by RLS, trying fallback combination 3 (appStatus + completed_at):", res2.error);
 
           // Combination 3: appStatus (status) + completed_at
           const updates3: Record<string, unknown> = { status: status, updated_at: now };
@@ -211,10 +229,10 @@ export function useUpdateDeliveryStatus() {
           if (status === "delivered") updates3.completed_at = now;
           if (status === "cancelled") updates3.cancelled_at = now;
 
-          const res3 = await supabase.from("deliveries").update(updates3 as any).eq("id", id);
+          const res3 = await supabase.from("deliveries").update(updates3 as any).eq("id", id).select();
 
-          if (res3.error) {
-            console.warn("Third update failed, trying fallback combination 4 (appStatus + delivered_at):", res3.error);
+          if (res3.error || !res3.data || res3.data.length === 0) {
+            console.warn("Third update failed or blocked by RLS, trying fallback combination 4 (appStatus + delivered_at):", res3.error);
 
             // Combination 4: appStatus (status) + delivered_at (Legacy and default database states)
             const updates4: Record<string, unknown> = { status: status, updated_at: now };
@@ -226,10 +244,13 @@ export function useUpdateDeliveryStatus() {
             if (status === "delivered") updates4.delivered_at = now;
             if (status === "cancelled") updates4.cancelled_at = now;
 
-            const res4 = await supabase.from("deliveries").update(updates4 as any).eq("id", id);
+            const res4 = await supabase.from("deliveries").update(updates4 as any).eq("id", id).select();
 
             if (res4.error) {
-              throw res4.error; // If all fail, propagate the error
+              throw res4.error;
+            }
+            if (!res4.data || res4.data.length === 0) {
+              throw new Error("Update failed: Row level security (RLS) blocked the action or delivery not found.");
             }
           }
         }
