@@ -169,37 +169,69 @@ export function useUpdateDeliveryStatus() {
       const now = new Date().toISOString();
       const dbStatus = toDbStatus(status);
 
-      const updates: Record<string, string> = { status: dbStatus, updated_at: now };
-
-      if (status === "accepted") {
-        updates.accepted_at = now;
-        if (driverId) updates.driver_id = driverId;
-      }
-      if (status === "collecting") updates.collected_at = now;
-      if (status === "delivered") {
-        (updates as any).completed_at = now;
-      }
-      if (dbStatus === "cancelled") updates.cancelled_at = now;
-
       if (!id) throw new Error("ID da entrega é obrigatório");
 
-      let { error } = await supabase.from("deliveries").update(updates as any).eq("id", id);
-      
-      // Fallback try with delivered_at if completed_at failed (in case of schema variations)
-      if (error) {
-        console.warn("Update with completed_at failed, trying with delivered_at:", error);
-        const fallbackUpdates: Record<string, string> = { status: dbStatus, updated_at: now };
+      // Combination 1: dbStatus + completed_at (Ideal normalized database state)
+      const updates1: Record<string, unknown> = { status: dbStatus, updated_at: now };
+      if (status === "accepted") {
+        updates1.accepted_at = now;
+        if (driverId) updates1.driver_id = driverId;
+      }
+      if (status === "collecting") updates1.collected_at = now;
+      if (status === "delivered") updates1.completed_at = now;
+      if (dbStatus === "cancelled") updates1.cancelled_at = now;
+
+      let res = await supabase.from("deliveries").update(updates1 as any).eq("id", id);
+
+      if (res.error) {
+        console.warn("First update failed, trying fallback combination 2 (dbStatus + delivered_at):", res.error);
+
+        // Combination 2: dbStatus + delivered_at
+        const updates2: Record<string, unknown> = { status: dbStatus, updated_at: now };
         if (status === "accepted") {
-          fallbackUpdates.accepted_at = now;
-          if (driverId) fallbackUpdates.driver_id = driverId;
+          updates2.accepted_at = now;
+          if (driverId) updates2.driver_id = driverId;
         }
-        if (status === "collecting") fallbackUpdates.collected_at = now;
-        if (status === "delivered") fallbackUpdates.delivered_at = now;
-        if (dbStatus === "cancelled") fallbackUpdates.cancelled_at = now;
-        
-        const fallbackRes = await supabase.from("deliveries").update(fallbackUpdates as any).eq("id", id);
-        if (fallbackRes.error) {
-          throw error; // throw the original error if both failed
+        if (status === "collecting") updates2.collected_at = now;
+        if (status === "delivered") updates2.delivered_at = now;
+        if (dbStatus === "cancelled") updates2.cancelled_at = now;
+
+        res = await supabase.from("deliveries").update(updates2 as any).eq("id", id);
+
+        if (res.error) {
+          console.warn("Second update failed, trying fallback combination 3 (appStatus + completed_at):", res.error);
+
+          // Combination 3: appStatus (status) + completed_at
+          const updates3: Record<string, unknown> = { status: status, updated_at: now };
+          if (status === "accepted") {
+            updates3.accepted_at = now;
+            if (driverId) updates3.driver_id = driverId;
+          }
+          if (status === "collecting") updates3.collected_at = now;
+          if (status === "delivered") updates3.completed_at = now;
+          if (status === "cancelled") updates3.cancelled_at = now;
+
+          res = await supabase.from("deliveries").update(updates3 as any).eq("id", id);
+
+          if (res.error) {
+            console.warn("Third update failed, trying fallback combination 4 (appStatus + delivered_at):", res.error);
+
+            // Combination 4: appStatus (status) + delivered_at (Legacy and default database states)
+            const updates4: Record<string, unknown> = { status: status, updated_at: now };
+            if (status === "accepted") {
+              updates4.accepted_at = now;
+              if (driverId) updates4.driver_id = driverId;
+            }
+            if (status === "collecting") updates4.collected_at = now;
+            if (status === "delivered") updates4.delivered_at = now;
+            if (status === "cancelled") updates4.cancelled_at = now;
+
+            res = await supabase.from("deliveries").update(updates4 as any).eq("id", id);
+
+            if (res.error) {
+              throw res.error; // If all fail, propagate the error
+            }
+          }
         }
       }
 
