@@ -33,8 +33,8 @@ export function findNearestCity(lat: number, lng: number): string | null {
     }
   });
 
-  // Threshold: Only auto-assign if within 30km of the city center
-  if (minDistance > 30) {
+  // Threshold: Only auto-assign if within 150km of the city center
+  if (minDistance > 150) {
     console.warn(`[Location] Usuário a ${minDistance.toFixed(1)}km de ${nearestCity}. Fora do raio de auto-detecção.`);
     return null;
   }
