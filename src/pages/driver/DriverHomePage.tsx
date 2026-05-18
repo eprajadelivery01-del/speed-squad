@@ -26,6 +26,8 @@ export default function DriverHomePage() {
   const [isDetecting, setIsDetecting] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isQueryingRef = useRef(false);
+  const lastCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const todayStartIso = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -81,45 +83,97 @@ export default function DriverHomePage() {
 
   const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
+    if (isQueryingRef.current) return;
+    isQueryingRef.current = true;
     setIsDetecting(true);
+
+    const handleCoordsUpdate = async (lat: number, lng: number) => {
+      // Skip updates if location has not changed significantly (approx. 10 meters)
+      if (lastCoordsRef.current) {
+        const latDiff = Math.abs(lastCoordsRef.current.latitude - lat);
+        const lngDiff = Math.abs(lastCoordsRef.current.longitude - lng);
+        if (latDiff < 0.0001 && lngDiff < 0.0001) {
+          setIsDetecting(false);
+          isQueryingRef.current = false;
+          return;
+        }
+      }
+      lastCoordsRef.current = { latitude: lat, longitude: lng };
+
+      const detectedCity = findNearestCity(lat, lng);
+      if (detectedCity && detectedCity !== selectedCity) {
+        setCity(detectedCity);
+      }
+      setIsDetecting(false);
+      isQueryingRef.current = false;
+
+      const { error: locError } = await supabase.from("delivery_drivers").update({
+        latitude: lat,
+        longitude: lng,
+        updated_at: new Date().toISOString(),
+      }).eq("id", drivId);
+      if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
+    };
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
-        if (detectedCity && detectedCity !== selectedCity) {
-          setCity(detectedCity);
-        }
-        setIsDetecting(false);
-        const { error: locError } = await supabase.from("delivery_drivers").update({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          updated_at: new Date().toISOString(),
-        }).eq("id", drivId);
-        if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
+        await handleCoordsUpdate(pos.coords.latitude, pos.coords.longitude);
       },
-      (err) => { console.warn("Geolocation error:", err); setIsDetecting(false); },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      (err) => {
+        console.warn("Geolocation warning (high accuracy failed):", err.message);
+        // Fallback once to low accuracy on failure/timeout
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            await handleCoordsUpdate(pos.coords.latitude, pos.coords.longitude);
+          },
+          (fallbackErr) => {
+            console.warn("Geolocation warning (low accuracy fallback failed):", fallbackErr.message);
+            setIsDetecting(false);
+            isQueryingRef.current = false;
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
     );
   }, [selectedCity, setCity]);
 
   const startTracking = useCallback((drivId: string) => {
     updateLocation(drivId);
-    intervalRef.current = setInterval(() => updateLocation(drivId), 10000);
+    // Increase polling fallback interval to 45 seconds to reduce concurrency and locks
+    intervalRef.current = setInterval(() => updateLocation(drivId), 45000);
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
-          const detectedCity = findNearestCity(pos.coords.latitude, pos.coords.longitude);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+
+          // Skip DB write if location has not changed significantly (approx. 10 meters)
+          if (lastCoordsRef.current) {
+            const latDiff = Math.abs(lastCoordsRef.current.latitude - lat);
+            const lngDiff = Math.abs(lastCoordsRef.current.longitude - lng);
+            if (latDiff < 0.0001 && lngDiff < 0.0001) {
+              return;
+            }
+          }
+          lastCoordsRef.current = { latitude: lat, longitude: lng };
+
+          const detectedCity = findNearestCity(lat, lng);
           if (detectedCity && detectedCity !== selectedCity) {
             setCity(detectedCity);
           }
+
           const { error: locError } = await supabase.from("delivery_drivers").update({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
+            latitude: lat,
+            longitude: lng,
             updated_at: new Date().toISOString(),
           }).eq("id", drivId);
           if (locError) console.error("Erro ao atualizar GPS (watch) no BD:", locError);
         },
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 0 }
+        (err) => {
+          console.warn("watchPosition warning:", err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
       );
     }
   }, [updateLocation, selectedCity, setCity]);
@@ -127,6 +181,7 @@ export default function DriverHomePage() {
   const stopTracking = useCallback(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
+    isQueryingRef.current = false;
   }, []);
 
   const handleAcceptConsent = () => {
