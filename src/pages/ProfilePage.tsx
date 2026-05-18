@@ -49,12 +49,12 @@ export default function ProfilePage() {
       // Get driver record
       const { data: driver } = await supabase
         .from("delivery_drivers")
-        .select("rating, is_online, cover_url")
+        .select("rating, is_online")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (driver) {
-        setCoverUrl(driver.cover_url || "");
+        setCoverUrl(localStorage.getItem(`driver_cover_${user.id}`) || "");
         // Count deliveries
         const { count } = await supabase
           .from("deliveries")
@@ -99,7 +99,7 @@ export default function ProfilePage() {
       const { error } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      await supabase.from("delivery_drivers").update({ cover_url: publicUrl } as any).eq("user_id", user.id);
+      localStorage.setItem(`driver_cover_${user.id}`, publicUrl);
       setCoverUrl(publicUrl);
       toast({ title: "Capa atualizada!" });
     } catch (err: any) {
