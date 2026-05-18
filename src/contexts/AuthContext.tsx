@@ -190,16 +190,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setLoading(true);
-        void fetchUserData(nextUser).finally(() => {
-          if (mountedRef.current) {
-            setLoading(false);
-          }
-        });
+        // Defer load of user data to allow gotrue-js to release auth locks first, preventing deadlock
+        setTimeout(() => {
+          if (!mountedRef.current) return;
+          void fetchUserData(nextUser).finally(() => {
+            if (mountedRef.current) {
+              setLoading(false);
+            }
+          });
+        }, 0);
         return;
       }
 
       if (event === "USER_UPDATED") {
-        void fetchUserData(nextUser);
+        setTimeout(() => {
+          if (!mountedRef.current) return;
+          void fetchUserData(nextUser);
+        }, 0);
       }
     });
 
