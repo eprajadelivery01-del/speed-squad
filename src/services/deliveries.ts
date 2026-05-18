@@ -180,12 +180,10 @@ export function useUpdateDeliveryStatus() {
         });
 
         if (!error && data && (data as any).success) {
-          console.log("Successfully updated delivery status via safe RPC:", data);
           return;
         }
-        console.warn("Safe RPC returned unsuccessful or not found, trying REST fallbacks...", error || data);
       } catch (err) {
-        console.warn("Error calling safe RPC, trying REST fallbacks...", err);
+        // Silently ignore to proceed to REST fallbacks
       }
 
       // Fallback: Original REST-based combination updates (backward compatible)
@@ -202,8 +200,6 @@ export function useUpdateDeliveryStatus() {
       const res1 = await supabase.from("deliveries").update(updates1 as any).eq("id", id).select();
 
       if (res1.error || !res1.data || res1.data.length === 0) {
-        console.warn("First update failed or blocked by RLS, trying fallback combination 2 (dbStatus + delivered_at):", res1.error);
-
         // Combination 2: dbStatus + delivered_at
         const updates2: Record<string, unknown> = { status: dbStatus, updated_at: now };
         if (status === "accepted") {
@@ -217,8 +213,6 @@ export function useUpdateDeliveryStatus() {
         const res2 = await supabase.from("deliveries").update(updates2 as any).eq("id", id).select();
 
         if (res2.error || !res2.data || res2.data.length === 0) {
-          console.warn("Second update failed or blocked by RLS, trying fallback combination 3 (appStatus + completed_at):", res2.error);
-
           // Combination 3: appStatus (status) + completed_at
           const updates3: Record<string, unknown> = { status: status, updated_at: now };
           if (status === "accepted") {
@@ -232,8 +226,6 @@ export function useUpdateDeliveryStatus() {
           const res3 = await supabase.from("deliveries").update(updates3 as any).eq("id", id).select();
 
           if (res3.error || !res3.data || res3.data.length === 0) {
-            console.warn("Third update failed or blocked by RLS, trying fallback combination 4 (appStatus + delivered_at):", res3.error);
-
             // Combination 4: appStatus (status) + delivered_at (Legacy and default database states)
             const updates4: Record<string, unknown> = { status: status, updated_at: now };
             if (status === "accepted") {

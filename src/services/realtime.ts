@@ -10,8 +10,6 @@ export function useDriverRealtime(driverId?: string, regionId?: string) {
   const qc = useQueryClient();
 
   useEffect(() => {
-    console.log("[Realtime] Iniciando canais do entregador...");
-
     const sessionId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
       ? crypto.randomUUID().substring(0, 8) 
       : Math.random().toString(36).substring(2, 10);
@@ -23,7 +21,6 @@ export function useDriverRealtime(driverId?: string, regionId?: string) {
         "postgres_changes",
         { event: "*", schema: "public", table: "deliveries" },
         (payload) => {
-          console.log("[Realtime] Mudança em deliveries:", payload.eventType);
           qc.invalidateQueries({ queryKey: ["deliveries"] });
           qc.invalidateQueries({ queryKey: ["delivery-stats"] });
         }
