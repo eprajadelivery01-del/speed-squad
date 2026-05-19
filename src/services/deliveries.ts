@@ -173,7 +173,7 @@ export function useUpdateDeliveryStatus() {
 
       // 1. Try the safe, bulletproof, RLS-bypassing RPC function first
       try {
-        const { data, error } = await supabase.rpc("update_delivery_status_safe", {
+        const { data, error } = await (supabase.rpc as any)("update_delivery_status_safe", {
           p_delivery_id: id,
           p_status: status,
           p_driver_id: driverId || null,
