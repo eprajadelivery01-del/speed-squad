@@ -22,6 +22,7 @@ export interface DeliveryWithRelations {
   created_at: string;
   updated_at: string;
   companies?: { name: string; phone: string | null } | null;
+  customer_phone?: string | null;
 }
 
 // DB enum uses: pending, broadcasted, accepted, collecting, in_route, completed, cancelled
