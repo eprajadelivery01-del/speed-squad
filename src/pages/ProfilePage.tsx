@@ -151,12 +151,6 @@ export default function ProfilePage() {
             <div className={cn("w-1.5 h-1.5 rounded-full", driverStats.online ? "bg-white animate-pulse" : "bg-white/40")} />
             {driverStats.online ? "Online" : "Offline"}
           </div>
-          {/* Cover edit btn */}
-          <label className="absolute bottom-3 right-3 cursor-pointer flex items-center gap-1.5 bg-black/40 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 hover:bg-black/60 transition-all">
-            {uploadingCover ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
-            Editar capa
-            <input ref={coverInputRef} type="file" capture="environment" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-          </label>
         </div>
 
         {/* === AVATAR OVERLAPPING === */}
