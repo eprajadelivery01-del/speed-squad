@@ -69,10 +69,10 @@ export default function InvitePage() {
     validateToken();
   }, [token]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: any) => {
+    if (e && e.preventDefault) e.preventDefault();
     
-    // Se não estiver no último passo, o "Enter" deve apenas avançar a etapa.
+    // Se não estiver no último passo, não deveria chamar isso, mas por segurança:
     if (step < 2) {
       nextStep();
       return;
@@ -215,7 +215,7 @@ export default function InvitePage() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             {formError && (
               <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
                 <AlertCircle className="h-5 w-5 shrink-0" />
@@ -236,6 +236,7 @@ export default function InvitePage() {
                         placeholder="seu@email.com"
                         value={formData.email}
                         onChange={e => setFormData({...formData, email: e.target.value})}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextStep(); } }}
                         required
                       />
                     </div>
@@ -252,6 +253,7 @@ export default function InvitePage() {
                           placeholder="••••••••"
                           value={formData.password}
                           onChange={e => setFormData({...formData, password: e.target.value})}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextStep(); } }}
                           required
                           minLength={6}
                         />
@@ -275,6 +277,7 @@ export default function InvitePage() {
                           placeholder="••••••••"
                           value={formData.confirmPassword}
                           onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextStep(); } }}
                           required
                           minLength={6}
                         />
@@ -302,6 +305,7 @@ export default function InvitePage() {
                         placeholder="João da Silva"
                         value={formData.fullName}
                         onChange={e => setFormData({...formData, fullName: e.target.value})}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextStep(); } }}
                         required
                       />
                     </div>
@@ -317,6 +321,7 @@ export default function InvitePage() {
                           placeholder="(00) 90000-0000"
                           value={formData.phone}
                           onChange={e => setFormData({...formData, phone: e.target.value})}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextStep(); } }}
                           required
                         />
                       </div>
@@ -331,6 +336,7 @@ export default function InvitePage() {
                           placeholder="000.000.000-00"
                           value={formData.document}
                           onChange={e => setFormData({...formData, document: e.target.value})}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); nextStep(); } }}
                           required
                         />
                       </div>
@@ -364,6 +370,7 @@ export default function InvitePage() {
                         placeholder="Ex: ABC-1234"
                         value={formData.licensePlate}
                         onChange={e => setFormData({...formData, licensePlate: e.target.value})}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
                       />
                     </div>
                   </div>
@@ -393,7 +400,8 @@ export default function InvitePage() {
                 </Button>
               ) : (
                 <Button 
-                  type="submit" 
+                  type="button" 
+                  onClick={handleSubmit}
                   className="flex-1 h-14 rounded-2xl font-black shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary hover:bg-primary/90 text-white relative overflow-hidden group" 
                   disabled={loading}
                 >
@@ -407,7 +415,7 @@ export default function InvitePage() {
               )}
             </div>
 
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>
