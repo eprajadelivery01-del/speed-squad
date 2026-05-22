@@ -182,83 +182,140 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
 
   const isDone = delivery.status === "delivered" || delivery.status === "cancelled";
 
+  const hasPago = delivery.notes?.includes("[PAGO]");
+  const hasReceber = delivery.notes?.includes("[RECEBER:");
+  const paymentBadge = hasPago ? "✅ PAGO" : hasReceber ? delivery.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
+  
+  let cleanNotes = delivery.notes || "";
+  if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
+  if (hasReceber) cleanNotes = cleanNotes.replace(/\[RECEBER:.*?\]/, "").trim();
+  
+  const isProducts = cleanNotes.includes("[PRODUTOS]") || cleanNotes.includes("[ITENS:");
+  if (isProducts) {
+    cleanNotes = cleanNotes.replace("[PRODUTOS]", "").replace(/\[ITENS:.*?\]/, "").trim();
+  }
+
   return (
-    <div className="bg-card rounded-2xl p-5 shadow-card border border-border flex flex-col gap-4">
-      <div className="flex justify-between items-start">
+    <div className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
+      {/* Background glow effect */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/30 transition-colors duration-500" />
+      
+      {/* Header: Store and Value */}
+      <div className="flex justify-between items-start z-10">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{delivery.companies?.name || "Empresa"}</span>
-          <h2 className="text-lg font-bold text-foreground leading-tight">{delivery.customer_name}</h2>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          {delivery.value != null && (
-            <div className="bg-success/10 text-success px-2 py-1 rounded-lg text-sm font-bold flex items-center gap-1">
-              <DollarSign className="h-3 w-3" />
-              {Number(delivery.value).toFixed(2)}
-            </div>
-          )}
-          <span className="text-[10px] font-bold text-muted-foreground uppercase">{getStatusLabel(delivery.status)}</span>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {delivery.pickup_address && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Package className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <span>{delivery.pickup_address}</span>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg">
+              {getStatusLabel(delivery.status)}
+            </span>
+            {paymentBadge && (
+              <span className={cn(
+                "px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg",
+                hasPago ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+              )}>
+                {paymentBadge.replace(/[\[\]]/g, "")}
+              </span>
+            )}
           </div>
-        )}
-        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-          <span>{delivery.dropoff_address || delivery.address}</span>
+          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{delivery.companies?.name || "Loja Parceira"}</h4>
+          <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
-
-        {delivery.notes && (
-          <div className={cn(
-            "p-3 rounded-xl border border-border text-sm leading-relaxed",
-            delivery.notes.includes("[ITENS:") ? "bg-primary/5 border-primary/20" : "bg-muted/30"
-          )}>
-            <div className="flex items-start gap-2">
-              <Package className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <div>
-                {delivery.notes.includes("[ITENS:") ? (
-                  <>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Itens do Pedido</p>
-                    <p className="font-bold text-foreground">{delivery.notes.replace(/\[ITENS:\s*(.*?)\]/g, '$1')}</p>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground">{delivery.notes}</p>
-                )}
-              </div>
+        
+        {delivery.value != null && (
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
+            <div className="text-2xl font-black text-success tracking-tighter">
+              <span className="text-sm mr-0.5">R$</span>{Number(delivery.value).toFixed(2)}
             </div>
           </div>
         )}
       </div>
+
+      {/* Route Timeline */}
+      <div className="relative flex flex-col gap-4 pl-3 py-1 z-10">
+        <div className="absolute left-[17px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-foreground/20 rounded-full" />
+        
+        {/* Pickup */}
+        <div className="flex items-start gap-4">
+          <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(var(--primary),0.2)] mt-1.5 relative z-10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Coleta</span>
+            <span className="text-sm font-semibold text-foreground mt-0.5">{delivery.pickup_address || "Retirada na loja"}</span>
+          </div>
+        </div>
+        
+        {/* Dropoff */}
+        <div className="flex items-start gap-4">
+          <div className="w-3 h-3 rounded-full bg-foreground border-2 border-background shadow-[0_0_0_2px_rgba(var(--foreground),0.2)] mt-1.5 relative z-10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Entrega</span>
+            <span className="text-sm font-semibold text-foreground mt-0.5">{delivery.dropoff_address || delivery.address}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Order Details/Products */}
+      {cleanNotes && (
+        <div className={cn(
+          "relative p-3.5 rounded-2xl border z-10 overflow-hidden",
+          isProducts ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border/50"
+        )}>
+          <div className="flex items-start gap-3 relative z-10">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+              isProducts ? "bg-primary/10 text-primary" : "bg-background text-muted-foreground shadow-sm"
+            )}>
+              <Package className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              {isProducts ? (
+                <>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Conteúdo do Pedido</p>
+                  <p className="text-xs font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    {cleanNotes}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs font-medium text-muted-foreground leading-relaxed italic">
+                  "{cleanNotes}"
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Valor a cobrar do cliente */}
       {delivery.estimated_value != null && Number(delivery.estimated_value) > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Cobrar do cliente</span>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            <ShoppingBag className="h-5 w-5 text-amber-600" />
+            <span className="text-sm font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">Cobrar do cliente</span>
           </div>
-          <span className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
-            R$ {Number(delivery.estimated_value).toFixed(2)}
+          <span className="text-xl font-black text-amber-700 dark:text-amber-400">
+            <span className="text-sm mr-0.5">R$</span>{Number(delivery.estimated_value).toFixed(2)}
           </span>
         </div>
       )}
 
       {!isDone && (
-        <div className="flex items-center gap-2 mt-2 pt-4 border-t border-border">
+        <div className="flex items-center gap-2 mt-2 z-10">
           <button
             onClick={onAction}
             disabled={loading}
-            className={cn(
-              "flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all",
-              "bg-success text-success-foreground"
-            )}
+            className="relative flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-base text-white shadow-[0_8px_20px_rgba(var(--primary),0.3)] hover:shadow-[0_10px_25px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all overflow-hidden group/btn"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : getButtonIcon()}
-            {getButtonText()}
+            <div className={cn(
+              "absolute inset-0 bg-gradient-to-r",
+              delivery.status === "pending" || delivery.status === "broadcasted" 
+                ? "from-primary to-[#ff4713]"
+                : "from-success to-emerald-600"
+            )} />
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
+            
+            <div className="relative flex items-center gap-2">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : getButtonIcon()}
+              {getButtonText()}
+            </div>
           </button>
 
           {delivery.customer_phone && (
@@ -266,17 +323,17 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 rounded-xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-md flex items-center justify-center shrink-0"
+              className="h-14 w-14 rounded-2xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(37,211,102,0.3)] flex items-center justify-center shrink-0"
               title="Chamar Cliente no WhatsApp"
             >
-              <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.965C16.588 1.978 14.12 .951 11.5 .951c-5.442 0-9.866 4.372-9.87 9.802 0 1.714.46 3.393 1.332 4.888L1.97 22.012l6.096-1.597h-.002zm11.366-7.46c-.328-.164-1.944-.959-2.242-1.068-.298-.11-.515-.164-.73.164-.216.329-.838 1.068-1.027 1.287-.19.219-.38.246-.708.082-1.344-.672-2.316-1.171-3.114-2.54-.21-.362.21-.336.6-.112.35.201.402.242.493.425.09.182.046.343-.021.48-.069.137-.588 1.41-.806 1.946-.212.524-.426.452-.588.461-.137.008-.296.01-.454.01-.158 0-.417.06-.635.297-.218.238-.83 1.097-.83 2.675 0 1.579 1.148 3.1 1.307 3.31.158.21 2.26 3.45 5.474 4.839.764.33 1.36.527 1.824.675.768.243 1.467.209 2.02.127.616-.093 1.944-.795 2.217-1.562.272-.767.272-1.423.19-1.562-.081-.137-.298-.219-.626-.383z"/>
               </svg>
             </a>
           )}
 
-          <button onClick={() => setShowInfo(!showInfo)} className="p-3 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors">
-            <AlertCircle className="h-5 w-5" />
+          <button onClick={() => setShowInfo(!showInfo)} className="h-14 w-14 rounded-2xl border-2 border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center shrink-0">
+            <AlertCircle className="h-6 w-6" />
           </button>
         </div>
       )}
