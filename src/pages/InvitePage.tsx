@@ -71,6 +71,13 @@ export default function InvitePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Se não estiver no último passo, o "Enter" deve apenas avançar a etapa.
+    if (step < 2) {
+      nextStep();
+      return;
+    }
+
     if (loading) return;
     
     setLoading(true);
