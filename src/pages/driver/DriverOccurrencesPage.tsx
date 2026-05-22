@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOccurrences, useReportOccurrence } from "@/services/occurrences";
 import { useDeliveries } from "@/services/deliveries";
 import { AlertTriangle, Plus, Loader2, FileText, CheckCircle, Clock } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import type { OccurrenceType } from "@/types/models";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -78,12 +78,9 @@ export default function DriverOccurrencesPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] rounded-3xl mx-4">
-              <DialogHeader className="sr-only">
-                <DialogTitle>Ocorrência</DialogTitle>
-                <DialogDescription>Detalhes e status da ocorrência</DialogDescription>
-              </DialogHeader>
               <DialogHeader>
                 <DialogTitle>Nova Ocorrência</DialogTitle>
+                <DialogDescription className="sr-only">Detalhes e status da ocorrência</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
