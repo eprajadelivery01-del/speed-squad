@@ -392,6 +392,7 @@ export default function InvitePage() {
               
               {step < 2 ? (
                 <Button 
+                  key="btn-next"
                   type="button" 
                   className="flex-1 h-14 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary hover:bg-primary/90 text-white" 
                   onClick={nextStep}
@@ -400,6 +401,7 @@ export default function InvitePage() {
                 </Button>
               ) : (
                 <Button 
+                  key="btn-submit"
                   type="button" 
                   onClick={handleSubmit}
                   className="flex-1 h-14 rounded-2xl font-black shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary hover:bg-primary/90 text-white relative overflow-hidden group" 
