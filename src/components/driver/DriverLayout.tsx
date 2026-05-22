@@ -18,6 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useDeliveries } from "@/services/deliveries";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 
 const tabs = [
   { label: "Início", icon: Home, href: "/driver" },
@@ -38,6 +42,37 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   const location = useLocation();
   const { profile, user } = useAuth();
   const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
+  
+  const [driverId, setDriverId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (user) {
+      supabase.from("delivery_drivers").select("id, is_online").eq("user_id", user.id).single().then(({ data }) => {
+        if (data) {
+          setDriverId(data.id);
+          setIsOnline(data.is_online ?? false);
+        }
+      });
+    }
+  }, [user]);
+
+  // For "Início" tab (available broadcasted deliveries)
+  const { data: broadcastData } = useDeliveries({
+    status: ["pending", "broadcasted"],
+    driverId: driverId || undefined,
+    enabled: !!driverId && isOnline,
+  });
+  const broadcastCount = useUniqueDeliveries(broadcastData?.data ?? []).length;
+
+  // For "Entregas" tab (driver's active deliveries)
+  const { data: myData } = useDeliveries({
+    driverId: driverId || undefined,
+    enabled: !!driverId,
+  });
+  const activeDeliveriesCount = useUniqueDeliveries(myData?.data ?? []).filter(d => 
+    ["accepted", "collecting", "in_transit", "pending", "broadcasted"].includes(d.status)
+  ).length;
 
   const isActive = (href: string) => {
     if (href === "/driver") return location.pathname === "/driver";
@@ -140,15 +175,22 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
         <div className="flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {
             const active = isActive(tab.href);
+            
+            let badgeCount = 0;
+            if (tab.label === "Início") badgeCount = broadcastCount;
+            if (tab.label === "Entregas") badgeCount = activeDeliveriesCount;
+
             return tab.external ? (
               <a
                 key={tab.label}
                 href={tab.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex flex-1 flex-col items-center justify-center gap-1 h-full"
+                className="group relative flex flex-1 flex-col items-center justify-center gap-1 h-full"
               >
-                <tab.icon className="h-[22px] w-[22px] text-muted-foreground stroke-[1.5px]" />
+                <div className="relative">
+                  <tab.icon className="h-[22px] w-[22px] text-muted-foreground stroke-[1.5px]" />
+                </div>
                 <span className="text-[10px] text-muted-foreground font-medium">
                   {tab.label}
                 </span>
@@ -157,12 +199,19 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
               <Link
                 key={tab.href}
                 to={tab.href}
-                className="group flex flex-1 flex-col items-center justify-center gap-1 h-full"
+                className="group relative flex flex-1 flex-col items-center justify-center gap-1 h-full"
               >
-                <tab.icon className={cn(
-                  'h-[22px] w-[22px] transition-all duration-200',
-                  active ? 'text-foreground stroke-[2.5px]' : 'text-muted-foreground stroke-[1.5px]'
-                )} />
+                <div className="relative">
+                  <tab.icon className={cn(
+                    'h-[22px] w-[22px] transition-all duration-200',
+                    active ? 'text-foreground stroke-[2.5px]' : 'text-muted-foreground stroke-[1.5px]'
+                  )} />
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground border border-background shadow-sm">
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  )}
+                </div>
                 <span className={cn(
                   "text-[10px] transition-all duration-200",
                   active ? "text-foreground font-bold" : "text-muted-foreground font-medium"
