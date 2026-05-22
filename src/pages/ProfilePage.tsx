@@ -62,10 +62,24 @@ export default function ProfilePage() {
           .eq("driver_id", driver.id)
           .eq("status", "delivered");
 
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const { data: weekDeliveries } = await supabase
+          .from("deliveries")
+          .select("commission")
+          .eq("driver_id", driver.id)
+          .eq("status", "delivered")
+          .gte("created_at", startOfWeek.toISOString());
+
+        const earnings = weekDeliveries?.reduce((sum, d) => sum + Number(d.commission || 0), 0) || 0;
+
         setDriverStats({
           deliveries: count || 0,
           rating: driver.rating || 5.0,
-          earnings: 0,
+          earnings: earnings,
           online: driver.is_online || false,
         });
       }
@@ -204,7 +218,7 @@ export default function ProfilePage() {
             {[
               { value: driverStats.deliveries, label: 'Entregas', icon: Package },
               { value: driverStats.rating.toFixed(1), label: 'Avaliação', icon: Star },
-              { value: `R$0`, label: 'Esta semana', icon: TrendingUp },
+              { value: `R$${driverStats.earnings.toFixed(2).replace('.', ',')}`, label: 'Esta semana', icon: TrendingUp },
             ].map((stat, i) => (
               <div
                 key={stat.label}
