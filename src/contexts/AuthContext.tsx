@@ -167,16 +167,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const previousUserId = currentUserIdRef.current;
 
       if (event === "SIGNED_OUT") {
-        // Anti-flicker for multi-tab/focus issues in gotrue: delay actual sign out
-        setTimeout(async () => {
-          if (!mountedRef.current) return;
-          const { data } = await supabase.auth.getSession();
-          if (!data.session) {
-            applySession(null);
-            clearUserState();
-            setLoading(false);
-          }
-        }, 300);
+        // Only clear state if it was an explicit manual logout.
+        // This completely prevents the gotrue multi-tab focus flicker bug.
+        if (!(window as any).isManualLogout) {
+          return;
+        }
+        applySession(null);
+        clearUserState();
+        setLoading(false);
         return;
       }
 
@@ -241,7 +239,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signOut = async () => { await supabase.auth.signOut(); };
+  const signOut = async () => { 
+    (window as any).isManualLogout = true;
+    await supabase.auth.signOut(); 
+  };
 
   const deleteAccount = async () => {
     if (!user) return;
