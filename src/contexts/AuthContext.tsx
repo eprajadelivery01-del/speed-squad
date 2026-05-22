@@ -167,9 +167,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const previousUserId = currentUserIdRef.current;
 
       if (event === "SIGNED_OUT") {
-        applySession(null);
-        clearUserState();
-        setLoading(false);
+        // Anti-flicker for multi-tab/focus issues in gotrue: delay actual sign out
+        setTimeout(async () => {
+          if (!mountedRef.current) return;
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            applySession(null);
+            clearUserState();
+            setLoading(false);
+          }
+        }, 300);
         return;
       }
 
