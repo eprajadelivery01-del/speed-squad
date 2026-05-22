@@ -44,11 +44,11 @@ export async function updateProfile(userId: string, updates: { id?: string; full
   console.log(`[Service] Atualizando perfil: ${userId}`, updates);
   const { data, error } = await supabase
     .from("profiles")
-    .upsert({ 
-      user_id: userId, 
+    .update({ 
       ...updates, 
       updated_at: new Date().toISOString() 
-    }, { onConflict: 'user_id' })
+    })
+    .eq('user_id', userId)
     .select()
     .single();
     
