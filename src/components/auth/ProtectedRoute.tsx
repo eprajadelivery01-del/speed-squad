@@ -8,9 +8,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, hasRole, dataLoaded } = useAuth();
 
-  if (loading) {
+  if (loading || (user && !dataLoaded)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
