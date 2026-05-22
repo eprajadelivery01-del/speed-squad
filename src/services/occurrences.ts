@@ -28,8 +28,6 @@ export function useReportOccurrence() {
       const { error } = await supabase.from("occurrences").insert([
         {
           ...occurrence,
-          status: "open",
-          updated_at: new Date().toISOString(),
         },
       ]);
       if (error) throw error;
