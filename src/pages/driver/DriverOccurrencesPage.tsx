@@ -78,6 +78,10 @@ export default function DriverOccurrencesPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] rounded-3xl mx-4">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Ocorrência</DialogTitle>
+                <DialogDescription>Detalhes e status da ocorrência</DialogDescription>
+              </DialogHeader>
               <DialogHeader>
                 <DialogTitle>Nova Ocorrência</DialogTitle>
               </DialogHeader>

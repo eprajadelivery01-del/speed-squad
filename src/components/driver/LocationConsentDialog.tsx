@@ -18,11 +18,14 @@ export function LocationConsentDialog({ open, onAccept }: LocationConsentDialogP
   return (
     <Dialog open={open}>
       <DialogContent className="rounded-3xl max-w-[90vw] sm:max-w-md p-6 bg-background/95 backdrop-blur-xl border border-border shadow-2xl">
-        <DialogHeader className="flex flex-col items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <MapPin className="h-8 w-8 text-primary animate-pulse" />
+        <DialogHeader>
+          <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
+            <MapPin className="w-10 h-10 text-primary" />
           </div>
-          <DialogTitle className="text-xl font-bold text-center">Permissão de Localização</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-center mb-2">Permitir Localização</DialogTitle>
+          <DialogDescription className="text-center text-muted-foreground text-lg">
+            Para receber corridas próximas a você e permitir que os clientes acompanhem a entrega, precisamos de acesso à sua localização enquanto usa o app.
+          </DialogDescription>
           <DialogDescription className="text-center text-muted-foreground leading-relaxed" id="location-dialog-description">
             O É Pra Já coleta dados de localização para habilitar o rastreamento das suas entregas e o cálculo de rotas em tempo real, garantindo que os lojistas e clientes acompanhem o progresso do seu trabalho.
             <br /><br />

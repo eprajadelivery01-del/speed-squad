@@ -28,7 +28,7 @@ export function useReportOccurrence() {
       const { error } = await supabase.from("occurrences").insert([
         {
           ...occurrence,
-          status: "pending",
+          status: "open",
           updated_at: new Date().toISOString(),
         },
       ]);
