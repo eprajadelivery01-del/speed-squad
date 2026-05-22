@@ -100,10 +100,23 @@ export default function LoginPage() {
         </div>
 
         {user && !authLoading && roles.length === 0 && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl space-y-3">
             <p className="text-[11px] text-destructive text-center font-bold uppercase leading-tight">
-              Acesso Negado: Seu perfil não possui permissões. Contate o administrador.
+              Acesso Negado: Seu perfil não possui permissões.
             </p>
+            <p className="text-[10px] text-destructive/80 text-center font-medium leading-tight">
+              Seu cadastro anterior falhou. Você precisa deslogar desta conta presa e tentar registrar novamente.
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = "/";
+              }}
+              className="w-full py-2 bg-destructive text-white text-xs font-bold rounded-lg uppercase tracking-wider hover:bg-destructive/90 transition-colors"
+            >
+              Sair desta conta
+            </button>
           </div>
         )}
 
