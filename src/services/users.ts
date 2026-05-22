@@ -63,11 +63,11 @@ export async function updateProfile(userId: string, updates: { id?: string; full
 
 export async function uploadAvatar(userId: string, file: File) {
   const ext = file.name.split(".").pop();
-  const path = `${userId}/avatar.${ext}`;
+  const path = `${userId}/avatar-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("avatars")
-    .upload(path, file, { upsert: true });
+    .upload(path, file, { upsert: false });
   if (uploadError) throw uploadError;
 
   const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);

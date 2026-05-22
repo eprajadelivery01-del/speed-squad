@@ -49,7 +49,7 @@ export default function ProfilePage() {
       // Get driver record
       const { data: driver } = await supabase
         .from("delivery_drivers")
-        .select("rating, is_online")
+        .select("id, rating, is_online")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -95,8 +95,8 @@ export default function ProfilePage() {
     setUploadingCover(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `covers/${user.id}-${Date.now()}.${fileExt}`;
-      const { error } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      const filePath = `${user.id}/cover-${Date.now()}.${fileExt}`;
+      const { error } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: false });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       localStorage.setItem(`driver_cover_${user.id}`, publicUrl);
