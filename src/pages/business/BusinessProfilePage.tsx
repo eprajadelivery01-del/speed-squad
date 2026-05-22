@@ -80,7 +80,7 @@ export default function BusinessProfilePage() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${type}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${companyId}/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('store-assets')
@@ -116,7 +116,7 @@ export default function BusinessProfilePage() {
 
         const fileExt = file.name.split('.').pop();
         const fileName = `gallery-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${companyId}/gallery/${fileName}`;
+        const filePath = `${user.id}/gallery/${fileName}`;
 
         const { error } = await supabase.storage.from('store-assets').upload(filePath, file);
         if (!error) {

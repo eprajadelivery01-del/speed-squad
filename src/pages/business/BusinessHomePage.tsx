@@ -15,7 +15,7 @@ export default function BusinessHomePage() {
   return (
     <BusinessLayout>
       {showNewDelivery ? (
-        <NewDeliveryForm onClose={() => setShowNewDelivery(false)} userId={user?.id} />
+        <NewDeliveryForm onClose={() => setShowNewDelivery(false)} companyId={companyData?.id} />
       ) : (
         <div className="space-y-6">
           <div className="text-center pt-4">
@@ -61,7 +61,7 @@ export default function BusinessHomePage() {
   );
 }
 
-function NewDeliveryForm({ onClose, userId }: { onClose: () => void; userId?: string }) {
+function NewDeliveryForm({ onClose, companyId }: { onClose: () => void; companyId?: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [customerName, setCustomerName] = useState("");
@@ -78,7 +78,7 @@ function NewDeliveryForm({ onClose, userId }: { onClose: () => void; userId?: st
     const { error } = await supabase.from("deliveries").insert([{
       customer_name: customerName,
       address: `${pickupAddress} → ${dropoffAddress}`,
-      company_id: userId || "",
+      company_id: companyId || "",
       notes: notes || null,
     }] as any);
 
