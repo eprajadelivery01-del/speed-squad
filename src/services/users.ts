@@ -96,14 +96,15 @@ export async function fetchInvitations() {
 }
 
 export async function validateInvitation(token: string) {
-  const { data, error } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("token", token)
-    .eq("status", "pending")
-    .single();
-  if (error) throw error;
+  // Use secure RPC to fetch invitation by token (bypasses direct SELECT RLS restrict)
+  const { data, error } = await supabase.rpc("get_invitation_by_token", { _token: token } as any);
+
+  if (error) {
+    console.error("[Invite] Supabase error:", error);
+    throw new Error(error.message || "Erro ao validar convite");
+  }
   if (!data) throw new Error("Convite não encontrado");
+  if (data.status !== "pending") throw new Error("Convite inválido ou já utilizado");
   if (new Date(data.expires_at) < new Date()) throw new Error("Convite expirado");
   return data;
 }
