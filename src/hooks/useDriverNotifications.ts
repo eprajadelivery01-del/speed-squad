@@ -1,55 +1,17 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
-
-const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2353/2353-preview.mp3";
-const FALLBACK_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+import { useAudioAlert } from "@/hooks/useAudioAlert";
 
 export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification } = useNotifications();
+  const { playAlert: playNotificationSound } = useAudioAlert();
   const permissionRef = useRef<NotificationPermission>("default");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const channelsRef = useRef<any[]>([]);
-
-  useEffect(() => {
-    const audio = new Audio(NOTIFICATION_SOUND);
-    audio.addEventListener("error", () => {
-      audioRef.current = new Audio(FALLBACK_SOUND);
-      audioRef.current.load();
-    });
-    audio.load();
-    audioRef.current = audio;
-  }, []);
-
-  const playNotificationSound = useCallback(() => {
-    if (audioRef.current) {
-      console.log("[Notifications] Tentando reproduzir som...");
-      audioRef.current.currentTime = 0;
-      audioRef.current.volume = 1.0;
-      
-      const playPromise = audioRef.current.play();
-      
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn("[Notifications] Áudio bloqueado pelo navegador. O usuário precisa interagir com a página primeiro.", err.message);
-          // Fallback: toast alert about blocked sound
-          toast({
-            title: "🔔 Som Desativado",
-            description: "Clique em qualquer lugar da tela para ativar os alertas sonoros.",
-            variant: "default",
-          });
-        });
-      }
-    }
-    // Vibration API (Double pulse for attention)
-    if ("vibrate" in navigator) {
-      navigator.vibrate([400, 200, 400]);
-    }
-  }, [toast]);
 
   // Request notification permission
   useEffect(() => {
