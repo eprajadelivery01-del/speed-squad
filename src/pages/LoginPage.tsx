@@ -20,13 +20,9 @@ export default function LoginPage() {
     // Aguarda autenticação E carregamento de roles (dataLoaded) terminarem
     if (!user || authLoading || !dataLoaded) return;
 
-    console.log(`[LoginPage] Verificando acesso para user.id: ${user.id}, roles:`, roles);
-
     if (hasRole("driver") || hasRole("admin")) {
-      console.log("[LoginPage] Acesso permitido. Navegando para /driver");
       navigate("/driver", { replace: true });
     } else {
-      console.warn("[Auth] Acesso negado: Perfil sem permissão de entregador.");
       toast({ 
         title: "Acesso Negado", 
         description: "Este portal é exclusivo para entregadores credenciados.", 

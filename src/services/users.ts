@@ -41,7 +41,6 @@ export async function rejectUser(userId: string) {
 }
 
 export async function updateProfile(userId: string, updates: { id?: string; full_name?: string; phone?: string; document?: string; avatar_url?: string }) {
-  console.log(`[Service] Atualizando perfil: ${userId}`, updates);
   const { data, error } = await supabase
     .from("profiles")
     .update({ 
@@ -53,11 +52,9 @@ export async function updateProfile(userId: string, updates: { id?: string; full
     .single();
     
   if (error) {
-    console.error(`[Service] FALHA AO ATUALIZAR PERFIL:`, error);
     throw error;
   }
   
-  console.log(`[Service] Perfil atualizado com sucesso!`, data);
   return data;
 }
 

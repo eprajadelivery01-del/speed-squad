@@ -54,8 +54,7 @@ export function useNotifications() {
 
   return { 
     sendNotification: async (userId: string, type: string, payload: any) => {
-      console.log(`Notificação enviada para ${userId}: ${type}`, payload);
-      // Aqui integraria com OneSignal/Firebase se necessário
+      // Integrar com OneSignal/Firebase se necessário
     }
   };
 }

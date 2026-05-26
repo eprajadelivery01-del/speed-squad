@@ -116,19 +116,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // AUTO-REPAIR: If roles are empty, try to repair them using the fallback RPC
       if (finalRoles.length === 0) {
         try {
-          console.log("[AuthContext] Perfil sem permissões detectado. Tentando auto-reparo...");
           const { data: repairData, error: repairError } = await supabase.rpc('fix_user_permissions');
           if (repairData?.success) {
-            console.log("[AuthContext] Auto-reparo concluído com sucesso. Buscando roles novamente...");
             const retryRoles = await supabase.from("user_roles").select("role").eq("user_id", userId);
             if (retryRoles.data && retryRoles.data.length > 0) {
               finalRoles = retryRoles.data.map((r: any) => r.role as AppRole);
             }
-          } else {
-            console.warn("[AuthContext] Falha no auto-reparo:", repairError || repairData);
           }
         } catch (repairException) {
-          console.error("[AuthContext] Erro fatal durante auto-reparo:", repairException);
+          // Silent catch to keep console clean
         }
       }
 
@@ -139,7 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserStatus((profileRes?.data?.status as UserStatus | null) ?? (nextProfile ? "active" : null));
     } catch (error: any) {
       if (!mountedRef.current) return;
-      console.error("[AuthContext] ERRO DE CARREGAMENTO:", error.message);
       setProfile(buildProfile(null, authUser));
       setRoles([]);
       setUserStatus(null);

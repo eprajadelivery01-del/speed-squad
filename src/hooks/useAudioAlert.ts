@@ -21,12 +21,8 @@ export function useAudioAlert() {
     if (globalAudio) {
       globalAudio.volume = 0; // Silent playback to unlock context
       globalAudio.play()
-        .then(() => {
-          console.log("[AudioAlert] Áudio destravado com sucesso!");
-        })
-        .catch((e) => {
-          console.warn("[AudioAlert] Falha ao destravar áudio:", e);
-        });
+        .then(() => {})
+        .catch((e) => {});
     }
   }, []);
 
@@ -34,9 +30,7 @@ export function useAudioAlert() {
     if (globalAudio) {
       globalAudio.currentTime = 0;
       globalAudio.volume = 1.0;
-      globalAudio.play().catch(e => {
-        console.warn("[AudioAlert] Falha ao tocar alerta sonoro. O usuário interagiu com a página?", e);
-      });
+      globalAudio.play().catch(e => {});
     }
     
     // Backup: Vibration API if available
