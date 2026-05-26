@@ -94,8 +94,27 @@ export default function DriverChatPage() {
 
   const getConvTitle = (conv: any) => {
     if (conv.order_id) return `Entrega #${conv.order_id.slice(0, 8)}`;
+    
+    // Tenta extrair o Assunto da primeira mensagem caso seja um chat de suporte
+    let extractedTopic = null;
+    if (conv.messages && conv.messages.length > 0) {
+      const firstMsg = [...conv.messages].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+      if (firstMsg?.content?.startsWith('[Assunto:')) {
+        extractedTopic = firstMsg.content.replace('[Assunto:', '').replace(']', '').trim();
+      }
+    }
+
     const otherParticipant = conv.participants.find((p: string) => p !== user?.id);
-    return profiles?.[otherParticipant]?.full_name || "Suporte NexusPro";
+    const profile = profiles?.[otherParticipant];
+    if (profile?.full_name) {
+      return extractedTopic ? `${profile.full_name} (${extractedTopic})` : profile.full_name;
+    }
+    
+    if (otherParticipant) {
+      return extractedTopic || `Usuário #${otherParticipant.slice(0, 6).toUpperCase()}`;
+    }
+
+    return extractedTopic || "Suporte NexusPro";
   };
 
   const getTargetProfile = () => {
