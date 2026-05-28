@@ -11,8 +11,10 @@ import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
+import { useAudioAlert } from "@/hooks/useAudioAlert";
 
 export default function DriverHomePage() {
+  const { stopAlert } = useAudioAlert();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -208,6 +210,7 @@ export default function DriverHomePage() {
 
   const handleAcceptDelivery = (deliveryId: string) => {
     if (!driverId) return;
+    stopAlert();
     updateStatus(
       { id: deliveryId, status: "accepted" as any, driverId },
       {
@@ -323,6 +326,11 @@ export default function DriverHomePage() {
                   </span>
                 )}
               </h3>
+              {broadcastDeliveries.length > 0 && (
+                <button onClick={stopAlert} className="text-[10px] font-black uppercase tracking-widest bg-muted text-muted-foreground px-3 py-1.5 rounded-lg border border-border hover:bg-muted/80 transition-colors">
+                  Silenciar
+                </button>
+              )}
             </div>
 
             {loadingBroadcast ? (

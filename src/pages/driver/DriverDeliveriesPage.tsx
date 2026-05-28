@@ -8,12 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
+import { useAudioAlert } from "@/hooks/useAudioAlert";
 
 export default function DriverDeliveriesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [driverId, setDriverId] = useState<string | null>(null);
   const { mutate: updateStatus, isPending: updating } = useUpdateDeliveryStatus();
+  const { stopAlert } = useAudioAlert();
 
   useEffect(() => {
     if (user) {
@@ -61,6 +63,10 @@ export default function DriverDeliveriesPage() {
         variant: "destructive",
       });
       return;
+    }
+
+    if (nextStatus === "accepted") {
+      stopAlert();
     }
 
     updateStatus(

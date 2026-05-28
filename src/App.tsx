@@ -10,6 +10,7 @@ import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import ScrollToTop from "@/components/shared/ScrollToTop";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { SoundEnabler } from "@/components/shared/SoundEnabler";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 import LoginPage from "./pages/LoginPage";
 import InvitePage from "./pages/InvitePage";
@@ -26,56 +27,58 @@ const queryClient = new QueryClient();
 const App = () => (
   <GlobalErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <SoundEnabler />
-        <BrowserRouter>
-          <ScrollToTop />
-          <CityProvider>
-            <AuthProvider>
-              <NotificationProvider>
-                <Routes>
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/invite/:token" element={<InvitePage />} />
-                  <Route path="/terms" element={<LegalPage />} />
-                  <Route path="/privacy" element={<LegalPage />} />
-                  <Route path="/" element={<Navigate to="/driver" replace />} />
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <SoundEnabler />
+          <BrowserRouter>
+            <ScrollToTop />
+            <CityProvider>
+              <AuthProvider>
+                <NotificationProvider>
+                  <Routes>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/invite/:token" element={<InvitePage />} />
+                    <Route path="/terms" element={<LegalPage />} />
+                    <Route path="/privacy" element={<LegalPage />} />
+                    <Route path="/" element={<Navigate to="/driver" replace />} />
 
-                  {/* Driver routes */}
-                  <Route path="/driver" element={
-                    <ProtectedRoute requiredRole="driver">
-                      <DriverHomePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/driver/deliveries" element={
-                    <ProtectedRoute requiredRole="driver">
-                      <DriverDeliveriesPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/driver/occurrences" element={
-                    <ProtectedRoute requiredRole="driver">
-                      <DriverOccurrencesPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/driver/profile" element={
-                    <ProtectedRoute requiredRole="driver">
-                      <ProfilePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/driver/chat" element={
-                    <ProtectedRoute requiredRole="driver">
-                      <DriverChatPage />
-                    </ProtectedRoute>
-                  } />
+                    {/* Driver routes */}
+                    <Route path="/driver" element={
+                      <ProtectedRoute requiredRole="driver">
+                        <DriverHomePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/driver/deliveries" element={
+                      <ProtectedRoute requiredRole="driver">
+                        <DriverDeliveriesPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/driver/occurrences" element={
+                      <ProtectedRoute requiredRole="driver">
+                        <DriverOccurrencesPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/driver/profile" element={
+                      <ProtectedRoute requiredRole="driver">
+                        <ProfilePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/driver/chat" element={
+                      <ProtectedRoute requiredRole="driver">
+                        <DriverChatPage />
+                      </ProtectedRoute>
+                    } />
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </NotificationProvider>
-            </AuthProvider>
-          </CityProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </NotificationProvider>
+              </AuthProvider>
+            </CityProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </GlobalErrorBoundary>
 );

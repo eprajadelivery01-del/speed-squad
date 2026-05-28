@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
 import { useDriverNotifications } from "@/hooks/useDriverNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { ThemeToggle } from "../shared/ThemeToggle";
 import {
   Sheet,
   SheetContent,
@@ -101,68 +102,72 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
           </div>
         </div>
 
-        {/* Notifications Tab */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl bg-primary/5 hover:bg-primary/10">
-              <Bell className="h-5 w-5 text-primary" />
-              {unreadCount > 0 && (
-                <Badge 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-card"
-                  variant="destructive"
-                >
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[90%] sm:w-[400px] p-0">
-            <div className="flex flex-col h-full">
-              <SheetHeader className="p-4 border-b">
-                <div className="flex items-center justify-between">
-                  <SheetTitle className="text-lg font-bold">Notificações</SheetTitle>
-                  {notifications.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-4 w-4 mr-1" /> Limpar tudo
-                    </Button>
-                  )}
-                </div>
-                <SheetDescription>Acompanhe novidades e alertas em tempo real.</SheetDescription>
-              </SheetHeader>
-              <ScrollArea className="flex-1">
-                {notifications.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Bell className="h-6 w-6 text-muted-foreground/50" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Nenhuma notificação por enquanto.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {notifications.map((n) => (
-                      <div 
-                        key={n.id} 
-                        className={cn(
-                          "p-4 transition-colors cursor-pointer hover:bg-muted/50",
-                          !n.read && "bg-primary/5 border-l-2 border-primary"
-                        )}
-                        onClick={() => markAsRead(n.id)}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h4 className="text-sm font-bold text-foreground">{n.title}</h4>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{n.description}</p>
-                      </div>
-                    ))}
-                  </div>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+
+          {/* Notifications Tab */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl bg-primary/5 hover:bg-primary/10">
+                <Bell className="h-5 w-5 text-primary" />
+                {unreadCount > 0 && (
+                  <Badge 
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-card"
+                    variant="destructive"
+                  >
+                    {unreadCount}
+                  </Badge>
                 )}
-              </ScrollArea>
-            </div>
-          </SheetContent>
-        </Sheet>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[90%] sm:w-[400px] p-0">
+              <div className="flex flex-col h-full">
+                <SheetHeader className="p-4 border-b">
+                  <div className="flex items-center justify-between">
+                    <SheetTitle className="text-lg font-bold">Notificações</SheetTitle>
+                    {notifications.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4 mr-1" /> Limpar tudo
+                      </Button>
+                    )}
+                  </div>
+                  <SheetDescription>Acompanhe novidades e alertas em tempo real.</SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="flex-1">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Bell className="h-6 w-6 text-muted-foreground/50" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Nenhuma notificação por enquanto.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {notifications.map((n) => (
+                        <div 
+                          key={n.id} 
+                          className={cn(
+                            "p-4 transition-colors cursor-pointer hover:bg-muted/50",
+                            !n.read && "bg-primary/5 border-l-2 border-primary"
+                          )}
+                          onClick={() => markAsRead(n.id)}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h4 className="text-sm font-bold text-foreground">{n.title}</h4>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{n.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </header>
 
       {/* Page content */}

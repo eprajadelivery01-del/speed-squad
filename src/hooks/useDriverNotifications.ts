@@ -9,7 +9,7 @@ export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification } = useNotifications();
-  const { playAlert: playNotificationSound } = useAudioAlert();
+  const { playAlert: playNotificationSound, stopAlert } = useAudioAlert();
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
 
@@ -54,7 +54,7 @@ export function useDriverNotifications() {
             const delivery = payload.new as any;
             // Only notify for pending/broadcasted (available rides)
             if (delivery.status === "pending" || delivery.status === "broadcasted") {
-              playNotificationSound();
+              playNotificationSound(true); // Loop alarm
               toast({
                 title: "🏍️ Nova corrida disponível!",
                 description: delivery.pickup_address

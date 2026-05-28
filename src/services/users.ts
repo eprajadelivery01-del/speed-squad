@@ -41,10 +41,11 @@ export async function rejectUser(userId: string) {
 }
 
 export async function updateProfile(userId: string, updates: { id?: string; full_name?: string; phone?: string; document?: string; avatar_url?: string }) {
+  const { id, ...realUpdates } = updates;
   const { data, error } = await supabase
     .from("profiles")
     .update({ 
-      ...updates, 
+      ...realUpdates, 
       updated_at: new Date().toISOString() 
     })
     .eq('user_id', userId)
