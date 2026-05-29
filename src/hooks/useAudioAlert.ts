@@ -1,66 +1,103 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 
-// Use um som de alarme contínuo/sirene alto
-const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3";
-const FALLBACK_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+// Singleton HTMLAudioElement to guarantee consistent audio context unlocking across renders.
+const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
 
 if (typeof window !== "undefined") {
-  globalAudio = new Audio(NOTIFICATION_SOUND);
-  globalAudio.addEventListener("error", () => {
-    if (globalAudio) {
-      globalAudio.src = FALLBACK_SOUND;
-      globalAudio.load();
-    }
-  });
+  globalAudio = new Audio(ALERT_SOUND_URL);
   globalAudio.load();
 }
 
 export function useAudioAlert() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const playingRef = useRef(false);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unlockAudio = useCallback(() => {
     if (globalAudio) {
-      globalAudio.volume = 0; // Silent playback to unlock context
+      const originalVolume = globalAudio.volume;
+      globalAudio.volume = 0;
       globalAudio.play()
         .then(() => {
           globalAudio?.pause();
-          if (globalAudio) globalAudio.currentTime = 0;
+          if (globalAudio) globalAudio.volume = originalVolume;
         })
-        .catch((e) => {});
-    }
-  }, []);
-
-  const playAlert = useCallback((loop = false) => {
-    if (globalAudio) {
-      globalAudio.currentTime = 0;
-      globalAudio.volume = 1.0;
-      globalAudio.loop = loop;
-      globalAudio.play().then(() => setIsPlaying(true)).catch(e => {});
-    }
-    
-    // Backup: Vibration API if available
-    if (typeof navigator !== 'undefined' && "vibrate" in navigator) {
-      if (loop) {
-        navigator.vibrate([500, 250, 500, 250, 500, 250, 500]);
-      } else {
-        navigator.vibrate([400, 200, 400]);
-      }
+        .catch((e) => {
+          console.warn("[AudioAlert] Falha ao destravar áudio:", e);
+        });
     }
   }, []);
 
   const stopAlert = useCallback(() => {
     if (globalAudio) {
-      globalAudio.pause();
-      globalAudio.currentTime = 0;
-      globalAudio.loop = false;
-      setIsPlaying(false);
+      try {
+        globalAudio.pause();
+        globalAudio.currentTime = 0;
+      } catch (e) {
+        console.warn("[AudioAlert] Falha ao parar áudio:", e);
+      }
     }
-    if (typeof navigator !== 'undefined' && "vibrate" in navigator) {
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+    playingRef.current = false;
+    setIsPlaying(false);
+
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(0);
     }
   }, []);
 
+  const playAlert = useCallback((loop = false) => {
+    const isSoundEnabled = sessionStorage.getItem("sound_enabled") === "true" || 
+                          sessionStorage.getItem("epj_sound_enabled") === "true";
+
+    // Only play if sound is enabled
+    if (!isSoundEnabled) {
+      console.log("[AudioAlert] Som ignorado pois não está ativado no sessionStorage.");
+      return;
+    }
+
+    if (playingRef.current) return;
+    playingRef.current = true;
+    setIsPlaying(true);
+
+    if (globalAudio) {
+      globalAudio.currentTime = 0;
+      globalAudio.loop = loop;
+      globalAudio.volume = 1.0;
+      globalAudio.play()
+        .catch((e) => {
+          console.warn("[AudioAlert] Falha ao tocar alerta sonoro:", e);
+          playingRef.current = false;
+          setIsPlaying(false);
+        });
+    }
+
+    // Trigger vibration API if available
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate([500, 200, 500, 200, 500]);
+    }
+
+    // Auto-stop after 2 minutes to prevent infinite looping if driver is away
+    if (loop) {
+      timeoutIdRef.current = setTimeout(() => {
+        stopAlert();
+      }, 120_000);
+    }
+  }, [stopAlert]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+      }
+    };
+  }, []);
+
   return { unlockAudio, playAlert, stopAlert, isPlaying };
 }
+
