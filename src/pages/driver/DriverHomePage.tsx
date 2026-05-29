@@ -23,6 +23,8 @@ export default function DriverHomePage() {
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
+  const [commissionRate, setCommissionRate] = useState<number>(0.40);
+  const [totalDeliveriesCount, setTotalDeliveriesCount] = useState<number>(0);
   const [showConsent, setShowConsent] = useState(false);
   const [hasConsent, setHasConsent] = useState(() => localStorage.getItem("nexus_location_consent") === "true");
   const [isDetecting, setIsDetecting] = useState(false);
@@ -42,13 +44,24 @@ export default function DriverHomePage() {
     if (!user) return;
     supabase
       .from("delivery_drivers")
-      .select("id, is_online")
+      .select("id, is_online, commission_rate")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setDriverRecord({ id: data.id });
           setIsOnline(data.is_online ?? false);
+          setCommissionRate(data.commission_rate !== null && data.commission_rate !== undefined ? Number(data.commission_rate) : 0.40);
+          
+          // Fetch completed deliveries count
+          supabase
+            .from("deliveries")
+            .select("id", { count: "exact", head: true })
+            .eq("driver_id", data.id)
+            .eq("status", "delivered")
+            .then(({ count }) => {
+              setTotalDeliveriesCount(count || 0);
+            });
         }
       });
   }, [user]);
@@ -312,6 +325,12 @@ export default function DriverHomePage() {
             </div>
             <p className="text-2xl font-extrabold text-primary">R$ {stats.todayEarnings.toFixed(2)}</p>
           </div>
+        </div>
+
+        {/* Commission Platform Rate */}
+        <div className="text-center bg-card/40 border border-border/50 rounded-2xl py-2.5 px-4 text-xs font-semibold text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>Comissão plataforma: <span className="text-primary font-black">R$ {commissionRate.toFixed(2).replace('.', ',')}</span> por corrida</span>
+          <span>Saldo devido: <span className="text-destructive font-black">R$ {(totalDeliveriesCount * commissionRate).toFixed(2).replace('.', ',')}</span></span>
         </div>
 
         {/* Broadcast Deliveries Section */}

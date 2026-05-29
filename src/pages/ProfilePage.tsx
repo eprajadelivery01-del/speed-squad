@@ -32,7 +32,7 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [editing, setEditing] = useState(false);
   const [coverUrl, setCoverUrl] = useState("");
-  const [driverStats, setDriverStats] = useState({ deliveries: 0, rating: 0, earnings: 0, online: false });
+  const [driverStats, setDriverStats] = useState({ deliveries: 0, rating: 0, earnings: 0, online: false, commissionRate: 0.40 });
 
   useEffect(() => {
     setFullName(profile?.full_name || "");
@@ -49,7 +49,7 @@ export default function ProfilePage() {
       // Get driver record
       const { data: driver } = await supabase
         .from("delivery_drivers")
-        .select("id, rating, is_online")
+        .select("id, rating, is_online, commission_rate")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -81,6 +81,7 @@ export default function ProfilePage() {
           rating: driver.rating || 5.0,
           earnings: earnings,
           online: driver.is_online || false,
+          commissionRate: driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40,
         });
       }
     } catch {
@@ -229,6 +230,44 @@ export default function ProfilePage() {
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* === COMMISSION CARD === */}
+        <div className="px-4 mb-6">
+          <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between shadow-sm relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="text-lg">🪙</span>
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sua Comissão por Corrida</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Valor cobrado por entrega aceita</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-xl font-black text-primary">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* === DUE PLATFORM BALANCE CARD === */}
+        <div className="px-4 mb-6">
+          <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 flex items-center justify-between shadow-sm relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-destructive/5 rounded-full blur-xl group-hover:bg-destructive/10 transition-colors" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                <span className="text-lg">💸</span>
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-destructive uppercase tracking-wider">Saldo Devido à Plataforma</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Taxas operacionais acumuladas</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-xl font-black text-destructive">R$ {(driverStats.deliveries * driverStats.commissionRate).toFixed(2).replace('.', ',')}</span>
+            </div>
           </div>
         </div>
 
