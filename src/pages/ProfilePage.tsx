@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 export default function ProfilePage() {
   const { user, profile, deleteAccount, syncProfile, signOut } = useAuth();
@@ -295,9 +295,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* === EDIT SHEET === */}
       <Sheet open={editing} onOpenChange={setEditing}>
         <SheetContent side="bottom" hideClose className="h-[70vh] rounded-t-3xl border-none p-0">
+          <SheetTitle className="sr-only">Editar Perfil</SheetTitle>
+          <SheetDescription className="sr-only">Formulário para editar nome e telefone do entregador</SheetDescription>
           <div className="h-full flex flex-col bg-background">
             <div className="p-6 pb-4 flex items-center justify-between border-b border-border">
               <h3 className="text-xl font-black">Editar Perfil</h3>
