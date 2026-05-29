@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Camera, Loader2, User, Phone, Trash2, AlertCircle, FileText,
   ShieldCheck, LogOut, Star, Package, TrendingUp, Check,
-  Edit3, X, ChevronRight, MapPin, Bike, Clock
+  Edit3, X, ChevronRight, MapPin, Bike, Clock, CalendarDays
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,13 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [editing, setEditing] = useState(false);
   const [coverUrl, setCoverUrl] = useState("");
-  const [driverStats, setDriverStats] = useState({ deliveries: 0, rating: 0, earnings: 0, online: false, commissionRate: 0.40 });
+  const [period, setPeriod] = useState("today");
+  const [customDate, setCustomDate] = useState(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split("T")[0];
+  });
+  const [driverStats, setDriverStats] = useState({ deliveries: 0, periodDeliveries: 0, rating: 0, earnings: 0, online: false, commissionRate: 0.40 });
 
   useEffect(() => {
     setFullName(profile?.full_name || "");
@@ -42,7 +48,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     fetchDriverData();
-  }, [user]);
+  }, [user, period, customDate]);
 
   const fetchDriverData = async () => {
     try {
@@ -55,31 +61,51 @@ export default function ProfilePage() {
 
       if (driver) {
         setCoverUrl(localStorage.getItem(`driver_cover_${user.id}`) || "");
-        // Count deliveries
-        const { count } = await supabase
+        
+        // Count total deliveries
+        const { count: totalCount } = await supabase
           .from("deliveries")
           .select("id", { count: "exact", head: true })
           .eq("driver_id", driver.id)
           .eq("status", "delivered");
 
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
+        // Compute date range
+        let start = new Date();
+        let end = new Date();
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
 
-        const { data: weekDeliveries } = await supabase
+        if (period === "today") {
+          // already set
+        } else if (period === "yesterday") {
+          start.setDate(start.getDate() - 1);
+          end.setDate(end.getDate() - 1);
+        } else if (period === "week") {
+          start.setDate(start.getDate() - start.getDay());
+        } else if (period === "month") {
+          start.setDate(1);
+        } else if (period === "custom" && customDate) {
+          const [year, month, day] = customDate.split("-").map(Number);
+          start = new Date(year, month - 1, day, 0, 0, 0, 0);
+          end = new Date(year, month - 1, day, 23, 59, 59, 999);
+        }
+
+        const { data: periodDeliveries } = await supabase
           .from("deliveries")
           .select("commission")
           .eq("driver_id", driver.id)
           .eq("status", "delivered")
-          .gte("created_at", startOfWeek.toISOString());
+          .gte("created_at", start.toISOString())
+          .lte("created_at", end.toISOString());
 
-        const earnings = weekDeliveries?.reduce((sum, d) => sum + Number(d.commission || 0), 0) || 0;
+        const periodEarnings = periodDeliveries?.reduce((sum, d) => sum + Number(d.commission || 0), 0) || 0;
+        const periodCount = periodDeliveries?.length || 0;
 
         setDriverStats({
-          deliveries: count || 0,
+          deliveries: totalCount || 0,
+          periodDeliveries: periodCount,
           rating: driver.rating || 5.0,
-          earnings: earnings,
+          earnings: periodEarnings,
           online: driver.is_online || false,
           commissionRate: driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40,
         });
@@ -217,17 +243,17 @@ export default function ProfilePage() {
         <div className="px-4 mb-6">
           <div className="grid grid-cols-3 gap-0 border border-border rounded-2xl overflow-hidden bg-card">
             {[
-              { value: driverStats.deliveries, label: 'Entregas', icon: Package },
+              { value: driverStats.deliveries, label: 'Entregas Totais', icon: Package },
               { value: driverStats.rating.toFixed(1), label: 'Avaliação', icon: Star },
-              { value: `R$${driverStats.earnings.toFixed(2).replace('.', ',')}`, label: 'Esta semana', icon: TrendingUp },
+              { value: `R$${driverStats.earnings.toFixed(2).replace('.', ',')}`, label: 'Ganho do Período', icon: TrendingUp },
             ].map((stat, i) => (
               <div
                 key={stat.label}
                 className={cn("flex flex-col items-center justify-center py-4", i < 2 && "border-r border-border")}
               >
                 <stat.icon className="h-4 w-4 text-primary mb-1" />
-                <span className="text-lg font-black text-foreground">{stat.value}</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
+                <span className="text-[15px] font-black text-foreground truncate max-w-full px-1">{stat.value}</span>
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider text-center px-1">{stat.label}</span>
               </div>
             ))}
           </div>
@@ -235,38 +261,60 @@ export default function ProfilePage() {
 
         {/* === COMMISSION CARD === */}
         <div className="px-4 mb-6">
-          <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between shadow-sm relative overflow-hidden group">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-sm relative overflow-hidden group">
             <div className="absolute -top-12 -right-12 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors" />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <span className="text-lg">🪙</span>
               </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sua Comissão por Corrida</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Valor cobrado por entrega aceita</p>
+              <div className="text-left flex-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sua Comissão (Plataforma)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Valor pago por corrida à plataforma</p>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-black text-primary">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-xl font-black text-primary">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</span>
-            </div>
-          </div>
-        </div>
 
-        {/* === DUE PLATFORM BALANCE CARD === */}
-        <div className="px-4 mb-6">
-          <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 flex items-center justify-between shadow-sm relative overflow-hidden group">
-            <div className="absolute -top-12 -right-12 w-24 h-24 bg-destructive/5 rounded-full blur-xl group-hover:bg-destructive/10 transition-colors" />
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                <span className="text-lg">💸</span>
+            <div className="pt-4 border-t border-border/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm font-black text-foreground">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  Filtrar Período
+                </div>
+                <select 
+                  value={period} 
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="bg-muted text-foreground text-xs font-bold rounded-lg px-2 py-1 outline-none border-none cursor-pointer"
+                >
+                  <option value="today">Hoje</option>
+                  <option value="yesterday">Ontem</option>
+                  <option value="week">Esta Semana</option>
+                  <option value="month">Este Mês</option>
+                  <option value="custom">Data Específica</option>
+                </select>
               </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-destructive uppercase tracking-wider">Saldo Devido à Plataforma</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Taxas operacionais acumuladas</p>
+              
+              {period === "custom" && (
+                <div className="mb-4">
+                  <input 
+                    type="date" 
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-primary"
+                  />
+                </div>
+              )}
+
+              <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div className="text-left">
+                  <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">Saldo Devido à Plataforma</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{driverStats.periodDeliveries} entrega(s) no período</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-black text-destructive">R$ {(driverStats.periodDeliveries * driverStats.commissionRate).toFixed(2).replace('.', ',')}</span>
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <span className="text-xl font-black text-destructive">R$ {(driverStats.deliveries * driverStats.commissionRate).toFixed(2).replace('.', ',')}</span>
             </div>
           </div>
         </div>
