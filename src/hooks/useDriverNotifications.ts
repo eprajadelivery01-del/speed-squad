@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 export function useDriverNotifications() {
   const { user } = useAuth();
@@ -15,13 +17,19 @@ export function useDriverNotifications() {
 
   // Request notification permission
   useEffect(() => {
-    if (!("Notification" in window)) return;
-    if (Notification.permission === "granted") {
-      permissionRef.current = "granted";
-    } else if (Notification.permission !== "denied") {
-      Notification.requestPermission().then((p) => {
-        permissionRef.current = p;
+    if (Capacitor.isNativePlatform()) {
+      LocalNotifications.requestPermissions().then((res) => {
+        permissionRef.current = res.display === "granted" ? "granted" : "denied";
       });
+    } else {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        permissionRef.current = "granted";
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((p) => {
+          permissionRef.current = p;
+        });
+      }
     }
   }, []);
 
@@ -67,15 +75,33 @@ export function useDriverNotifications() {
                 description: delivery.pickup_address || "Confira na tela inicial.",
               });
               if (permissionRef.current === "granted") {
-                try {
-                  new Notification("ÉpraJá - Nova corrida!", {
-                    body: delivery.pickup_address
-                      ? `Retirada: ${delivery.pickup_address}`
-                      : "Uma nova entrega está disponível",
-                    icon: "/logo.png",
-                    tag: `delivery-${delivery.id}`,
+                const title = "ÉpraJá - Nova corrida!";
+                const body = delivery.pickup_address
+                  ? `Retirada: ${delivery.pickup_address}`
+                  : "Uma nova entrega está disponível";
+
+                if (Capacitor.isNativePlatform()) {
+                  LocalNotifications.schedule({
+                    notifications: [
+                      {
+                        title,
+                        body,
+                        id: new Date().getTime(),
+                        schedule: { at: new Date(Date.now() + 100) },
+                        actionTypeId: "",
+                        extra: null,
+                      },
+                    ],
                   });
-                } catch { /* SW-only or permission revoked */ }
+                } else {
+                  try {
+                    new Notification(title, {
+                      body,
+                      icon: "/logo.png",
+                      tag: `delivery-${delivery.id}`,
+                    });
+                  } catch { /* SW-only or permission revoked */ }
+                }
               }
             }
           }
@@ -137,6 +163,32 @@ export function useDriverNotifications() {
                 playNotificationSound();
                 toast({ title: "💬 Nova mensagem", description: msg.content });
                 addNotification({ type: "chat", title: "Nova mensagem no chat", description: msg.content });
+
+                if (permissionRef.current === "granted") {
+                  const title = "💬 Nova mensagem";
+                  const body = msg.content;
+                  if (Capacitor.isNativePlatform()) {
+                    LocalNotifications.schedule({
+                      notifications: [
+                        {
+                          title,
+                          body,
+                          id: new Date().getTime() + 1,
+                          schedule: { at: new Date(Date.now() + 100) },
+                          actionTypeId: "",
+                          extra: null,
+                        },
+                      ],
+                    });
+                  } else {
+                    try {
+                      new Notification(title, {
+                        body,
+                        icon: "/logo.png",
+                      });
+                    } catch { /* ignored */ }
+                  }
+                }
               }
             }
           )
