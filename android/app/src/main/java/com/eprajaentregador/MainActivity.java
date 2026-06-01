@@ -1,4 +1,4 @@
-package com.epraja.driver;
+package com.eprajaentregador;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -6,6 +6,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { BackgroundMode } from "@anuradev/capacitor-background-mode";
 
 export function useDriverNotifications() {
   const { user } = useAuth();
@@ -15,11 +16,32 @@ export function useDriverNotifications() {
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
 
-  // Request notification permission
+  // Request notification permission and enable background mode
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
+        if (permissionRef.current === "granted") {
+          BackgroundMode.enable();
+          BackgroundMode.setSettings({
+            title: 'É Pra Já - Entregador',
+            text: 'O aplicativo está rodando em segundo plano para receber pedidos.',
+            hidden: false,
+            silent: false,
+          });
+          
+          LocalNotifications.registerActionTypes({
+            types: [
+              {
+                id: "DELIVERY_ACTION",
+                actions: [
+                  { id: "accept", title: "✅ Aceitar" },
+                  { id: "reject", title: "❌ Rejeitar", destructive: true }
+                ]
+              }
+            ]
+          });
+        }
       });
     } else {
       if (!("Notification" in window)) return;
@@ -37,6 +59,7 @@ export function useDriverNotifications() {
     if (!user?.id) return;
 
     let cancelled = false;
+    let actionListener: any = null;
 
     const setup = async () => {
       const { data } = await supabase
@@ -47,6 +70,29 @@ export function useDriverNotifications() {
 
       if (!data || cancelled) return;
       const driverId = data.id;
+
+      // Register notification action listener
+      if (Capacitor.isNativePlatform()) {
+        actionListener = await LocalNotifications.addListener('localNotificationActionPerformed', async (action) => {
+          if (action.notification.extra?.type === 'delivery') {
+            stopAlert();
+            if (action.actionId === 'accept') {
+              const deliveryId = action.notification.extra.deliveryId;
+              const { error } = await supabase
+                .from("deliveries")
+                .update({ status: "accepted", driver_id: driverId })
+                .eq("id", deliveryId)
+                .in("status", ["pending", "broadcasted"]);
+                
+              if (!error) {
+                toast({ title: "✅ Corrida aceita!", description: "Você aceitou a corrida via notificação." });
+              } else {
+                toast({ title: "Erro", description: "Não foi possível aceitar a corrida.", variant: "destructive" });
+              }
+            }
+          }
+        });
+      }
 
       // Listen for new broadcast deliveries (INSERT with no driver or broadcast)
       const broadcastChannel = supabase
@@ -88,8 +134,8 @@ export function useDriverNotifications() {
                         body,
                         id: new Date().getTime(),
                         schedule: { at: new Date(Date.now() + 100) },
-                        actionTypeId: "",
-                        extra: null,
+                        actionTypeId: "DELIVERY_ACTION",
+                        extra: { type: 'delivery', deliveryId: delivery.id },
                       },
                     ],
                   });
@@ -201,6 +247,9 @@ export function useDriverNotifications() {
 
     return () => {
       cancelled = true;
+      if (actionListener) {
+        actionListener.remove();
+      }
       channelsRef.current.forEach(ch => supabase.removeChannel(ch));
       channelsRef.current = [];
     };
