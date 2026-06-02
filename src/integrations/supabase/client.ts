@@ -15,3 +15,15 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Handle token refresh errors globally – log out and clean storage
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESH_ERROR') {
+    supabase.auth.signOut().then(() => {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('supabase.auth.token');
+        window.location.href = '/login';
+      }
+    });
+  }
+});

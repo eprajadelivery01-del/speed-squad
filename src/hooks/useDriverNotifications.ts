@@ -6,7 +6,16 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BackgroundMode } from "@anuradev/capacitor-background-mode";
+
+// Hash utility para gerar IDs consistentes para notificações locais baseados em UUIDs
+const hashId = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
 
 export function useDriverNotifications() {
   const { user } = useAuth();
@@ -22,14 +31,6 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          BackgroundMode.enable();
-          BackgroundMode.setSettings({
-            title: 'É Pra Já - Entregador',
-            text: 'O aplicativo está rodando em segundo plano para receber pedidos.',
-            hidden: false,
-            silent: false,
-          });
-          
           LocalNotifications.registerActionTypes({
             types: [
               {
@@ -89,6 +90,10 @@ export function useDriverNotifications() {
               } else {
                 toast({ title: "Erro", description: "Não foi possível aceitar a corrida.", variant: "destructive" });
               }
+            } else if (action.actionId === 'reject') {
+              const deliveryId = action.notification.extra.deliveryId;
+              const notifId = hashId(deliveryId);
+              LocalNotifications.cancel({ notifications: [{ id: notifId }] });
             }
           }
         });
@@ -132,7 +137,7 @@ export function useDriverNotifications() {
                       {
                         title,
                         body,
-                        id: new Date().getTime(),
+                        id: hashId(delivery.id),
                         schedule: { at: new Date(Date.now() + 100) },
                         actionTypeId: "DELIVERY_ACTION",
                         extra: { type: 'delivery', deliveryId: delivery.id },
@@ -149,6 +154,27 @@ export function useDriverNotifications() {
                   } catch { /* SW-only or permission revoked */ }
                 }
               }
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "deliveries",
+          },
+          (payload) => {
+            const delivery = payload.new as any;
+            const old = payload.old as any;
+            
+            // If the status changed from pending/broadcasted to something else (e.g., accepted by someone else)
+            if ((old.status === "pending" || old.status === "broadcasted") && delivery.status !== "pending" && delivery.status !== "broadcasted") {
+              const notifId = hashId(delivery.id);
+              if (Capacitor.isNativePlatform()) {
+                LocalNotifications.cancel({ notifications: [{ id: notifId }] });
+              }
+              stopAlert();
             }
           }
         )
