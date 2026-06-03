@@ -200,7 +200,7 @@ export default function DriverHomePage() {
   }, []);
 
   const handleAcceptConsent = () => {
-    localStorage.setItem("epraja_location_consent", "true");
+    localStorage.setItem("nexus_location_consent", "true");
     setHasConsent(true);
     setShowConsent(false);
   };
@@ -212,7 +212,6 @@ export default function DriverHomePage() {
     if (newStatus && !hasConsent) { setShowConsent(true); setLoading(false); return; }
     const { error } = await supabase.from("delivery_drivers").update({
       is_online: newStatus,
-      ...(newStatus ? {} : { latitude: null, longitude: null }),
     }).eq("id", driverRecord.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); setLoading(false); return; }
     if (newStatus) { startTracking(driverRecord.id); toast({ title: "Você está online!" }); }
