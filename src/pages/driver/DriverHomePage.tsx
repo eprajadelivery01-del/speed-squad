@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 
 export default function DriverHomePage() {
-  const { stopAlert } = useAudioAlert();
+  const { stopAlert, unlockAudio } = useAudioAlert();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -206,6 +206,10 @@ export default function DriverHomePage() {
   };
 
   const handleToggle = async () => {
+    unlockAudio(); // Destrava o áudio no clique do usuário
+    sessionStorage.setItem("sound_enabled", "true");
+    sessionStorage.setItem("epj_sound_enabled", "true");
+    
     if (!driverRecord) return;
     setLoading(true);
     const newStatus = !isOnline;

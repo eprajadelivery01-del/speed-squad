@@ -52,14 +52,8 @@ export function useAudioAlert() {
   }, []);
 
   const playAlert = useCallback((loop = false) => {
-    const isSoundEnabled = sessionStorage.getItem("sound_enabled") === "true" || 
-                          sessionStorage.getItem("epj_sound_enabled") === "true";
-
-    // Only play if sound is enabled
-    if (!isSoundEnabled) {
-      console.log("[AudioAlert] Som ignorado pois não está ativado no sessionStorage.");
-      return;
-    }
+    // Try to play even if no flag is set, browser policy will handle any true blocks.
+    console.log("[AudioAlert] Tentando tocar som...");
 
     if (playingRef.current) return;
     playingRef.current = true;

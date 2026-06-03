@@ -176,6 +176,51 @@ export function useDriverNotifications() {
               }
               stopAlert();
             }
+            
+            // If a delivery was updated TO pending or broadcasted (e.g. dispatched by merchant)
+            if ((old.status !== "pending" && old.status !== "broadcasted") && (delivery.status === "pending" || delivery.status === "broadcasted")) {
+              playNotificationSound(true); // Loop alarm
+              toast({
+                title: "🏍️ Nova corrida disponível!",
+                description: delivery.pickup_address
+                  ? `Retirada: ${delivery.pickup_address}`
+                  : `Entrega para ${delivery.customer_name}`,
+              });
+              addNotification({
+                type: "delivery",
+                title: "Nova corrida disponível",
+                description: delivery.pickup_address || "Confira na tela inicial.",
+              });
+              if (permissionRef.current === "granted") {
+                const title = "ÉpraJá - Nova corrida!";
+                const body = delivery.pickup_address
+                  ? `Retirada: ${delivery.pickup_address}`
+                  : "Uma nova entrega está disponível";
+
+                if (Capacitor.isNativePlatform()) {
+                  LocalNotifications.schedule({
+                    notifications: [
+                      {
+                        title,
+                        body,
+                        id: hashId(delivery.id),
+                        schedule: { at: new Date(Date.now() + 100) },
+                        actionTypeId: "DELIVERY_ACTION",
+                        extra: { type: 'delivery', deliveryId: delivery.id },
+                      },
+                    ],
+                  });
+                } else {
+                  try {
+                    new Notification(title, {
+                      body,
+                      icon: "/logo.png",
+                      tag: `delivery-${delivery.id}`,
+                    });
+                  } catch { /* SW-only or permission revoked */ }
+                }
+              }
+            }
           }
         )
         .on(
