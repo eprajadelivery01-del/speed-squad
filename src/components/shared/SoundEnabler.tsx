@@ -10,7 +10,7 @@ export function SoundEnabler() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const soundEnabled = sessionStorage.getItem("sound_enabled") || sessionStorage.getItem("epj_sound_enabled");
+    const soundEnabled = localStorage.getItem("sound_enabled") || localStorage.getItem("epj_sound_enabled");
     if (!soundEnabled) {
       const timer = setTimeout(() => setIsVisible(true), 2000);
       return () => clearTimeout(timer);
@@ -21,8 +21,8 @@ export function SoundEnabler() {
     setEnabling(true);
     try {
       unlockAudio();
-      sessionStorage.setItem("sound_enabled", "true");
-      sessionStorage.setItem("epj_sound_enabled", "true");
+      localStorage.setItem("sound_enabled", "true");
+      localStorage.setItem("epj_sound_enabled", "true");
       setIsVisible(false);
       toast({ title: "Som ativado!", description: "Você receberá alertas sonoros de novas entregas." });
     } catch (error) {
