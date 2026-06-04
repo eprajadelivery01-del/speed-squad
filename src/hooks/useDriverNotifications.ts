@@ -7,9 +7,14 @@ import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
-const BackgroundMode = registerPlugin<any>('BackgroundMode');
+// Register plugin only once per JS context to avoid HMR warnings
+let BackgroundMode: any = null;
+try {
+  BackgroundMode = registerPlugin<any>("BackgroundMode");
+} catch {
+  BackgroundMode = null;
+}
 
-// Hash utility para gerar IDs consistentes para notificações locais baseados em UUIDs
 const hashId = (str: string) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -19,41 +24,48 @@ const hashId = (str: string) => {
   return Math.abs(hash);
 };
 
+const pickAddress = (d: any): string =>
+  d?.pickup_address ||
+  d?.delivery_address ||
+  d?.dropoff_address ||
+  d?.address ||
+  "Confira na tela inicial.";
+
 export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification } = useNotifications();
-  const { playAlert: playNotificationSound, stopAlert } = useAudioAlert();
+  const { playAlert, stopAlert } = useAudioAlert();
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const mountedAtRef = useRef<number>(Date.now());
 
-  // Request notification permission and enable background mode
+  // Permission setup
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          try {
-            BackgroundMode.enable().catch((e: any) => console.warn("BackgroundMode.enable failed:", e));
-            // setSettings is not implemented on Android for this plugin version
-            BackgroundMode.disableWebViewOptimizations().catch((e: any) => console.warn("BackgroundMode.disableWebViewOptimizations failed:", e));
-            BackgroundMode.disableBatteryOptimizations().catch((e: any) => console.warn("BackgroundMode.disableBatteryOptimizations failed:", e));
-          } catch (e) {
-            console.warn("Background mode settings not fully supported:", e);
+          if (BackgroundMode) {
+            try {
+              BackgroundMode.enable?.().catch(() => {});
+              BackgroundMode.disableWebViewOptimizations?.().catch(() => {});
+              BackgroundMode.disableBatteryOptimizations?.().catch(() => {});
+            } catch {}
           }
-
           LocalNotifications.registerActionTypes({
             types: [
               {
                 id: "DELIVERY_ACTION",
                 actions: [
                   { id: "accept", title: "✅ Aceitar" },
-                  { id: "reject", title: "❌ Rejeitar", destructive: true }
-                ]
-              }
-            ]
-          });
+                  { id: "reject", title: "❌ Rejeitar", destructive: true },
+                ],
+              },
+            ],
+          }).catch(() => {});
         }
       });
     } else {
@@ -74,232 +86,183 @@ export function useDriverNotifications() {
     let cancelled = false;
     let actionListener: any = null;
 
+    // Unified notifier — always fires sound + toast + central + OS notification
+    const notifyNewDelivery = (delivery: any) => {
+      if (!delivery?.id) return;
+      if (seenIdsRef.current.has(delivery.id)) return;
+      seenIdsRef.current.add(delivery.id);
+
+      const address = pickAddress(delivery);
+      const title = "🏍️ Nova corrida disponível!";
+      const description = `Retirada: ${address}`;
+
+      // 1) Sound (looped) + vibration via hook
+      try { playAlert(true); } catch (e) { console.warn("[Notify] som falhou:", e); }
+
+      // 2) Toast
+      try { toast({ title, description }); } catch {}
+
+      // 3) Central de notificações
+      try {
+        addNotification({
+          type: "delivery",
+          title: "Nova corrida disponível",
+          description,
+        });
+      } catch (e) {
+        console.warn("[Notify] central falhou:", e);
+      }
+
+      // 4) OS notification
+      if (permissionRef.current === "granted") {
+        if (Capacitor.isNativePlatform()) {
+          LocalNotifications.schedule({
+            notifications: [
+              {
+                title: "ÉpraJá - Nova corrida!",
+                body: description,
+                id: hashId(delivery.id),
+                schedule: { at: new Date(Date.now() + 100) },
+                actionTypeId: "DELIVERY_ACTION",
+                extra: { type: "delivery", deliveryId: delivery.id },
+              },
+            ],
+          }).catch(() => {});
+        } else {
+          try {
+            new Notification("ÉpraJá - Nova corrida!", {
+              body: description,
+              icon: "/logo.png",
+              tag: `delivery-${delivery.id}`,
+            });
+          } catch {}
+        }
+      }
+    };
+
     const setup = async () => {
-      const { data } = await supabase
+      const { data: driverRow } = await supabase
         .from("delivery_drivers")
         .select("id")
         .eq("user_id", user.id)
         .single();
 
-      if (!data || cancelled) return;
-      const driverId = data.id;
+      if (!driverRow || cancelled) return;
+      const driverId = driverRow.id;
 
-      // Register notification action listener
+      // Native action listener
       if (Capacitor.isNativePlatform()) {
-        actionListener = await LocalNotifications.addListener('localNotificationActionPerformed', async (action) => {
-          if (action.notification.extra?.type === 'delivery') {
-            stopAlert();
-            if (action.actionId === 'accept') {
+        actionListener = await LocalNotifications.addListener(
+          "localNotificationActionPerformed",
+          async (action) => {
+            if (action.notification.extra?.type === "delivery") {
+              stopAlert();
               const deliveryId = action.notification.extra.deliveryId;
-              const { error } = await supabase
-                .from("deliveries")
-                .update({ status: "accepted", driver_id: driverId })
-                .eq("id", deliveryId)
-                .in("status", ["pending", "broadcasted"]);
-                
-              if (!error) {
-                toast({ title: "✅ Corrida aceita!", description: "Você aceitou a corrida via notificação." });
-              } else {
-                toast({ title: "Erro", description: "Não foi possível aceitar a corrida.", variant: "destructive" });
+              if (action.actionId === "accept") {
+                const { error } = await supabase
+                  .from("deliveries")
+                  .update({ status: "accepted", driver_id: driverId })
+                  .eq("id", deliveryId)
+                  .in("status", ["pending", "broadcasted"]);
+                toast(
+                  error
+                    ? { title: "Erro", description: "Não foi possível aceitar.", variant: "destructive" }
+                    : { title: "✅ Corrida aceita!", description: "Aceita via notificação." }
+                );
+              } else if (action.actionId === "reject") {
+                LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
               }
-            } else if (action.actionId === 'reject') {
-              const deliveryId = action.notification.extra.deliveryId;
-              const notifId = hashId(deliveryId);
-              LocalNotifications.cancel({ notifications: [{ id: notifId }] });
             }
           }
-        });
+        );
       }
 
-      // Track already notified deliveries
-      const notifiedDeliveriesRef = { current: new Set<string>() };
-      const isInitialFetchRef = { current: true };
+      // Initial seed: mark all currently-available deliveries as "seen"
+      // older than 60s so we don't spam on app open, but very recent ones still ring.
+      try {
+        const { data: initial } = await supabase
+          .from("deliveries")
+          .select("id, created_at, pickup_address, delivery_address, dropoff_address, address, status")
+          .in("status", ["pending", "broadcasted"]);
 
-      // Fallback Polling (Contorna RLS que bloqueia eventos de INSERT para 'pending')
-      intervalRef.current = setInterval(async () => {
-        if (!user || !driverId || cancelled) return;
-        const { data } = await supabase
-          .from("available_deliveries")
-          .select("id, delivery_address, customer_name, status");
-        
-        if (data && !cancelled) {
-          let hasNewDeliveries = false;
-          
-          data.forEach((delivery: any) => {
-            if (!notifiedDeliveriesRef.current.has(delivery.id)) {
-              notifiedDeliveriesRef.current.add(delivery.id);
-              
-              // Evitar tocar para corridas velhas ao inicializar
-              if (!isInitialFetchRef.current) {
-                hasNewDeliveries = true;
-                playNotificationSound(true);
-                const displayAddress = delivery.delivery_address || "Confira na tela inicial.";
-                toast({
-                  title: "🏍️ Nova corrida disponível!",
-                  description: `Destino: ${displayAddress}`,
-                });
-                addNotification({
-                  type: "delivery",
-                  title: "Nova corrida disponível",
-                  description: `Destino: ${displayAddress}`,
-                });
-
-                if (permissionRef.current === "granted" && Capacitor.isNativePlatform()) {
-                  LocalNotifications.schedule({
-                    notifications: [
-                      {
-                        title: "ÉpraJá - Nova corrida!",
-                        body: `Destino: ${displayAddress}`,
-                        id: hashId(delivery.id),
-                        schedule: { at: new Date(Date.now() + 100) },
-                        actionTypeId: "DELIVERY_ACTION",
-                        extra: { type: 'delivery', deliveryId: delivery.id },
-                      },
-                    ],
-                  });
-                }
-              }
+        if (initial && !cancelled) {
+          const cutoff = Date.now() - 60_000;
+          initial.forEach((d: any) => {
+            const ts = d.created_at ? new Date(d.created_at).getTime() : 0;
+            if (ts < cutoff) {
+              seenIdsRef.current.add(d.id);
+            } else {
+              // Fresh — notify
+              notifyNewDelivery(d);
             }
           });
-          
-          // Marca que a primeira busca inicial já aconteceu
-          if (isInitialFetchRef.current) {
-             isInitialFetchRef.current = false;
-          }
         }
-      }, 10000);
+      } catch (e) {
+        console.warn("[Notify] seed inicial falhou:", e);
+      }
 
-      // Listen for new broadcast deliveries (INSERT with no driver or broadcast)
+      // Polling fallback (RLS pode bloquear eventos INSERT realtime)
+      intervalRef.current = setInterval(async () => {
+        if (cancelled) return;
+        try {
+          const { data } = await supabase
+            .from("deliveries")
+            .select("id, created_at, pickup_address, delivery_address, dropoff_address, address, status")
+            .in("status", ["pending", "broadcasted"]);
+          if (data && !cancelled) {
+            data.forEach((d: any) => notifyNewDelivery(d));
+          }
+        } catch (e) {
+          console.warn("[Notify] polling falhou:", e);
+        }
+      }, 8000);
+
+      // Realtime — INSERT
       const broadcastChannel = supabase
         .channel(`driver-broadcast-${driverId}`)
         .on(
           "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "deliveries",
-          },
+          { event: "INSERT", schema: "public", table: "deliveries" },
           (payload) => {
-            const delivery = payload.new as any;
-            // Only notify for pending/broadcasted (available rides)
-            if (delivery.status === "pending" || delivery.status === "broadcasted") {
-              playNotificationSound(true); // Loop alarm
-              const displayAddress = delivery.pickup_address || delivery.delivery_address || "Confira na tela inicial.";
-              toast({
-                title: "🏍️ Nova corrida disponível!",
-                description: `Retirada: ${displayAddress}`,
-              });
-              addNotification({
-                type: "delivery",
-                title: "Nova corrida disponível",
-                description: `Retirada: ${displayAddress}`,
-              });
-              if (permissionRef.current === "granted") {
-                const title = "ÉpraJá - Nova corrida!";
-                const body = `Retirada: ${displayAddress}`;
-
-                if (Capacitor.isNativePlatform()) {
-                  LocalNotifications.schedule({
-                    notifications: [
-                      {
-                        title,
-                        body,
-                        id: hashId(delivery.id),
-                        schedule: { at: new Date(Date.now() + 100) },
-                        actionTypeId: "DELIVERY_ACTION",
-                        extra: { type: 'delivery', deliveryId: delivery.id },
-                      },
-                    ],
-                  });
-                } else {
-                  try {
-                    new Notification(title, {
-                      body,
-                      icon: "/logo.png",
-                      tag: `delivery-${delivery.id}`,
-                    });
-                  } catch { /* SW-only or permission revoked */ }
-                }
-              }
+            const d = payload.new as any;
+            if (d?.status === "pending" || d?.status === "broadcasted") {
+              notifyNewDelivery(d);
             }
           }
         )
         .on(
           "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "deliveries",
-          },
+          { event: "UPDATE", schema: "public", table: "deliveries" },
           (payload) => {
-            const delivery = payload.new as any;
-            const old = payload.old as any;
-            
-            // If the status changed from pending/broadcasted to something else (e.g., accepted by someone else)
-            if ((old.status === "pending" || old.status === "broadcasted") && delivery.status !== "pending" && delivery.status !== "broadcasted") {
-              const notifId = hashId(delivery.id);
+            const d = payload.new as any;
+            const o = payload.old as any;
+
+            // Disappeared from broadcast pool → stop alarm + cancel OS notif
+            if (
+              (o?.status === "pending" || o?.status === "broadcasted") &&
+              d?.status !== "pending" &&
+              d?.status !== "broadcasted"
+            ) {
               if (Capacitor.isNativePlatform()) {
-                LocalNotifications.cancel({ notifications: [{ id: notifId }] });
+                LocalNotifications.cancel({ notifications: [{ id: hashId(d.id) }] }).catch(() => {});
               }
               stopAlert();
             }
-            
-            // If a delivery was updated TO pending or broadcasted (e.g. dispatched by merchant)
-            // Fix: old.status must exist so we don't trigger this incorrectly on assignments
-            if (old.status && (old.status !== "pending" && old.status !== "broadcasted") && (delivery.status === "pending" || delivery.status === "broadcasted")) {
-              playNotificationSound(true); // Loop alarm
-              const displayAddress = delivery.pickup_address || delivery.delivery_address || "Confira na tela inicial.";
-              toast({
-                title: "🏍️ Nova corrida disponível!",
-                description: `Retirada: ${displayAddress}`,
-              });
-              addNotification({
-                type: "delivery",
-                title: "Nova corrida disponível",
-                description: `Retirada: ${displayAddress}`,
-              });
-              if (permissionRef.current === "granted") {
-                const title = "ÉpraJá - Nova corrida!";
-                const body = `Retirada: ${displayAddress}`;
 
-                if (Capacitor.isNativePlatform()) {
-                  LocalNotifications.schedule({
-                    notifications: [
-                      {
-                        title,
-                        body,
-                        id: hashId(delivery.id),
-                        schedule: { at: new Date(Date.now() + 100) },
-                        actionTypeId: "DELIVERY_ACTION",
-                        extra: { type: 'delivery', deliveryId: delivery.id },
-                      },
-                    ],
-                  });
-                } else {
-                  try {
-                    new Notification(title, {
-                      body,
-                      icon: "/logo.png",
-                      tag: `delivery-${delivery.id}`,
-                    });
-                  } catch { /* SW-only or permission revoked */ }
-                }
-              }
+            // Newly broadcasted
+            if (
+              o?.status &&
+              o.status !== "pending" &&
+              o.status !== "broadcasted" &&
+              (d?.status === "pending" || d?.status === "broadcasted")
+            ) {
+              // Force re-notify even if previously seen
+              seenIdsRef.current.delete(d.id);
+              notifyNewDelivery(d);
             }
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "deliveries",
-            filter: `driver_id=eq.${driverId}`,
-          },
-          (payload) => {
-            const delivery = payload.new as any;
-            const old = payload.old as any;
-            if (old.status !== delivery.status && delivery.status === "accepted") {
+
+            // Confirmation for own delivery
+            if (d?.driver_id === driverId && o?.status !== d?.status && d?.status === "accepted") {
               toast({
                 title: "✅ Corrida confirmada!",
                 description: "A entrega foi confirmada. Vá até o ponto de retirada.",
@@ -320,7 +283,7 @@ export function useDriverNotifications() {
 
       if (!activeDeliveries || activeDeliveries.length === 0 || cancelled) return;
 
-      const deliveryIds = activeDeliveries.map(d => d.id);
+      const deliveryIds = activeDeliveries.map((d) => d.id);
       const { data: convs } = await supabase
         .from("conversations")
         .select("id, order_id")
@@ -328,7 +291,7 @@ export function useDriverNotifications() {
 
       if (!convs || cancelled) return;
 
-      convs.forEach(conv => {
+      convs.forEach((conv) => {
         const ch = supabase
           .channel(`notifications-chat-${conv.id}`)
           .on(
@@ -342,33 +305,28 @@ export function useDriverNotifications() {
             (payload) => {
               const msg = payload.new as any;
               if (msg.sender_id !== user.id) {
-                playNotificationSound();
+                try { playAlert(false); } catch {}
                 toast({ title: "💬 Nova mensagem", description: msg.content });
                 addNotification({ type: "chat", title: "Nova mensagem no chat", description: msg.content });
 
                 if (permissionRef.current === "granted") {
-                  const title = "💬 Nova mensagem";
-                  const body = msg.content;
                   if (Capacitor.isNativePlatform()) {
                     LocalNotifications.schedule({
                       notifications: [
                         {
-                          title,
-                          body,
+                          title: "💬 Nova mensagem",
+                          body: msg.content,
                           id: new Date().getTime() + 1,
                           schedule: { at: new Date(Date.now() + 100) },
                           actionTypeId: "",
                           extra: null,
                         },
                       ],
-                    });
+                    }).catch(() => {});
                   } else {
                     try {
-                      new Notification(title, {
-                        body,
-                        icon: "/logo.png",
-                      });
-                    } catch { /* ignored */ }
+                      new Notification("💬 Nova mensagem", { body: msg.content, icon: "/logo.png" });
+                    } catch {}
                   }
                 }
               }
@@ -383,13 +341,10 @@ export function useDriverNotifications() {
 
     return () => {
       cancelled = true;
-      if (actionListener) {
-        actionListener.remove();
-      }
-      channelsRef.current.forEach(ch => supabase.removeChannel(ch));
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (actionListener) actionListener.remove();
+      channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
+      channelsRef.current = [];
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, toast, playNotificationSound, stopAlert, addNotification]);
+  }, [user, toast, playAlert, stopAlert, addNotification]);
 }
