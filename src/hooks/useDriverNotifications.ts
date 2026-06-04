@@ -33,13 +33,14 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          BackgroundMode.enable();
-          BackgroundMode.setSettings({
-            title: 'É Pra Já - Entregador',
-            text: 'O aplicativo está rodando em segundo plano para receber pedidos.',
-            hidden: false,
-            silent: false,
-          });
+          try {
+            BackgroundMode.enable();
+            // setSettings is not implemented on Android for this plugin version
+            BackgroundMode.disableWebViewOptimizations();
+            BackgroundMode.disableBatteryOptimizations();
+          } catch (e) {
+            console.warn("Background mode settings not fully supported:", e);
+          }
 
           LocalNotifications.registerActionTypes({
             types: [
@@ -108,6 +109,56 @@ export function useDriverNotifications() {
           }
         });
       }
+
+      // Track already notified deliveries
+      const notifiedDeliveriesRef = { current: new Set<string>() };
+
+      // Fallback Polling (Contorna RLS que bloqueia eventos de INSERT para 'pending')
+      const interval = setInterval(async () => {
+        if (!user || !driverId || cancelled) return;
+        const { data } = await supabase
+          .from("available_deliveries")
+          .select("id, pickup_address, customer_name, status");
+        
+        if (data && !cancelled) {
+          data.forEach((delivery: any) => {
+            if (!notifiedDeliveriesRef.current.has(delivery.id)) {
+              notifiedDeliveriesRef.current.add(delivery.id);
+              
+              // Evitar tocar para corridas velhas ao inicializar
+              if (notifiedDeliveriesRef.current.size > data.length) {
+                playNotificationSound(true);
+                toast({
+                  title: "🏍️ Nova corrida disponível!",
+                  description: delivery.pickup_address
+                    ? `Retirada: ${delivery.pickup_address}`
+                    : `Entrega para ${delivery.customer_name}`,
+                });
+                addNotification({
+                  type: "delivery",
+                  title: "Nova corrida disponível",
+                  description: delivery.pickup_address || "Confira na tela inicial.",
+                });
+
+                if (permissionRef.current === "granted" && Capacitor.isNativePlatform()) {
+                  LocalNotifications.schedule({
+                    notifications: [
+                      {
+                        title: "ÉpraJá - Nova corrida!",
+                        body: delivery.pickup_address ? `Retirada: ${delivery.pickup_address}` : "Uma nova entrega está disponível",
+                        id: hashId(delivery.id),
+                        schedule: { at: new Date(Date.now() + 100) },
+                        actionTypeId: "DELIVERY_ACTION",
+                        extra: { type: 'delivery', deliveryId: delivery.id },
+                      },
+                    ],
+                  });
+                }
+              }
+            }
+          });
+        }
+      }, 10000);
 
       // Listen for new broadcast deliveries (INSERT with no driver or broadcast)
       const broadcastChannel = supabase
@@ -188,7 +239,8 @@ export function useDriverNotifications() {
             }
             
             // If a delivery was updated TO pending or broadcasted (e.g. dispatched by merchant)
-            if ((old.status !== "pending" && old.status !== "broadcasted") && (delivery.status === "pending" || delivery.status === "broadcasted")) {
+            // Fix: old.status must exist so we don't trigger this incorrectly on assignments
+            if (old.status && (old.status !== "pending" && old.status !== "broadcasted") && (delivery.status === "pending" || delivery.status === "broadcasted")) {
               playNotificationSound(true); // Loop alarm
               toast({
                 title: "🏍️ Nova corrida disponível!",
@@ -332,7 +384,7 @@ export function useDriverNotifications() {
         actionListener.remove();
       }
       channelsRef.current.forEach(ch => supabase.removeChannel(ch));
-      channelsRef.current = [];
+      clearInterval(interval);
     };
-  }, [user?.id]); // Stable deps only
+  }, [user, toast, playNotificationSound, stopAlert, addNotification]);
 }

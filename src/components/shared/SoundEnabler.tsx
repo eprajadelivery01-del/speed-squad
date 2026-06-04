@@ -12,7 +12,12 @@ export function SoundEnabler() {
 
   useEffect(() => {
     const checkSettings = async () => {
-      const { value: soundEnabledPref } = await Preferences.get({ key: 'sound_enabled' });
+      let soundEnabledPref = null;
+      try {
+        const { value } = await Preferences.get({ key: 'sound_enabled' });
+        soundEnabledPref = value;
+      } catch (e) {}
+      
       const soundEnabledLocal = localStorage.getItem("sound_enabled") || localStorage.getItem("epj_sound_enabled");
       
       if (!soundEnabledPref && !soundEnabledLocal) {
@@ -27,7 +32,9 @@ export function SoundEnabler() {
     setEnabling(true);
     try {
       unlockAudio();
-      await Preferences.set({ key: 'sound_enabled', value: 'true' });
+      try {
+        await Preferences.set({ key: 'sound_enabled', value: 'true' });
+      } catch (e) {}
       localStorage.setItem("sound_enabled", "true");
       localStorage.setItem("epj_sound_enabled", "true");
       setIsVisible(false);
