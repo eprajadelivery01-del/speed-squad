@@ -90,6 +90,18 @@ export function useDriverNotifications() {
               },
             ],
           }).catch(() => {});
+
+          try {
+            LocalNotifications.createChannel({
+              id: "delivery-channel",
+              name: "Novas Corridas",
+              description: "Avisos sonoros de novas corridas",
+              importance: 5,
+              visibility: 1,
+              sound: "ring.mp3",
+              vibration: true,
+            }).catch(() => {});
+          } catch(e) {}
         }
       });
     } else {
@@ -180,6 +192,7 @@ export function useDriverNotifications() {
                 id: hashId(delivery.id),
                 schedule: { at: new Date(Date.now() + 100) },
                 actionTypeId: "DELIVERY_ACTION",
+                channelId: "delivery-channel",
                 extra: { type: "delivery", deliveryId: delivery.id },
               },
             ],
