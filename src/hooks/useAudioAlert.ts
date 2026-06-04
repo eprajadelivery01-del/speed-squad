@@ -76,11 +76,11 @@ export function useAudioAlert() {
       navigator.vibrate([500, 200, 500, 200, 500]);
     }
 
-    // Auto-stop after 2 minutes to prevent infinite looping if driver is away
+    // Auto-stop after 30 seconds to prevent infinite looping if driver is away
     if (loop) {
       timeoutIdRef.current = setTimeout(() => {
         stopAlert();
-      }, 120_000);
+      }, 30_000);
     }
   }, [stopAlert]);
 

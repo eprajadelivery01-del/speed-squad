@@ -497,6 +497,7 @@ export function useDriverNotifications() {
 
     return () => {
       cancelled = true;
+      stopAlert();
       window.removeEventListener("delivery-declined", handleDeclineEvent);
       if (actionListener) actionListener.remove();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
