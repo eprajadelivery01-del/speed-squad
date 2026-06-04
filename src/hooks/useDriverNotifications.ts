@@ -26,6 +26,7 @@ export function useDriverNotifications() {
   const { playAlert: playNotificationSound, stopAlert } = useAudioAlert();
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
+  const intervalRef = useRef<any>(null);
 
   // Request notification permission and enable background mode
   useEffect(() => {
@@ -34,10 +35,10 @@ export function useDriverNotifications() {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
           try {
-            BackgroundMode.enable();
+            BackgroundMode.enable().catch((e: any) => console.warn("BackgroundMode.enable failed:", e));
             // setSettings is not implemented on Android for this plugin version
-            BackgroundMode.disableWebViewOptimizations();
-            BackgroundMode.disableBatteryOptimizations();
+            BackgroundMode.disableWebViewOptimizations().catch((e: any) => console.warn("BackgroundMode.disableWebViewOptimizations failed:", e));
+            BackgroundMode.disableBatteryOptimizations().catch((e: any) => console.warn("BackgroundMode.disableBatteryOptimizations failed:", e));
           } catch (e) {
             console.warn("Background mode settings not fully supported:", e);
           }
@@ -115,7 +116,7 @@ export function useDriverNotifications() {
       const isInitialFetchRef = { current: true };
 
       // Fallback Polling (Contorna RLS que bloqueia eventos de INSERT para 'pending')
-      const interval = setInterval(async () => {
+      intervalRef.current = setInterval(async () => {
         if (!user || !driverId || cancelled) return;
         const { data } = await supabase
           .from("available_deliveries")
@@ -393,7 +394,9 @@ export function useDriverNotifications() {
         actionListener.remove();
       }
       channelsRef.current.forEach(ch => supabase.removeChannel(ch));
-      clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, [user, toast, playNotificationSound, stopAlert, addNotification]);
 }
