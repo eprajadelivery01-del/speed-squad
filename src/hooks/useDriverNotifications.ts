@@ -112,6 +112,7 @@ export function useDriverNotifications() {
 
       // Track already notified deliveries
       const notifiedDeliveriesRef = { current: new Set<string>() };
+      const isInitialFetchRef = { current: true };
 
       // Fallback Polling (Contorna RLS que bloqueia eventos de INSERT para 'pending')
       const interval = setInterval(async () => {
@@ -121,12 +122,15 @@ export function useDriverNotifications() {
           .select("id, pickup_address, customer_name, status");
         
         if (data && !cancelled) {
+          let hasNewDeliveries = false;
+          
           data.forEach((delivery: any) => {
             if (!notifiedDeliveriesRef.current.has(delivery.id)) {
               notifiedDeliveriesRef.current.add(delivery.id);
               
               // Evitar tocar para corridas velhas ao inicializar
-              if (notifiedDeliveriesRef.current.size > data.length) {
+              if (!isInitialFetchRef.current) {
+                hasNewDeliveries = true;
                 playNotificationSound(true);
                 toast({
                   title: "🏍️ Nova corrida disponível!",
@@ -157,6 +161,11 @@ export function useDriverNotifications() {
               }
             }
           });
+          
+          // Marca que a primeira busca inicial já aconteceu
+          if (isInitialFetchRef.current) {
+             isInitialFetchRef.current = false;
+          }
         }
       }, 10000);
 
