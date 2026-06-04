@@ -181,9 +181,8 @@ export function useDriverNotifications() {
       // older than 60s so we don't spam on app open, but very recent ones still ring.
       try {
         const { data: initial } = await supabase
-          .from("deliveries")
-          .select("id, created_at, pickup_address, delivery_address, dropoff_address, address, status")
-          .in("status", ["pending", "broadcasted"]);
+          .from("available_deliveries")
+          .select("id, created_at, delivery_address, status");
 
         if (initial && !cancelled) {
           const cutoff = Date.now() - 60_000;
@@ -206,9 +205,8 @@ export function useDriverNotifications() {
         if (cancelled) return;
         try {
           const { data } = await supabase
-            .from("deliveries")
-            .select("id, created_at, pickup_address, delivery_address, dropoff_address, address, status")
-            .in("status", ["pending", "broadcasted"]);
+            .from("available_deliveries")
+            .select("id, created_at, delivery_address, status");
           if (data && !cancelled) {
             data.forEach((d: any) => notifyNewDelivery(d));
           }
