@@ -93,8 +93,8 @@ export function useDriverNotifications() {
 
           try {
             LocalNotifications.createChannel({
-              id: "delivery-channel",
-              name: "Novas Corridas",
+              id: "delivery-channel-v2",
+              name: "Novas Corridas (Alarme)",
               description: "Avisos sonoros de novas corridas",
               importance: 5,
               visibility: 1,
@@ -192,7 +192,7 @@ export function useDriverNotifications() {
                 id: hashId(delivery.id),
                 schedule: { at: new Date(Date.now() + 100) },
                 actionTypeId: "DELIVERY_ACTION",
-                channelId: "delivery-channel",
+                channelId: "delivery-channel-v2",
                 extra: { type: "delivery", deliveryId: delivery.id },
               },
             ],
