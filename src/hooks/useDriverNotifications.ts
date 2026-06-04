@@ -6,6 +6,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { BackgroundMode } from "@anuradev/capacitor-background-mode";
 
 // Hash utility para gerar IDs consistentes para notificações locais baseados em UUIDs
 const hashId = (str: string) => {
@@ -31,6 +32,14 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
+          BackgroundMode.enable();
+          BackgroundMode.setSettings({
+            title: 'É Pra Já - Entregador',
+            text: 'O aplicativo está rodando em segundo plano para receber pedidos.',
+            hidden: false,
+            silent: false,
+          });
+
           LocalNotifications.registerActionTypes({
             types: [
               {
