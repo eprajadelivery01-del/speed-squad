@@ -7,13 +7,8 @@ import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
-// Register plugin only once per JS context to avoid HMR warnings
-let BackgroundMode: any = null;
-try {
-  BackgroundMode = registerPlugin<any>("BackgroundMode");
-} catch {
-  BackgroundMode = null;
-}
+import { App } from "@capacitor/app";
+import { BackgroundMode } from "@anuradev/capacitor-background-mode";
 
 const hashId = (str: string) => {
   let hash = 0;
@@ -71,12 +66,18 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          if (BackgroundMode) {
-            try {
-              BackgroundMode.enable?.().catch(() => {});
-              BackgroundMode.disableWebViewOptimizations?.().catch(() => {});
-              BackgroundMode.disableBatteryOptimizations?.().catch(() => {});
-            } catch {}
+          try {
+            BackgroundMode.enable({
+              title: "É Pra Já - Entregador",
+              text: "Aguardando novas corridas...",
+              hidden: false,
+              resume: true,
+              disableWebViewOptimization: true
+            }).catch(() => {});
+            BackgroundMode.disableWebViewOptimizations().catch(() => {});
+            BackgroundMode.requestDisableBatteryOptimizations().catch(() => {});
+          } catch (e) {
+            console.warn("BackgroundMode init error", e);
           }
           LocalNotifications.registerActionTypes({
             types: [
@@ -220,7 +221,7 @@ export function useDriverNotifications() {
 
       // 2. Realtime listener to driver status changes (online/offline toggle)
       const driverChannel = supabase
-        .channel(`driver-profile-${user.id}`)
+        .channel(`driver-profile-${user.id}-${Date.now()}`)
         .on(
           "postgres_changes",
           {
@@ -315,8 +316,7 @@ export function useDriverNotifications() {
         }
       }
 
-      // Polling fallback
-      intervalRef.current = setInterval(async () => {
+      const pollDeliveries = async () => {
         if (cancelled) return;
         
         if (!isOnlineRef.current) {
@@ -348,11 +348,22 @@ export function useDriverNotifications() {
         } catch (e) {
           console.warn("[Notify] polling falhou:", e);
         }
-      }, 8000);
+      };
+
+      intervalRef.current = setInterval(pollDeliveries, 8000);
+
+      // Listener de retorno ao app para forçar fetch imediato caso o WebSocket tenha morrido no background
+      const appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive && isOnlineRef.current) {
+          pollDeliveries();
+        }
+      });
+      actionListener = appStateListener; // Será limpo no return do useEffect
+
 
       // Realtime — INSERT
       const broadcastChannel = supabase
-        .channel(`driver-broadcast-${driverId}`)
+        .channel(`driver-broadcast-${driverId}-${Date.now()}`)
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "deliveries" },
@@ -429,7 +440,7 @@ export function useDriverNotifications() {
 
       convs.forEach((conv) => {
         const ch = supabase
-          .channel(`notifications-chat-${conv.id}`)
+          .channel(`notifications-chat-${conv.id}-${Date.now()}`)
           .on(
             "postgres_changes",
             {
