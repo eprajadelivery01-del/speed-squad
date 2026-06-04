@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Volume2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { Preferences } from "@capacitor/preferences";
 
 export function SoundEnabler() {
   const [isVisible, setIsVisible] = useState(false);
@@ -10,17 +11,23 @@ export function SoundEnabler() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const soundEnabled = localStorage.getItem("sound_enabled") || localStorage.getItem("epj_sound_enabled");
-    if (!soundEnabled) {
-      const timer = setTimeout(() => setIsVisible(true), 2000);
-      return () => clearTimeout(timer);
-    }
+    const checkSettings = async () => {
+      const { value: soundEnabledPref } = await Preferences.get({ key: 'sound_enabled' });
+      const soundEnabledLocal = localStorage.getItem("sound_enabled") || localStorage.getItem("epj_sound_enabled");
+      
+      if (!soundEnabledPref && !soundEnabledLocal) {
+        const timer = setTimeout(() => setIsVisible(true), 2000);
+        return () => clearTimeout(timer);
+      }
+    };
+    checkSettings();
   }, []);
 
   const enableSound = async () => {
     setEnabling(true);
     try {
       unlockAudio();
+      await Preferences.set({ key: 'sound_enabled', value: 'true' });
       localStorage.setItem("sound_enabled", "true");
       localStorage.setItem("epj_sound_enabled", "true");
       setIsVisible(false);
