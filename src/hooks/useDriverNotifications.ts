@@ -4,9 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BackgroundMode } from "@anuradev/capacitor-background-mode";
+
+const BackgroundMode = registerPlugin<any>('BackgroundMode');
 
 // Hash utility para gerar IDs consistentes para notificações locais baseados em UUIDs
 const hashId = (str: string) => {
