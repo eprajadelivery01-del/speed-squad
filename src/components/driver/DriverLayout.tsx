@@ -1,11 +1,13 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare } from "lucide-react";
+import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
-import { useDriverNotifications } from "@/hooks/useDriverNotifications";
+import { useDriverNotifications, declineDeliveryLocally } from "@/hooks/useDriverNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "../shared/ThemeToggle";
 import {
   Sheet,
@@ -42,10 +44,82 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   useDriverNotifications();
   const location = useLocation();
   const { profile, user } = useAuth();
-  const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
+  const { toast } = useToast();
+  const { stopAlert } = useAudioAlert();
+  const { notifications, unreadCount, markAsRead, clearAll, updateNotificationStatus } = useNotifications();
   
   const [driverId, setDriverId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [acceptingDeliveryId, setAcceptingDeliveryId] = useState<string | null>(null);
+
+  const handleAcceptDelivery = async (deliveryId: string, notificationId: string) => {
+    if (!driverId) {
+      toast({
+        title: "Erro",
+        description: "Motorista não identificado.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setAcceptingDeliveryId(deliveryId);
+    stopAlert();
+
+    try {
+      // Tenta RPC primeiro
+      const { data, error } = await supabase.rpc("update_delivery_status_safe", {
+        p_delivery_id: deliveryId,
+        p_status: "accepted",
+        p_driver_id: driverId,
+      });
+
+      if (!error && data && (data as any).success) {
+        toast({
+          title: "✅ Corrida aceita!",
+          description: "Vá até o ponto de retirada.",
+        });
+        updateNotificationStatus(deliveryId, "accepted");
+        markAsRead(notificationId);
+        return;
+      }
+
+      // Fallback update direto
+      const { error: updateError } = await supabase
+        .from("deliveries")
+        .update({ status: "accepted", driver_id: driverId })
+        .eq("id", deliveryId)
+        .in("status", ["pending", "broadcasted"]);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "✅ Corrida aceita!",
+        description: "Vá até o ponto de retirada.",
+      });
+      updateNotificationStatus(deliveryId, "accepted");
+      markAsRead(notificationId);
+    } catch (err: any) {
+      toast({
+        title: "Erro ao aceitar",
+        description: err.message || "A corrida pode ter sido aceita por outro motorista.",
+        variant: "destructive",
+      });
+      updateNotificationStatus(deliveryId, "expired");
+    } finally {
+      setAcceptingDeliveryId(null);
+    }
+  };
+
+  const handleDeclineDelivery = (deliveryId: string, notificationId: string) => {
+    stopAlert();
+    declineDeliveryLocally(deliveryId);
+    updateNotificationStatus(deliveryId, "rejected");
+    markAsRead(notificationId);
+    toast({
+      title: "Silenciada",
+      description: "Você não receberá mais alertas para esta corrida."
+    });
+  };
 
   useEffect(() => {
     if (user) {
@@ -159,6 +233,61 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-2">{n.description}</p>
+                          
+                          {/* Botões de Ação para Novas Corridas */}
+                          {n.type === 'delivery' && n.deliveryId && n.deliveryStatus === 'pending' && (
+                            <div className="mt-3 flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+                                disabled={acceptingDeliveryId === n.deliveryId}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAcceptDelivery(n.deliveryId!, n.id);
+                                }}
+                              >
+                                {acceptingDeliveryId === n.deliveryId ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Truck className="h-4 w-4 mr-1" /> Aceitar
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full border-destructive text-destructive hover:bg-destructive/10 font-bold"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeclineDelivery(n.deliveryId!, n.id);
+                                }}
+                              >
+                                Recusar
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Status Badge */}
+                          {n.type === 'delivery' && n.deliveryStatus && n.deliveryStatus !== 'pending' && (
+                            <div className="mt-2">
+                              <Badge 
+                                variant={
+                                  n.deliveryStatus === 'accepted' ? 'default' :
+                                  n.deliveryStatus === 'rejected' ? 'outline' : 'secondary'
+                                }
+                                className={cn(
+                                  n.deliveryStatus === 'accepted' && "bg-green-600 hover:bg-green-600",
+                                  n.deliveryStatus === 'rejected' && "text-muted-foreground border-muted-foreground",
+                                  n.deliveryStatus === 'expired' && "text-orange-500 bg-orange-500/10"
+                                )}
+                              >
+                                {n.deliveryStatus === 'accepted' ? 'Corrida Aceita' :
+                                 n.deliveryStatus === 'rejected' ? 'Corrida Recusada' : 'Corrida Expirada'}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

@@ -31,16 +31,39 @@ const pickAddress = (d: any): string =>
   d?.address ||
   "Confira na tela inicial.";
 
+export const getDeclinedDeliveries = (): Set<string> => {
+  try {
+    const list = localStorage.getItem("declined_deliveries");
+    return list ? new Set(JSON.parse(list)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+export const declineDeliveryLocally = (deliveryId: string) => {
+  try {
+    const declined = getDeclinedDeliveries();
+    declined.add(deliveryId);
+    localStorage.setItem("declined_deliveries", JSON.stringify(Array.from(declined)));
+    // Dispatch custom event to notify current active hook to stop ringing
+    window.dispatchEvent(new CustomEvent("delivery-declined", { detail: { deliveryId } }));
+  } catch (e) {
+    console.error("[Notify] erro ao declinar localmente:", e);
+  }
+};
+
 export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { addNotification } = useNotifications();
+  const { addNotification, updateNotificationStatus } = useNotifications();
   const { playAlert, stopAlert } = useAudioAlert();
+  
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
-  const mountedAtRef = useRef<number>(Date.now());
+  const isOnlineRef = useRef<boolean>(false);
+  const activeAlertsRef = useRef<Set<string>>(new Set());
 
   // Permission setup
   useEffect(() => {
@@ -86,21 +109,51 @@ export function useDriverNotifications() {
     let cancelled = false;
     let actionListener: any = null;
 
+    // Check custom event for locally declined runs
+    const handleDeclineEvent = (e: any) => {
+      const { deliveryId } = e.detail || {};
+      if (deliveryId) {
+        activeAlertsRef.current.delete(deliveryId);
+        if (activeAlertsRef.current.size === 0) {
+          stopAlert();
+        }
+        if (Capacitor.isNativePlatform()) {
+          LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
+        }
+      }
+    };
+    window.addEventListener("delivery-declined", handleDeclineEvent);
+
     // Unified notifier — always fires sound + toast + central + OS notification
     const notifyNewDelivery = (delivery: any) => {
       if (!delivery?.id) return;
+      
+      // Stop notifying if offline
+      if (!isOnlineRef.current) return;
+      
+      // Stop notifying if already declined
+      const declined = getDeclinedDeliveries();
+      if (declined.has(delivery.id)) return;
+
       if (seenIdsRef.current.has(delivery.id)) return;
       seenIdsRef.current.add(delivery.id);
+      activeAlertsRef.current.add(delivery.id);
 
       const address = pickAddress(delivery);
       const title = "🏍️ Nova corrida disponível!";
       const description = `Retirada: ${address}`;
 
       // 1) Sound (looped) + vibration via hook
-      try { playAlert(true); } catch (e) { console.warn("[Notify] som falhou:", e); }
+      try {
+        playAlert(true);
+      } catch (e) {
+        console.warn("[Notify] som falhou:", e);
+      }
 
       // 2) Toast
-      try { toast({ title, description }); } catch {}
+      try {
+        toast({ title, description });
+      } catch {}
 
       // 3) Central de notificações
       try {
@@ -108,6 +161,8 @@ export function useDriverNotifications() {
           type: "delivery",
           title: "Nova corrida disponível",
           description,
+          deliveryId: delivery.id,
+          deliveryStatus: "pending",
         });
       } catch (e) {
         console.warn("[Notify] central falhou:", e);
@@ -140,37 +195,96 @@ export function useDriverNotifications() {
       }
     };
 
+    const stopRingingFor = (deliveryId: string) => {
+      activeAlertsRef.current.delete(deliveryId);
+      if (activeAlertsRef.current.size === 0) {
+        stopAlert();
+      }
+      if (Capacitor.isNativePlatform()) {
+        LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
+      }
+      updateNotificationStatus(deliveryId, "expired");
+    };
+
     const setup = async () => {
+      // 1. Initial fetch of driver status
       const { data: driverRow } = await supabase
         .from("delivery_drivers")
-        .select("id")
+        .select("id, is_online")
         .eq("user_id", user.id)
         .single();
 
       if (!driverRow || cancelled) return;
       const driverId = driverRow.id;
+      isOnlineRef.current = driverRow.is_online ?? false;
 
-      // Native action listener
+      // 2. Realtime listener to driver status changes (online/offline toggle)
+      const driverChannel = supabase
+        .channel(`driver-profile-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "delivery_drivers",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const updated = payload.new as any;
+            const wasOnline = isOnlineRef.current;
+            isOnlineRef.current = updated.is_online ?? false;
+            if (!isOnlineRef.current && wasOnline) {
+              // Silenced when going offline
+              activeAlertsRef.current.clear();
+              stopAlert();
+            }
+          }
+        )
+        .subscribe();
+      channelsRef.current.push(driverChannel);
+
+      // 3. Native action listener
       if (Capacitor.isNativePlatform()) {
         actionListener = await LocalNotifications.addListener(
           "localNotificationActionPerformed",
           async (action) => {
             if (action.notification.extra?.type === "delivery") {
-              stopAlert();
               const deliveryId = action.notification.extra.deliveryId;
+              
               if (action.actionId === "accept") {
+                stopAlert();
+                activeAlertsRef.current.delete(deliveryId);
+                
+                // Attempt RLS bypass RPC first
+                try {
+                  const { data, error } = await supabase.rpc("update_delivery_status_safe", {
+                    p_delivery_id: deliveryId,
+                    p_status: "accepted",
+                    p_driver_id: driverId,
+                  });
+                  if (!error && data && (data as any).success) {
+                    toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
+                    updateNotificationStatus(deliveryId, "accepted");
+                    return;
+                  }
+                } catch {}
+
+                // REST fallback
                 const { error } = await supabase
                   .from("deliveries")
                   .update({ status: "accepted", driver_id: driverId })
                   .eq("id", deliveryId)
                   .in("status", ["pending", "broadcasted"]);
-                toast(
-                  error
-                    ? { title: "Erro", description: "Não foi possível aceitar.", variant: "destructive" }
-                    : { title: "✅ Corrida aceita!", description: "Aceita via notificação." }
-                );
+                
+                if (error) {
+                  toast({ title: "Erro", description: "Não foi possível aceitar.", variant: "destructive" });
+                } else {
+                  toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
+                  updateNotificationStatus(deliveryId, "accepted");
+                }
               } else if (action.actionId === "reject") {
-                LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
+                declineDeliveryLocally(deliveryId);
+                updateNotificationStatus(deliveryId, "rejected");
               }
             }
           }
@@ -179,36 +293,57 @@ export function useDriverNotifications() {
 
       // Initial seed: mark all currently-available deliveries as "seen"
       // older than 60s so we don't spam on app open, but very recent ones still ring.
-      try {
-        const { data: initial } = await supabase
-          .from("available_deliveries")
-          .select("id, created_at, delivery_address, status");
+      if (isOnlineRef.current) {
+        try {
+          const { data: initial } = await supabase
+            .from("available_deliveries")
+            .select("id, created_at, delivery_address, status");
 
-        if (initial && !cancelled) {
-          const cutoff = Date.now() - 60_000;
-          initial.forEach((d: any) => {
-            const ts = d.created_at ? new Date(d.created_at).getTime() : 0;
-            if (ts < cutoff) {
-              seenIdsRef.current.add(d.id);
-            } else {
-              // Fresh — notify
-              notifyNewDelivery(d);
-            }
-          });
+          if (initial && !cancelled) {
+            const cutoff = Date.now() - 60_000;
+            initial.forEach((d: any) => {
+              const ts = d.created_at ? new Date(d.created_at).getTime() : 0;
+              if (ts < cutoff) {
+                seenIdsRef.current.add(d.id);
+              } else {
+                notifyNewDelivery(d);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn("[Notify] seed inicial falhou:", e);
         }
-      } catch (e) {
-        console.warn("[Notify] seed inicial falhou:", e);
       }
 
-      // Polling fallback (RLS pode bloquear eventos INSERT realtime)
+      // Polling fallback
       intervalRef.current = setInterval(async () => {
         if (cancelled) return;
+        
+        if (!isOnlineRef.current) {
+          if (activeAlertsRef.current.size > 0) {
+            activeAlertsRef.current.clear();
+            stopAlert();
+          }
+          return;
+        }
+
         try {
           const { data } = await supabase
             .from("available_deliveries")
             .select("id, created_at, delivery_address, status");
+          
           if (data && !cancelled) {
+            const freshIds = new Set(data.map((d: any) => d.id));
+            
+            // Notify new runs
             data.forEach((d: any) => notifyNewDelivery(d));
+
+            // Stop ringing for runs that are no longer available (accepted by others)
+            Array.from(activeAlertsRef.current).forEach((id) => {
+              if (!freshIds.has(id)) {
+                stopRingingFor(id);
+              }
+            });
           }
         } catch (e) {
           console.warn("[Notify] polling falhou:", e);
@@ -223,7 +358,7 @@ export function useDriverNotifications() {
           { event: "INSERT", schema: "public", table: "deliveries" },
           (payload) => {
             const d = payload.new as any;
-            if (d?.status === "pending" || d?.status === "broadcasted") {
+            if (isOnlineRef.current && (d?.status === "pending" || d?.status === "broadcasted")) {
               notifyNewDelivery(d);
             }
           }
@@ -235,16 +370,13 @@ export function useDriverNotifications() {
             const d = payload.new as any;
             const o = payload.old as any;
 
-            // Disappeared from broadcast pool → stop alarm + cancel OS notif
+            // Disappeared from broadcast pool
             if (
               (o?.status === "pending" || o?.status === "broadcasted") &&
               d?.status !== "pending" &&
               d?.status !== "broadcasted"
             ) {
-              if (Capacitor.isNativePlatform()) {
-                LocalNotifications.cancel({ notifications: [{ id: hashId(d.id) }] }).catch(() => {});
-              }
-              stopAlert();
+              stopRingingFor(d.id);
             }
 
             // Newly broadcasted
@@ -254,9 +386,10 @@ export function useDriverNotifications() {
               o.status !== "broadcasted" &&
               (d?.status === "pending" || d?.status === "broadcasted")
             ) {
-              // Force re-notify even if previously seen
-              seenIdsRef.current.delete(d.id);
-              notifyNewDelivery(d);
+              if (isOnlineRef.current) {
+                seenIdsRef.current.delete(d.id);
+                notifyNewDelivery(d);
+              }
             }
 
             // Confirmation for own delivery
@@ -265,6 +398,11 @@ export function useDriverNotifications() {
                 title: "✅ Corrida confirmada!",
                 description: "A entrega foi confirmada. Vá até o ponto de retirada.",
               });
+              activeAlertsRef.current.delete(d.id);
+              if (activeAlertsRef.current.size === 0) {
+                stopAlert();
+              }
+              updateNotificationStatus(d.id, "accepted");
             }
           }
         )
@@ -303,9 +441,15 @@ export function useDriverNotifications() {
             (payload) => {
               const msg = payload.new as any;
               if (msg.sender_id !== user.id) {
-                try { playAlert(false); } catch {}
+                try {
+                  playAlert(false);
+                } catch {}
                 toast({ title: "💬 Nova mensagem", description: msg.content });
-                addNotification({ type: "chat", title: "Nova mensagem no chat", description: msg.content });
+                addNotification({
+                  type: "chat",
+                  title: "Nova mensagem no chat",
+                  description: msg.content,
+                });
 
                 if (permissionRef.current === "granted") {
                   if (Capacitor.isNativePlatform()) {
@@ -323,7 +467,10 @@ export function useDriverNotifications() {
                     }).catch(() => {});
                   } else {
                     try {
-                      new Notification("💬 Nova mensagem", { body: msg.content, icon: "/logo.png" });
+                      new Notification("💬 Nova mensagem", {
+                        body: msg.content,
+                        icon: "/logo.png",
+                      });
                     } catch {}
                   }
                 }
@@ -339,10 +486,11 @@ export function useDriverNotifications() {
 
     return () => {
       cancelled = true;
+      window.removeEventListener("delivery-declined", handleDeclineEvent);
       if (actionListener) actionListener.remove();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, toast, playAlert, stopAlert, addNotification]);
+  }, [user, toast, playAlert, stopAlert, addNotification, updateNotificationStatus]);
 }
