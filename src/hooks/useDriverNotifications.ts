@@ -120,7 +120,7 @@ export function useDriverNotifications() {
         if (!user || !driverId || cancelled) return;
         const { data } = await supabase
           .from("available_deliveries")
-          .select("id, pickup_address, customer_name, status");
+          .select("id, delivery_address, customer_name, status");
         
         if (data && !cancelled) {
           let hasNewDeliveries = false;
@@ -133,16 +133,15 @@ export function useDriverNotifications() {
               if (!isInitialFetchRef.current) {
                 hasNewDeliveries = true;
                 playNotificationSound(true);
+                const displayAddress = delivery.delivery_address || "Confira na tela inicial.";
                 toast({
                   title: "🏍️ Nova corrida disponível!",
-                  description: delivery.pickup_address
-                    ? `Retirada: ${delivery.pickup_address}`
-                    : `Entrega para ${delivery.customer_name}`,
+                  description: `Destino: ${displayAddress}`,
                 });
                 addNotification({
                   type: "delivery",
                   title: "Nova corrida disponível",
-                  description: delivery.pickup_address || "Confira na tela inicial.",
+                  description: `Destino: ${displayAddress}`,
                 });
 
                 if (permissionRef.current === "granted" && Capacitor.isNativePlatform()) {
@@ -150,7 +149,7 @@ export function useDriverNotifications() {
                     notifications: [
                       {
                         title: "ÉpraJá - Nova corrida!",
-                        body: delivery.pickup_address ? `Retirada: ${delivery.pickup_address}` : "Uma nova entrega está disponível",
+                        body: `Destino: ${displayAddress}`,
                         id: hashId(delivery.id),
                         schedule: { at: new Date(Date.now() + 100) },
                         actionTypeId: "DELIVERY_ACTION",
@@ -185,22 +184,19 @@ export function useDriverNotifications() {
             // Only notify for pending/broadcasted (available rides)
             if (delivery.status === "pending" || delivery.status === "broadcasted") {
               playNotificationSound(true); // Loop alarm
+              const displayAddress = delivery.pickup_address || delivery.delivery_address || "Confira na tela inicial.";
               toast({
                 title: "🏍️ Nova corrida disponível!",
-                description: delivery.pickup_address
-                  ? `Retirada: ${delivery.pickup_address}`
-                  : `Entrega para ${delivery.customer_name}`,
+                description: `Retirada: ${displayAddress}`,
               });
               addNotification({
                 type: "delivery",
                 title: "Nova corrida disponível",
-                description: delivery.pickup_address || "Confira na tela inicial.",
+                description: `Retirada: ${displayAddress}`,
               });
               if (permissionRef.current === "granted") {
                 const title = "ÉpraJá - Nova corrida!";
-                const body = delivery.pickup_address
-                  ? `Retirada: ${delivery.pickup_address}`
-                  : "Uma nova entrega está disponível";
+                const body = `Retirada: ${displayAddress}`;
 
                 if (Capacitor.isNativePlatform()) {
                   LocalNotifications.schedule({
@@ -252,22 +248,19 @@ export function useDriverNotifications() {
             // Fix: old.status must exist so we don't trigger this incorrectly on assignments
             if (old.status && (old.status !== "pending" && old.status !== "broadcasted") && (delivery.status === "pending" || delivery.status === "broadcasted")) {
               playNotificationSound(true); // Loop alarm
+              const displayAddress = delivery.pickup_address || delivery.delivery_address || "Confira na tela inicial.";
               toast({
                 title: "🏍️ Nova corrida disponível!",
-                description: delivery.pickup_address
-                  ? `Retirada: ${delivery.pickup_address}`
-                  : `Entrega para ${delivery.customer_name}`,
+                description: `Retirada: ${displayAddress}`,
               });
               addNotification({
                 type: "delivery",
                 title: "Nova corrida disponível",
-                description: delivery.pickup_address || "Confira na tela inicial.",
+                description: `Retirada: ${displayAddress}`,
               });
               if (permissionRef.current === "granted") {
                 const title = "ÉpraJá - Nova corrida!";
-                const body = delivery.pickup_address
-                  ? `Retirada: ${delivery.pickup_address}`
-                  : "Uma nova entrega está disponível";
+                const body = `Retirada: ${displayAddress}`;
 
                 if (Capacitor.isNativePlatform()) {
                   LocalNotifications.schedule({
