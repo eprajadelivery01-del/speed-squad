@@ -180,11 +180,20 @@ export function useUpdateDeliveryStatus() {
           p_driver_id: driverId || null,
         });
 
-        if (!error && data && (data as any).success) {
-          return;
+        if (!error && data) {
+          if ((data as any).success) {
+            return;
+          } else if ((data as any).error) {
+            // Se a RPC explicitly returned false e forneceu um erro (ex: corrida já aceita)
+            throw new Error((data as any).error);
+          }
         }
-      } catch (err) {
-        // Silently ignore to proceed to REST fallbacks
+      } catch (err: any) {
+        // Se for o nosso erro de concorrência que acabamos de lançar, propaga imediatamente para o UI
+        if (err.message && err.message.includes("já foi aceita")) {
+          throw err;
+        }
+        // Caso contrário, ignora silenciosamente para tentar as estratégias de fallback REST
       }
 
       // Fallback: Original REST-based combination updates (backward compatible)
