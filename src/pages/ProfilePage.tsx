@@ -62,12 +62,15 @@ export default function ProfilePage() {
       if (driver) {
         setCoverUrl(localStorage.getItem(`driver_cover_${user.id}`) || "");
         
+        // Status considerados "entregue" — o enum do DB usa "completed", a UI usa "delivered"
+        const DELIVERED_STATUSES = ["delivered", "completed"] as any;
+
         // Count total deliveries
         const { count: totalCount } = await supabase
           .from("deliveries")
           .select("id", { count: "exact", head: true })
           .eq("driver_id", driver.id)
-          .eq("status", "delivered");
+          .in("status", DELIVERED_STATUSES);
 
         // Compute date range
         let start = new Date();
@@ -90,16 +93,25 @@ export default function ProfilePage() {
           end = new Date(year, month - 1, day, 23, 59, 59, 999);
         }
 
-        const { data: periodDeliveries } = await supabase
+        // Buscar todas as entregas concluídas do motorista e filtrar pelo momento da entrega
+        // (delivered_at / completed_at), com fallback para created_at se ambos estiverem nulos.
+        const { data: allDelivered } = await supabase
           .from("deliveries")
-          .select("commission")
+          .select("commission, delivered_at, completed_at, created_at")
           .eq("driver_id", driver.id)
-          .eq("status", "delivered")
-          .gte("created_at", start.toISOString())
-          .lte("created_at", end.toISOString());
+          .in("status", DELIVERED_STATUSES);
 
-        const periodEarnings = periodDeliveries?.reduce((sum, d) => sum + Number(d.commission || 0), 0) || 0;
-        const periodCount = periodDeliveries?.length || 0;
+        const startMs = start.getTime();
+        const endMs = end.getTime();
+        const periodDeliveries = (allDelivered || []).filter((d: any) => {
+          const ref = d.delivered_at || d.completed_at || d.created_at;
+          if (!ref) return false;
+          const t = new Date(ref).getTime();
+          return t >= startMs && t <= endMs;
+        });
+
+        const periodEarnings = periodDeliveries.reduce((sum, d: any) => sum + Number(d.commission || 0), 0);
+        const periodCount = periodDeliveries.length;
 
         setDriverStats({
           deliveries: totalCount || 0,
