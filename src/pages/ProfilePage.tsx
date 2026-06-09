@@ -104,7 +104,7 @@ export default function ProfilePage() {
 
         const { data: allDelivered } = await supabase
           .from("deliveries")
-          .select("value, commission, delivered_at, completed_at, created_at")
+          .select("id, value, price, commission, delivered_at, completed_at, created_at")
           .eq("driver_id", driver.id)
           .in("status", DELIVERED_STATUSES);
 
@@ -121,7 +121,8 @@ export default function ProfilePage() {
         const periodCount = periodDeliveries.length;
         const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
         
-        const grossEarnings = periodDeliveries.reduce((sum, d: any) => sum + Number(d.value || 0), 0);
+        // Entregador ganha o 'price' (taxa de entrega), não o 'value' (valor do pedido)
+        const grossEarnings = periodDeliveries.reduce((sum, d: any) => sum + Number(d.price || 0), 0);
         const platformFee = periodDeliveries.reduce((sum, d: any) => sum + Number(d.commission || driverRate), 0);
         const netEarnings = grossEarnings - platformFee;
 
@@ -292,26 +293,56 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 gap-4">
               {/* Entregas */}
-              <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/50">
+              <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/50 flex flex-col justify-between">
                 <Package className="h-5 w-5 text-slate-400 dark:text-zinc-500 mb-3" />
-                <p className="text-2xl font-black text-slate-800 dark:text-zinc-100">{driverStats.periodDeliveries}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mt-1">Corridas</p>
+                <div>
+                  <p className="text-2xl font-black text-slate-800 dark:text-zinc-100">{driverStats.periodDeliveries}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mt-1">Corridas Concluídas</p>
+                </div>
+              </div>
+
+              {/* Ganhos Brutos (Taxa de Entrega) */}
+              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-900/30 flex flex-col justify-between">
+                <Wallet className="h-5 w-5 text-blue-400 mb-3" />
+                <div>
+                  <p className="text-xl font-black text-blue-600 dark:text-blue-500 truncate">
+                    R$ {driverStats.grossEarnings.toFixed(2).replace('.', ',')}
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mt-1">Taxas Recebidas</p>
+                </div>
               </div>
 
               {/* Repasse App */}
-              <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-4 border border-rose-100 dark:border-rose-900/30">
+              <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-4 border border-rose-100 dark:border-rose-900/30 flex flex-col justify-between">
                 <ArrowUpRight className="h-5 w-5 text-rose-400 mb-3" />
-                <p className="text-xl font-black text-rose-600 dark:text-rose-500 truncate">
-                  - R$ {driverStats.platformFee.toFixed(2).replace('.', ',')}
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 dark:text-rose-400/80 mt-1">Taxa do App</p>
+                <div>
+                  <p className="text-xl font-black text-rose-600 dark:text-rose-500 truncate">
+                    - R$ {driverStats.platformFee.toFixed(2).replace('.', ',')}
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 dark:text-rose-400/80 mt-1">Devido ao App</p>
+                </div>
+              </div>
+
+              {/* Entregas Totais da Vida */}
+              <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/50 flex flex-col justify-between">
+                <Star className="h-5 w-5 text-amber-400 mb-3" />
+                <div>
+                  <p className="text-xl font-black text-slate-800 dark:text-zinc-100">{driverStats.deliveries}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mt-1">Total Histórico</p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800/50 flex items-start gap-3">
-              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="mt-5 p-4 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                <h4 className="text-xs font-black uppercase text-slate-700 dark:text-zinc-300">Entenda seus ganhos</h4>
+              </div>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
-                A plataforma cobra uma taxa fixa de <strong className="text-slate-700 dark:text-zinc-300">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> por entrega. O repasse deve ser feito via painel financeiro para evitar bloqueio.
+                Você recebe <strong className="text-slate-700 dark:text-zinc-200">100% da Taxa de Entrega</strong> paga pelo cliente. A plataforma cobra apenas <strong className="text-slate-700 dark:text-zinc-200">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> de repasse por cada entrega concluída.
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium mt-1">
+                Lembre-se de realizar o pagamento do repasse via Pix na aba Suporte para evitar bloqueios automáticos da sua conta.
               </p>
             </div>
           </div>
