@@ -190,7 +190,6 @@ export function useDriverNotifications() {
                 title: "ÉpraJá - Nova corrida!",
                 body: description,
                 id: hashId(delivery.id),
-                schedule: { at: new Date(Date.now() + 100) },
                 actionTypeId: "DELIVERY_ACTION",
                 channelId: "delivery-channel-v2",
                 extra: { type: "delivery", deliveryId: delivery.id },
@@ -371,7 +370,6 @@ export function useDriverNotifications() {
           pollDeliveries();
         }
       });
-      actionListener = appStateListener; // Será limpo no return do useEffect
 
 
       // Realtime — INSERT
@@ -483,7 +481,6 @@ export function useDriverNotifications() {
                           title: "💬 Nova mensagem",
                           body: msg.content,
                           id: new Date().getTime() + 1,
-                          schedule: { at: new Date(Date.now() + 100) },
                           actionTypeId: "",
                           extra: null,
                         },
@@ -513,6 +510,7 @@ export function useDriverNotifications() {
       stopAlert();
       window.removeEventListener("delivery-declined", handleDeclineEvent);
       if (actionListener) actionListener.remove();
+      App.removeAllListeners();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);
