@@ -181,26 +181,30 @@ export default function ProfilePage() {
 
   return (
     <DriverLayout>
-      <div className="min-h-screen pb-24 bg-slate-50/50">
-        {/* === COVER & HEADER SECTION === */}
-        <div className="relative h-[220px] bg-gradient-to-br from-primary via-orange-500 to-amber-400 -mx-4 -mt-4 overflow-hidden rounded-b-[40px] shadow-lg">
-          {coverUrl ? (
-            <img src={coverUrl} className="w-full h-full object-cover" alt="Capa" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center opacity-10">
-              <Bike className="h-32 w-32 text-white" />
+      <div className="min-h-screen pb-24 bg-slate-50 dark:bg-zinc-950">
+        
+        {/* === HEADER SECTION === */}
+        <div className="relative bg-zinc-900 dark:bg-zinc-900 -mx-4 -mt-4 rounded-b-[2.5rem] shadow-xl overflow-hidden pb-8">
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/20 to-transparent opacity-20" />
+          
+          <div className="relative z-10 px-6 pt-12">
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-xl font-black text-white tracking-tight">Meu Perfil</h1>
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-all text-xs font-bold"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                Editar
+              </button>
             </div>
-          )}
-          
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          
-          <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
-            <div className="flex gap-4 items-end">
-              <div className="relative z-10">
+
+            <div className="flex items-center gap-5">
+              <div className="relative">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-[1.5rem] border-4 border-white/20 shadow-2xl bg-white overflow-hidden hover:scale-105 transition-transform"
+                  className="w-20 h-20 rounded-full border-4 border-zinc-800 shadow-2xl bg-zinc-800 overflow-hidden relative group"
                 >
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
@@ -209,215 +213,151 @@ export default function ProfilePage() {
                       <span className="text-3xl font-black text-white">{initial}</span>
                     </div>
                   )}
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-white text-primary flex items-center justify-center shadow-lg"
-                >
-                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {uploading ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
+                  </div>
                 </button>
                 <input ref={fileInputRef} type="file" capture="environment" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-zinc-900 flex items-center justify-center",
+                  driverStats.online ? "bg-emerald-500" : "bg-zinc-500"
+                )}>
+                  {driverStats.online && <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}
+                </div>
               </div>
-              
-              <div className="mb-1 text-white">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight">{displayName}</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className={cn("flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10",
-                    driverStats.online ? "bg-green-500/20 text-green-100" : "bg-black/40 text-white/70"
-                  )}>
-                    <div className={cn("w-1.5 h-1.5 rounded-full", driverStats.online ? "bg-green-400 animate-pulse" : "bg-white/40")} />
-                    {driverStats.online ? "Online" : "Offline"}
+
+              <div>
+                <h2 className="text-2xl font-black text-white mb-1">{displayName}</h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-800/80 border border-zinc-700">
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <span className="text-xs font-bold text-white">{driverStats.rating.toFixed(1)}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] font-bold bg-black/40 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/10">
-                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    <span>{driverStats.rating.toFixed(1)}</span>
-                  </div>
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                    {driverStats.online ? "Online Agora" : "Offline"}
+                  </span>
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={() => setEditing(true)}
-              className="mb-1 flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 font-bold text-xs text-white hover:bg-white/20 transition-all active:scale-95 shadow-xl"
-            >
-              <Edit3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Editar</span>
-            </button>
           </div>
         </div>
 
-        {/* === FILTERS === */}
-        <div className="mt-8 px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              Desempenho
-            </h2>
-            <select 
-              value={period} 
-              onChange={(e) => setPeriod(e.target.value)}
-              className="bg-white border border-slate-200 text-foreground text-xs font-bold rounded-xl px-4 py-2 outline-none cursor-pointer hover:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-            >
-              <option value="today">Hoje</option>
-              <option value="yesterday">Ontem</option>
-              <option value="week">Esta Semana</option>
-              <option value="month">Este Mês</option>
-              <option value="custom">Data Específica</option>
-            </select>
-          </div>
+        <div className="px-5 -mt-6 relative z-20">
           
-          {period === "custom" && (
-            <div className="mb-4 animate-in fade-in slide-in-from-top-2">
+          {/* === DASHBOARD CARDS === */}
+          <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-5 shadow-sm border border-slate-100 dark:border-zinc-800 mb-6">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800/50">
+              <h3 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-widest flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" /> Painel Financeiro
+              </h3>
+              <select 
+                value={period} 
+                onChange={(e) => setPeriod(e.target.value)}
+                className="bg-slate-50 dark:bg-zinc-800 border-none text-slate-600 dark:text-zinc-300 text-xs font-bold rounded-xl px-3 py-1.5 outline-none cursor-pointer"
+              >
+                <option value="today">Hoje</option>
+                <option value="yesterday">Ontem</option>
+                <option value="week">Semana</option>
+                <option value="month">Mês</option>
+                <option value="custom">Outro</option>
+              </select>
+            </div>
+
+            {period === "custom" && (
               <input 
                 type="date" 
                 value={customDate}
                 onChange={(e) => setCustomDate(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm transition-all"
+                className="w-full bg-slate-50 dark:bg-zinc-800 rounded-xl px-4 py-3 text-sm font-bold text-foreground mb-4 outline-none"
               />
+            )}
+
+            {/* Ganho Líquido - DESTAQUE */}
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-5 mb-4 border border-emerald-100 dark:border-emerald-900/50">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1">Seu Ganho Líquido</p>
+                  <p className="text-[11px] font-medium text-emerald-700/70 dark:text-emerald-400/70">Livre de taxas</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-4xl font-black text-emerald-700 dark:text-emerald-400 tracking-tighter">
+                <span className="text-lg font-bold mr-1 opacity-70">R$</span>
+                {driverStats.netEarnings.toFixed(2).replace('.', ',')}
+              </p>
             </div>
-          )}
-        </div>
 
-        {/* === MAIN DASHBOARD === */}
-        <div className="px-4 sm:px-6 mb-8">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
-             {/* Total Entregas */}
-             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group">
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
-                <div className="flex items-center justify-between mb-4 relative z-10">
-                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                     <Package className="h-5 w-5" />
-                   </div>
-                </div>
-                <div className="relative z-10">
-                   <p className="text-3xl font-black text-slate-800 tracking-tight">{driverStats.periodDeliveries}</p>
-                   <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Entregas no Período</p>
-                </div>
-             </div>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Entregas */}
+              <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/50">
+                <Package className="h-5 w-5 text-slate-400 dark:text-zinc-500 mb-3" />
+                <p className="text-2xl font-black text-slate-800 dark:text-zinc-100">{driverStats.periodDeliveries}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mt-1">Corridas</p>
+              </div>
 
-             {/* Ganhos Brutos */}
-             <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-[24px] p-5 shadow-lg shadow-emerald-500/20 text-white flex flex-col justify-between relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl translate-x-8 -translate-y-8" />
-                <div className="flex items-center justify-between mb-4 relative z-10">
-                   <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
-                     <TrendingUp className="h-5 w-5" />
-                   </div>
-                </div>
-                <div className="relative z-10">
-                   <p className="text-2xl sm:text-3xl font-black tracking-tight"><span className="text-sm sm:text-base mr-1 opacity-80 font-bold">R$</span>{driverStats.grossEarnings.toFixed(2).replace('.', ',')}</p>
-                   <p className="text-[10px] sm:text-xs font-bold text-emerald-100 uppercase tracking-widest mt-1">Ganhos Brutos</p>
-                </div>
-             </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:gap-4">
-             {/* Acerto de Contas (Taxa) */}
-             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-slate-100 flex items-center justify-between group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0 group-hover:scale-110 transition-transform">
-                    <ArrowUpRight className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-800">Taxa do App</h4>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">Repasse à plataforma</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-black text-rose-500">- R$ {driverStats.platformFee.toFixed(2).replace('.', ',')}</p>
-                </div>
-             </div>
-
-             {/* Ganho Líquido */}
-             <div className="bg-slate-900 rounded-[24px] p-5 shadow-xl shadow-slate-900/10 flex items-center justify-between relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-400 shrink-0">
-                    <Wallet className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-white">Ganho Líquido</h4>
-                    <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-0.5">O que fica pra você</p>
-                  </div>
-                </div>
-                <div className="text-right relative z-10">
-                  <p className="text-xl sm:text-2xl font-black text-white">
-                    <span className="text-sm opacity-60 mr-1 font-bold">R$</span>
-                    {driverStats.netEarnings.toFixed(2).replace('.', ',')}
-                  </p>
-                </div>
-             </div>
-          </div>
-        </div>
-
-        {/* === INFO SECTION === */}
-        <div className="px-4 sm:px-6 mb-8">
-          <div className="bg-amber-50 border border-amber-200/50 rounded-2xl p-4 flex items-start gap-3">
-             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-             <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-amber-800 mb-1">Sobre as Taxas</h4>
-                <p className="text-xs text-amber-700/80 leading-relaxed font-medium">
-                  A plataforma cobra uma pequena taxa fixa por entrega concluída (Sua taxa atual é <strong className="text-amber-800">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong>). Realize o pagamento (Repasse) na aba Financeiro/Suporte para evitar o bloqueio da conta.
+              {/* Repasse App */}
+              <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-4 border border-rose-100 dark:border-rose-900/30">
+                <ArrowUpRight className="h-5 w-5 text-rose-400 mb-3" />
+                <p className="text-xl font-black text-rose-600 dark:text-rose-500 truncate">
+                  - R$ {driverStats.platformFee.toFixed(2).replace('.', ',')}
                 </p>
-             </div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 dark:text-rose-400/80 mt-1">Taxa do App</p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800/50 flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
+                A plataforma cobra uma taxa fixa de <strong className="text-slate-700 dark:text-zinc-300">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> por entrega. O repasse deve ser feito via painel financeiro para evitar bloqueio.
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* === ACTIONS MENU === */}
-        <div className="px-4 sm:px-6 mb-8">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3 ml-2">Configurações & Legal</h3>
-          <div className="bg-white border border-slate-100 shadow-sm rounded-[24px] overflow-hidden">
-            {[
-              { icon: FileText, label: "Termos de Uso", onClick: () => navigate("/terms"), chevron: true },
-              { icon: ShieldCheck, label: "Privacidade", onClick: () => navigate("/privacy"), chevron: true },
-            ].map((item, i, arr) => (
-              <button
-                key={item.label}
-                onClick={item.onClick}
-                className={cn("w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50 transition-colors active:scale-[0.99]", i < arr.length - 1 && "border-b border-slate-100")}
-              >
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                  <item.icon className="h-5 w-5 text-slate-500" />
-                </div>
-                <span className="flex-1 text-sm font-bold text-slate-700">{item.label}</span>
-                {item.chevron && <ChevronRight className="h-5 w-5 text-slate-300" />}
-              </button>
-            ))}
+          {/* === SETTINGS MENU === */}
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500 mb-3 ml-4">Legal & Conta</h3>
+          <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-zinc-800 overflow-hidden mb-6">
+            <button onClick={() => navigate("/terms")} className="w-full flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-zinc-800/50 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                <FileText className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
+              </div>
+              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">Termos de Uso</span>
+              <ChevronRight className="h-4 w-4 text-slate-300 dark:text-zinc-600" />
+            </button>
+            <button onClick={() => navigate("/privacy")} className="w-full flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-zinc-800/50 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
+              </div>
+              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">Política de Privacidade</span>
+              <ChevronRight className="h-4 w-4 text-slate-300 dark:text-zinc-600" />
+            </button>
+            <button onClick={signOut} className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                <LogOut className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
+              </div>
+              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">Sair da Conta</span>
+            </button>
           </div>
-        </div>
 
-        {/* === SIGN OUT === */}
-        <div className="px-4 sm:px-6 space-y-4 pb-8">
-          <button
-            onClick={signOut}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-sm hover:text-slate-900 hover:bg-slate-50 active:scale-[0.99] transition-all shadow-sm"
-          >
-            <LogOut className="h-4 w-4" /> Sair da conta
-          </button>
-
-          {/* Danger Zone */}
-          <div className="bg-rose-50/50 rounded-2xl p-5 border border-rose-100">
-            <h3 className="text-sm font-black text-rose-600 flex items-center gap-2 mb-2">
-              <AlertCircle className="h-4 w-4" /> Zona de Perigo
-            </h3>
-            <p className="text-[11px] text-rose-600/70 mb-4 font-medium leading-relaxed">
-              Ao excluir sua conta, todos os dados, histórico de entregas e saldo são removidos permanentemente. Esta ação é irreversível.
-            </p>
+          <div className="text-center px-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <button className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-700 hover:underline">
-                  <Trash2 className="h-3 w-3" /> Excluir minha conta permanentemente
+                <button className="text-[11px] font-black uppercase tracking-widest text-rose-500/70 hover:text-rose-500 transition-colors py-2">
+                  Excluir Conta Permanentemente
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent className="rounded-[32px] max-w-[90vw] sm:max-w-lg border-0 shadow-2xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-xl font-black">Tem certeza absoluta?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-sm font-medium">Esta ação não pode ser desfeita. Você perderá acesso à plataforma e a todos os seus dados e ganhos.</AlertDialogDescription>
+                  <AlertDialogDescription className="text-sm font-medium">Você perderá o acesso e todo o histórico. Essa ação é irreversível.</AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col gap-3 mt-2">
-                  <AlertDialogCancel className="rounded-xl font-bold h-12 m-0 border-slate-200">Cancelar e Manter Conta</AlertDialogCancel>
+                <AlertDialogFooter className="flex-col gap-3 mt-4">
+                  <AlertDialogCancel className="rounded-xl font-bold h-12 m-0 bg-slate-100 border-none">Cancelar</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={async () => { try { await deleteAccount(); navigate("/login"); } catch { } }}
-                    className="bg-rose-600 text-white hover:bg-rose-700 rounded-xl font-black h-12 m-0 shadow-lg shadow-rose-600/20"
+                    className="bg-rose-500 text-white hover:bg-rose-600 rounded-xl font-black h-12 m-0 shadow-lg shadow-rose-500/30"
                   >
                     Sim, Excluir Minha Conta
                   </AlertDialogAction>
@@ -430,38 +370,38 @@ export default function ProfilePage() {
 
       {/* === EDIT SHEET === */}
       <Sheet open={editing} onOpenChange={setEditing}>
-        <SheetContent side="bottom" hideClose className="h-auto max-h-[85vh] rounded-t-[40px] border-none p-0 bg-slate-50 shadow-2xl">
+        <SheetContent side="bottom" hideClose className="h-auto max-h-[85vh] rounded-t-[2.5rem] border-none p-0 bg-white dark:bg-zinc-900 shadow-2xl">
           <SheetTitle className="sr-only">Editar Perfil</SheetTitle>
           <SheetDescription className="sr-only">Formulário para editar nome e telefone do entregador</SheetDescription>
-          <div className="flex flex-col bg-white rounded-t-[40px] overflow-hidden">
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" />
-            <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-100">
-              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Seus Dados</h3>
-              <button onClick={() => setEditing(false)} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors active:scale-95">
-                <X className="h-5 w-5 text-slate-500" />
+          <div className="flex flex-col">
+            <div className="w-12 h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-full mx-auto mt-4 mb-2" />
+            <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-zinc-800">
+              <h3 className="text-xl font-black text-slate-800 dark:text-zinc-100 tracking-tight">Editar Perfil</h3>
+              <button onClick={() => setEditing(false)} className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
+                <X className="h-5 w-5 text-slate-500 dark:text-zinc-400" />
               </button>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-5">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nome completo</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Nome Completo</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-[20px] border border-slate-200 bg-slate-50/50 font-bold text-slate-800 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50 font-bold text-slate-800 dark:text-zinc-100 outline-none focus:border-primary focus:bg-white dark:focus:bg-zinc-900 transition-all"
                     placeholder="Seu nome"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Telefone / WhatsApp</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">WhatsApp</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-[20px] border border-slate-200 bg-slate-50/50 font-bold text-slate-800 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all shadow-sm"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50 font-bold text-slate-800 dark:text-zinc-100 outline-none focus:border-primary focus:bg-white dark:focus:bg-zinc-900 transition-all"
                     placeholder="(00) 00000-0000"
                   />
                 </div>
@@ -469,10 +409,10 @@ export default function ProfilePage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full py-4 rounded-[20px] bg-primary text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 hover:bg-primary/90 active:scale-[0.98] transition-all mt-4"
+                className="w-full py-4 rounded-[1.5rem] bg-primary text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 mt-4 active:scale-95 transition-all"
               >
                 {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-                {saving ? "Salvando Alterações..." : "Confirmar e Salvar"}
+                {saving ? "Salvando..." : "Salvar Alterações"}
               </button>
             </div>
           </div>
