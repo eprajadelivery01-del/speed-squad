@@ -184,16 +184,20 @@ export function useUpdateDeliveryStatus() {
           if ((data as any).success) {
             return;
           } else if ((data as any).error) {
-            // Se a RPC explicitly returned false e forneceu um erro (ex: corrida já aceita)
-            throw new Error((data as any).error);
+            // Se a RPC explicitly returned false e forneceu um erro
+            throw new Error(`RPC Error: ${(data as any).error}`);
           }
         }
       } catch (err: any) {
-        // Se for o nosso erro de concorrência que acabamos de lançar, propaga imediatamente para o UI
+        // Propaga erros de negócio explícitos retornados pela RPC
+        if (err.message && err.message.startsWith("RPC Error:")) {
+          throw new Error(err.message.replace("RPC Error: ", ""));
+        }
+        // Propaga erro de concorrência se existir
         if (err.message && err.message.includes("já foi aceita")) {
           throw err;
         }
-        // Caso contrário, ignora silenciosamente para tentar as estratégias de fallback REST
+        // Caso contrário (ex: função não existe, erro de rede), ignora e tenta fallback REST
       }
 
       // Fallback: Original REST-based combination updates (backward compatible)
