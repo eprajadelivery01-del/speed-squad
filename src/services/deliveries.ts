@@ -256,7 +256,7 @@ export function useUpdateDeliveryStatus() {
               throw res4.error;
             }
             if (!res4.data || res4.data.length === 0) {
-              throw new Error("Update failed: Row level security (RLS) blocked the action or delivery not found.");
+              throw new Error("Não foi possível atualizar a corrida. Ela pode ter sido cancelada ou aceita por outro entregador.");
             }
           }
         }

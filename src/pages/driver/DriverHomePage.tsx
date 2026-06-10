@@ -217,7 +217,7 @@ export default function DriverHomePage() {
     const { error } = await supabase.from("delivery_drivers").update({
       is_online: newStatus,
     }).eq("id", driverRecord.id);
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); setLoading(false); return; }
+    if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
     if (newStatus) { startTracking(driverRecord.id); toast({ title: "Você está online!" }); }
     else { stopTracking(); toast({ title: "Você está offline" }); }
     setIsOnline(newStatus);
