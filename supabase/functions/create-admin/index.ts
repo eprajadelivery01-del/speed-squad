@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 Deno.serve(async (req) => {
@@ -16,33 +17,73 @@ Deno.serve(async (req) => {
 
   // Verify the caller is an admin
   const authHeader = req.headers.get("authorization");
-  if (authHeader) {
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user: caller } } = await supabase.auth.getUser(token);
-    if (caller) {
-      const { data: callerProfile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", caller.id)
-        .single();
-      if (callerProfile?.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Apenas administradores podem criar usuários" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
+  if (!authHeader) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Apenas administradores logados podem criar usuários. Acesso Negado.",
+      }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const {
+    data: { user: caller },
+  } = await supabase.auth.getUser(token);
+
+  if (!caller) {
+    return new Response(
+      JSON.stringify({ error: "Sessão inválida. Acesso Negado." }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", caller.id)
+    .single();
+
+  if (callerProfile?.role !== "admin") {
+    return new Response(
+      JSON.stringify({ error: "Apenas administradores podem criar usuários" }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 
   try {
     const body = await req.json();
-    const { email, password, fullName, phone, document, role, vehicleType, vehiclePlate, companyName, address } = body;
+    const {
+      email,
+      password,
+      fullName,
+      phone,
+      document,
+      role,
+      vehicleType,
+      vehiclePlate,
+      companyName,
+      address,
+    } = body;
 
     if (!email || !password || !role) {
-      return new Response(JSON.stringify({ error: "email, password e role são obrigatórios" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "email, password e role são obrigatórios" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const validRoles = ["admin", "driver", "company", "customer"];
@@ -54,12 +95,13 @@ Deno.serve(async (req) => {
     }
 
     // Create user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: fullName || "", role: role },
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName || "", role: role },
+      });
 
     if (authError) {
       return new Response(JSON.stringify({ error: authError.message }), {
@@ -71,11 +113,14 @@ Deno.serve(async (req) => {
     const userId = authData.user.id;
 
     // Update profile with role (profile is auto-created by trigger)
-    await supabase.from("profiles").update({
-      full_name: fullName || "",
-      phone: phone || null,
-      role,
-    }).eq("id", userId);
+    await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName || "",
+        phone: phone || null,
+        role,
+      })
+      .eq("id", userId);
 
     // Also insert into user_roles table
     await supabase.from("user_roles").insert({
