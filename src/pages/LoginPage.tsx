@@ -42,15 +42,23 @@ export default function LoginPage() {
           ? "E-mail ou senha incorretos. Verifique os dados e tente novamente." 
           : error.message;
         toast({ title: "Erro ao entrar", description: errorMsg, variant: "destructive" });
-        // Log brute-force tracking
-        await supabase.rpc("log_failed_login", { p_email: email, p_app_name: "App Entregador" } as any).catch(() => {});
+        // Log brute-force tracking safely
+        try {
+          await supabase.rpc("log_failed_login", { p_email: email, p_app_name: "App Entregador" } as any);
+        } catch (rpcErr) {
+          console.warn("Failed to log failed login:", rpcErr);
+        }
       }
     } catch (error: any) {
       const errorMsg = error?.message === "Invalid login credentials" 
         ? "E-mail ou senha incorretos. Verifique os dados e tente novamente." 
         : (error?.message || "Ocorreu um erro inesperado.");
       toast({ title: "Erro ao entrar", description: errorMsg, variant: "destructive" });
-      await supabase.rpc("log_failed_login", { p_email: email, p_app_name: "App Entregador" } as any).catch(() => {});
+      try {
+        await supabase.rpc("log_failed_login", { p_email: email, p_app_name: "App Entregador" } as any);
+      } catch (rpcErr) {
+        console.warn("Failed to log failed login:", rpcErr);
+      }
     } finally {
       setLoading(false);
     }
