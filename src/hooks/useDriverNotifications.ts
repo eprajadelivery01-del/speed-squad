@@ -66,29 +66,31 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          LocalNotifications.registerActionTypes({
-            types: [
-              {
-                id: "DELIVERY_ACTION",
-                actions: [
-                  { id: "accept", title: "✅ Aceitar" },
-                  { id: "reject", title: "❌ Rejeitar", destructive: true },
-                ],
-              },
-            ],
-          }).catch(() => {});
-
-          try {
-            LocalNotifications.createChannel({
-              id: "delivery-channel-v2",
-              name: "Novas Corridas (Alarme)",
-              description: "Avisos sonoros de novas corridas",
-              importance: 5,
-              visibility: 1,
-              sound: "ring.mp3",
-              vibration: true,
+          if (Capacitor.getPlatform() === "android") {
+            LocalNotifications.registerActionTypes({
+              types: [
+                {
+                  id: "DELIVERY_ACTION",
+                  actions: [
+                    { id: "accept", title: "✅ Aceitar" },
+                    { id: "reject", title: "❌ Rejeitar", destructive: true },
+                  ],
+                },
+              ],
             }).catch(() => {});
-          } catch(e) {}
+
+            try {
+              LocalNotifications.createChannel({
+                id: "delivery-channel-v2",
+                name: "Novas Corridas (Alarme)",
+                description: "Avisos sonoros de novas corridas",
+                importance: 5,
+                visibility: 1,
+                sound: "ring.mp3",
+                vibration: true,
+              }).catch(() => {});
+            } catch(e) {}
+          }
         }
       });
     } else {
