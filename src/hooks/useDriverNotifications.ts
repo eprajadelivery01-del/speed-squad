@@ -4,11 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { safeRpc } from "@/lib/safeRpc";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
 import { App } from "@capacitor/app";
-import { BackgroundMode } from "@anuradev/capacitor-background-mode";
 
 const hashId = (str: string) => {
   let hash = 0;
@@ -66,19 +66,6 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          try {
-            BackgroundMode.enable({
-              title: "É Pra Já - Entregador",
-              text: "Aguardando novas corridas...",
-              hidden: false,
-              resume: true,
-              disableWebViewOptimization: true
-            }).catch(() => {});
-            BackgroundMode.disableWebViewOptimizations().catch(() => {});
-            BackgroundMode.requestDisableBatteryOptimizations().catch(() => {});
-          } catch (e) {
-            console.warn("BackgroundMode init error", e);
-          }
           LocalNotifications.registerActionTypes({
             types: [
               {
@@ -268,9 +255,9 @@ export function useDriverNotifications() {
                 stopAlert();
                 activeAlertsRef.current.delete(deliveryId);
                 
-                // Attempt RLS bypass RPC first
+                // Attempt safe RPC first
                 try {
-                  const { data, error } = await supabase.rpc("update_delivery_status_safe", {
+                  const { data, error } = await safeRpc("update_delivery_status_safe", {
                     p_delivery_id: deliveryId,
                     p_status: "accepted",
                     p_driver_id: driverId,
