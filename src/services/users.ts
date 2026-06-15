@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { safeRpc } from "@/lib/safeRpc";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -95,11 +96,11 @@ export async function fetchInvitations() {
 
 export async function validateInvitation(token: string) {
   // Use secure RPC to fetch invitation by token (bypasses direct SELECT RLS restrict)
-  const { data, error } = await supabase.rpc("get_invitation_by_token", { _token: token } as any);
+  const { data, error } = await safeRpc("get_invitation_by_token", { _token: token });
 
   if (error) {
     console.error("[Invite] Supabase error:", error);
-    throw new Error(error.message || "Erro ao validar convite");
+    throw new Error(error || "Erro ao validar convite");
   }
   if (!data) throw new Error("Convite não encontrado");
   if (data.status !== "pending") throw new Error("Convite inválido ou já utilizado");

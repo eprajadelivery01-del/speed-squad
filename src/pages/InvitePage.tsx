@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRpc } from "@/lib/safeRpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,8 +44,8 @@ export default function InvitePage() {
       }
 
       try {
-        const { data, error: fetchError } = await (supabase as any).rpc("get_invitation_by_token", { _token: token });
-        if (fetchError) throw fetchError;
+        const { data, error: fetchError } = await safeRpc("get_invitation_by_token", { _token: token });
+        if (fetchError) throw new Error(fetchError);
 
         const inv = data as any;
 

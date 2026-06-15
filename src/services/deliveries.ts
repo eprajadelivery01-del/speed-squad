@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRpc } from "@/lib/safeRpc";
 import type { DeliveryStatus } from "@/types/models";
 
 export interface DeliveryWithRelations {
@@ -174,7 +175,7 @@ export function useUpdateDeliveryStatus() {
 
       // 1. Try the safe, bulletproof, RLS-bypassing RPC function first
       try {
-        const { data, error } = await (supabase.rpc as any)("update_delivery_status_safe", {
+        const { data, error } = await safeRpc("update_delivery_status_safe", {
           p_delivery_id: id,
           p_status: status,
           p_driver_id: driverId || null,
@@ -184,15 +185,10 @@ export function useUpdateDeliveryStatus() {
           if ((data as any).success) {
             return;
           } else if ((data as any).error) {
-            // Se a RPC explicitly returned false e forneceu um erro
-            throw new Error(`RPC Error: ${(data as any).error}`);
+            throw new Error((data as any).error);
           }
         }
       } catch (err: any) {
-        // Propaga erros de negócio explícitos retornados pela RPC
-        if (err.message && err.message.startsWith("RPC Error:")) {
-          throw new Error(err.message.replace("RPC Error: ", ""));
-        }
         // Propaga erro de concorrência se existir
         if (err.message && err.message.includes("já foi aceita")) {
           throw err;

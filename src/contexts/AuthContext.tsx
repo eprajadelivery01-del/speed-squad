@@ -116,15 +116,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // AUTO-REPAIR: If roles are empty, try to repair them using the fallback RPC
       if (finalRoles.length === 0) {
         try {
-          const { data: repairData, error: repairError } = await supabase.rpc('fix_user_permissions');
-          if (repairData?.success) {
-            const retryRoles = await supabase.from("user_roles").select("role").eq("user_id", userId);
-            if (retryRoles.data && retryRoles.data.length > 0) {
-              finalRoles = retryRoles.data.map((r: any) => r.role as AppRole);
+          // Use safe RPC call to avoid crash if function doesn't exist
+          const rpcCall = (supabase.rpc as any)('fix_user_permissions');
+          // Validate the result is a proper Promise before awaiting
+          if (rpcCall && typeof rpcCall.then === 'function') {
+            const { data: repairData } = await rpcCall;
+            if (repairData?.success) {
+              const retryRoles = await supabase.from("user_roles").select("role").eq("user_id", userId);
+              if (retryRoles.data && retryRoles.data.length > 0) {
+                finalRoles = retryRoles.data.map((r: any) => r.role as AppRole);
+              }
             }
           }
-        } catch (repairException) {
-          // Silent catch to keep console clean
+        } catch {
+          // Silent catch — function may not exist in the database
         }
       }
 
@@ -261,8 +266,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = async () => {
     if (!user) return;
     try {
-      const { error } = await supabase.rpc("delete_my_account");
-      if (error) throw error;
+      const rpcCall = (supabase.rpc as any)("delete_my_account");
+      if (rpcCall && typeof rpcCall.then === "function") {
+        const { error } = await rpcCall;
+        if (error) throw error;
+      } else {
+        throw new Error("Função de exclusão indisponível.");
+      }
       await signOut();
     } catch (error) {
       if (import.meta.env.DEV) console.error("Erro ao deletar conta:", error);

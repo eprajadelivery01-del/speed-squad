@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { safeRpc } from "@/lib/safeRpc";
 import { useAllRealtime } from "@/services/realtime";
 import { useDriverNotifications, declineDeliveryLocally } from "@/hooks/useDriverNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -66,8 +67,8 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
     stopAlert();
 
     try {
-      // Tenta RPC primeiro
-      const { data, error } = await supabase.rpc("update_delivery_status_safe", {
+      // Tenta RPC segura primeiro
+      const { data, error } = await safeRpc("update_delivery_status_safe", {
         p_delivery_id: deliveryId,
         p_status: "accepted",
         p_driver_id: driverId,

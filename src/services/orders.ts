@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { safeRpc } from "@/lib/safeRpc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 /**
@@ -6,12 +7,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
  */
 export async function calculateDeliveryFee(lat: number, lng: number) {
   // Chama a função RPC do Postgres que criamos (find_region_for_point)
-  const { data: regionId, error: regionError } = await supabase.rpc("find_region_for_point", {
+  const { data: regionId, error: regionError } = await safeRpc("find_region_for_point", {
     _lat: lat,
     _lng: lng,
   });
 
-  if (regionError) throw regionError;
+  if (regionError) throw new Error(regionError);
   if (!regionId) return { fee: 0, regionId: null, message: "Fora da área de cobertura" };
 
   const { data: region, error: regError } = await supabase

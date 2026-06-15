@@ -38,27 +38,27 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        const errorMsg = error.message === "Invalid login credentials" 
-          ? "E-mail ou senha incorretos. Verifique os dados e tente novamente." 
-          : error.message;
-        toast({ title: "Erro ao entrar", description: errorMsg, variant: "destructive" });
-        // Log brute-force tracking safely
-        try {
-          await supabase.rpc("log_failed_login", { p_email: email, p_app_name: "App Entregador" } as any);
-        } catch (rpcErr) {
-          console.warn("Failed to log failed login:", rpcErr);
+        let errorMsg: string;
+        switch (error.message) {
+          case "Invalid login credentials":
+            errorMsg = "E-mail ou senha incorretos. Verifique os dados e tente novamente.";
+            break;
+          case "Email not confirmed":
+            errorMsg = "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.";
+            break;
+          case "Too many requests":
+            errorMsg = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+            break;
+          default:
+            errorMsg = error.message || "Ocorreu um erro inesperado. Tente novamente.";
         }
+        toast({ title: "Erro ao entrar", description: errorMsg, variant: "destructive" });
       }
     } catch (error: any) {
-      const errorMsg = error?.message === "Invalid login credentials" 
-        ? "E-mail ou senha incorretos. Verifique os dados e tente novamente." 
-        : (error?.message || "Ocorreu um erro inesperado.");
+      const errorMsg = error?.message === "Invalid login credentials"
+        ? "E-mail ou senha incorretos. Verifique os dados e tente novamente."
+        : (error?.message || "Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.");
       toast({ title: "Erro ao entrar", description: errorMsg, variant: "destructive" });
-      try {
-        await supabase.rpc("log_failed_login", { p_email: email, p_app_name: "App Entregador" } as any);
-      } catch (rpcErr) {
-        console.warn("Failed to log failed login:", rpcErr);
-      }
     } finally {
       setLoading(false);
     }
