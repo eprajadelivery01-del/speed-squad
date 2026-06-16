@@ -10,6 +10,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "../shared/ThemeToggle";
+import { translateDeliveryError } from "@/lib/errorMessages";
 import {
   Sheet,
   SheetContent,
@@ -100,11 +101,8 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       updateNotificationStatus(deliveryId, "accepted");
       markAsRead(notificationId);
     } catch (err: any) {
-      toast({
-        title: "Erro ao aceitar",
-        description: err.message || "A corrida pode ter sido aceita por outro motorista.",
-        variant: "destructive",
-      });
+      const { title, description } = translateDeliveryError(err, "accept");
+      toast({ title, description, variant: "destructive" });
       updateNotificationStatus(deliveryId, "expired");
     } finally {
       setAcceptingDeliveryId(null);

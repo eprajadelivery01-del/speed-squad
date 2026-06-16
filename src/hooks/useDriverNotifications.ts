@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { safeRpc } from "@/lib/safeRpc";
+import { translateDeliveryError } from "@/lib/errorMessages";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
@@ -279,7 +280,8 @@ export function useDriverNotifications() {
                   .in("status", ["pending", "broadcasted"]);
                 
                 if (error) {
-                  toast({ title: "Erro", description: "Não foi possível aceitar.", variant: "destructive" });
+                  const { title, description } = translateDeliveryError(error, "accept");
+                  toast({ title, description, variant: "destructive" });
                 } else {
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
                   updateNotificationStatus(deliveryId, "accepted");

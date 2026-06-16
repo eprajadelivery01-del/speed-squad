@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRpc } from "@/lib/safeRpc";
 
 type AppRole = "admin" | "company" | "driver" | "customer";
 type UserStatus = "pending" | "active" | "rejected";
@@ -116,16 +117,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // AUTO-REPAIR: If roles are empty, try to repair them using the fallback RPC
       if (finalRoles.length === 0) {
         try {
-          // Use safe RPC call to avoid crash if function doesn't exist
-          const rpcCall = (supabase.rpc as any)('fix_user_permissions');
-          // Validate the result is a proper Promise before awaiting
-          if (rpcCall && typeof rpcCall.then === 'function') {
-            const { data: repairData } = await rpcCall;
-            if (repairData?.success) {
-              const retryRoles = await supabase.from("user_roles").select("role").eq("user_id", userId);
-              if (retryRoles.data && retryRoles.data.length > 0) {
-                finalRoles = retryRoles.data.map((r: any) => r.role as AppRole);
-              }
+          // safeRpc never throws and always returns a Promise — safe in minified builds
+          const { data: repairData } = await safeRpc('fix_user_permissions');
+          if (repairData?.success) {
+            const retryRoles = await supabase.from("user_roles").select("role").eq("user_id", userId);
+            if (retryRoles.data && retryRoles.data.length > 0) {
+              finalRoles = retryRoles.data.map((r: any) => r.role as AppRole);
             }
           }
         } catch {
@@ -266,13 +263,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = async () => {
     if (!user) return;
     try {
-      const rpcCall = (supabase.rpc as any)("delete_my_account");
-      if (rpcCall && typeof rpcCall.then === "function") {
-        const { error } = await rpcCall;
-        if (error) throw error;
-      } else {
-        throw new Error("Função de exclusão indisponível.");
-      }
+      const { error } = await safeRpc("delete_my_account");
+      if (error) throw new Error(error);
       await signOut();
     } catch (error) {
       if (import.meta.env.DEV) console.error("Erro ao deletar conta:", error);

@@ -12,6 +12,7 @@ import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { translateDeliveryError } from "@/lib/errorMessages";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -80,7 +81,7 @@ export default function DriverHomePage() {
     todayCount: todayStatsData?.data.filter(d => (d as any).status === "delivered").length ?? 0,
     todayEarnings: todayStatsData?.data
       .filter(d => (d as any).status === "delivered")
-      .reduce((acc, d) => acc + (Number((d as any).value) || Number(d.commission) || 0), 0) ?? 0,
+      .reduce((acc, d) => acc + (Number((d as any).price) || 0), 0) ?? 0,
   };
 
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
@@ -234,7 +235,8 @@ export default function DriverHomePage() {
           toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
         },
         onError: (error: any) => {
-          toast({ title: "Erro", description: error.message, variant: "destructive" });
+          const { title, description } = translateDeliveryError(error, "accept");
+          toast({ title, description, variant: "destructive" });
         },
       }
     );
@@ -405,11 +407,11 @@ export default function DriverHomePage() {
                         <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
                       </div>
                       
-                      {del.value != null && (
+                      {(del.price != null || del.value != null) && (
                         <div className="flex flex-col items-end">
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
                           <div className="text-2xl font-black text-success tracking-tighter">
-                            <span className="text-sm mr-0.5">R$</span>{Number(del.value).toFixed(2)}
+                            <span className="text-sm mr-0.5">R$</span>{Number(del.price || del.value || 0).toFixed(2)}
                           </div>
                         </div>
                       )}

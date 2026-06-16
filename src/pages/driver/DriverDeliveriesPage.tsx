@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { translateDeliveryError } from "@/lib/errorMessages";
 
 export default function DriverDeliveriesPage() {
   const { user } = useAuth();
@@ -73,10 +74,14 @@ export default function DriverDeliveriesPage() {
       { id: deliveryId, status: nextStatus, driverId },
       {
         onSuccess: () => {
-          toast({ title: "Sucesso!", description: "A entrega foi atualizada com sucesso." });
+          toast({ title: "✅ Atualizado!", description: "Entrega atualizada com sucesso." });
         },
         onError: (error: any) => {
-          toast({ title: "Erro no servidor", description: error.message, variant: "destructive" });
+          const { title, description } = translateDeliveryError(
+            error,
+            nextStatus === "accepted" ? "accept" : "update"
+          );
+          toast({ title, description, variant: "destructive" });
         },
       }
     );
@@ -230,11 +235,11 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
           <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
         
-        {delivery.value != null && (
+        {(delivery.price != null || delivery.value != null) && (
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
             <div className="text-2xl font-black text-success tracking-tighter">
-              <span className="text-sm mr-0.5">R$</span>{Number(delivery.value).toFixed(2)}
+              <span className="text-sm mr-0.5">R$</span>{Number(delivery.price || delivery.value || 0).toFixed(2)}
             </div>
           </div>
         )}

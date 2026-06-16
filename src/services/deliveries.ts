@@ -190,8 +190,8 @@ export function useUpdateDeliveryStatus() {
         }
       } catch (err: any) {
         // Propaga erro de concorrência se existir
-        if (err.message && err.message.includes("já foi aceita")) {
-          throw err;
+        if (err.message && (err.message.includes("já foi aceita") || err.message.includes("já aceita"))) {
+          throw new Error("⚡ Esta corrida já foi aceita por outro entregador.");
         }
         // Caso contrário (ex: função não existe, erro de rede), ignora e tenta fallback REST
       }
@@ -249,10 +249,21 @@ export function useUpdateDeliveryStatus() {
             const res4 = await supabase.from("deliveries").update(updates4 as any).eq("id", id).select();
 
             if (res4.error) {
+              // Translate RLS / permission errors before throwing
+              const msg = (res4.error as any)?.message || "";
+              if (msg.includes("Row level security") || msg.includes("RLS") || msg.includes("permission")) {
+                if (status === "accepted") {
+                  throw new Error("⚡ Esta corrida já foi aceita por outro entregador ou não está mais disponível.");
+                }
+                throw new Error("🔒 Sem permissão para alterar esta entrega. Tente novamente.");
+              }
               throw res4.error;
             }
             if (!res4.data || res4.data.length === 0) {
-              throw new Error("Não foi possível atualizar a corrida. Ela pode ter sido cancelada ou aceita por outro entregador.");
+              if (status === "accepted") {
+                throw new Error("⚡ Esta corrida já foi aceita por outro entregador ou foi cancelada.");
+              }
+              throw new Error("Não foi possível atualizar a entrega. Ela pode ter sido cancelada.");
             }
           }
         }
