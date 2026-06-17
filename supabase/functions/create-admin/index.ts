@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
           "Apenas administradores logados podem criar usuários. Acesso Negado.",
       }),
       {
-        status: 401,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ error: "Sessão inválida. Acesso Negado." }),
       {
-        status: 401,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ error: "Apenas administradores podem criar usuários" }),
       {
-        status: 403,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "email, password e role são obrigatórios" }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     const validRoles = ["admin", "driver", "company", "customer"];
     if (!validRoles.includes(role)) {
       return new Response(JSON.stringify({ error: "Role inválido" }), {
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
 
     if (authError) {
       return new Response(JSON.stringify({ error: authError.message }), {
-        status: 400,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
