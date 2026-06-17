@@ -35,7 +35,8 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const cleanEmail = email.trim();
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
 
       if (error) {
         let errorMsg: string;
