@@ -27,6 +27,13 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+        <service android:name=".OverlayService" android:exported="false" android:foregroundServiceType="specialUse" />
+        <activity android:name=".IncomingCallActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:showOnLockScreen="true"
+            android:screenOrientation="portrait"
+            android:exported="false">
+        </activity>
     </application>
 
     <!-- Permissions -->
@@ -41,4 +48,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 </manifest>
