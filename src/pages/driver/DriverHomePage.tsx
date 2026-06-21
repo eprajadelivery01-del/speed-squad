@@ -23,7 +23,7 @@ export default function DriverHomePage() {
   const displayName = profile?.full_name?.trim() || metadataName || user?.email?.split("@")[0] || "";
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [driverRecord, setDriverRecord] = useState<{ id: string } | null>(null);
+  const [driverRecord, setDriverRecord] = useState<{ id: string, city_id?: string } | null>(null);
   const [commissionRate, setCommissionRate] = useState<number>(0.40);
   const [totalDeliveriesCount, setTotalDeliveriesCount] = useState<number>(0);
   const [showConsent, setShowConsent] = useState(false);
@@ -45,12 +45,12 @@ export default function DriverHomePage() {
     if (!user) return;
     supabase
       .from("delivery_drivers")
-      .select("id, is_online, commission_rate")
+      .select("id, is_online, commission_rate, city_id")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
-          setDriverRecord({ id: data.id });
+          setDriverRecord({ id: data.id, city_id: data.city_id });
           setIsOnline(data.is_online ?? false);
           setCommissionRate(data.commission_rate !== null && data.commission_rate !== undefined ? Number(data.commission_rate) : 0.40);
           
@@ -88,6 +88,7 @@ export default function DriverHomePage() {
   const { data: broadcastData, isLoading: loadingBroadcast } = useDeliveries({
     status: ["pending", "broadcasted"],
     driverId: driverId || undefined,
+    cityId: driverRecord?.city_id || undefined,
     enabled: isOnline,
     staleTime: 5000,
     refetchInterval: 5000,

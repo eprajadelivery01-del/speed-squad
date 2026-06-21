@@ -60,6 +60,7 @@ interface UseDeliveriesParams {
   staleTime?: number;
   refetchOnWindowFocus?: boolean;
   refetchInterval?: number | false;
+  cityId?: string;
 }
 
 export function useDeliveries(params?: UseDeliveriesParams) {
@@ -76,10 +77,11 @@ export function useDeliveries(params?: UseDeliveriesParams) {
     staleTime = 0,
     refetchOnWindowFocus = true,
     refetchInterval,
+    cityId,
   } = params || {};
 
   return useQuery({
-    queryKey: ["deliveries", status, search, companyId, driverId, dateFrom, dateTo, page, pageSize],
+    queryKey: ["deliveries", status, search, companyId, driverId, cityId, dateFrom, dateTo, page, pageSize],
     enabled,
     staleTime,
     refetchOnWindowFocus,
@@ -113,6 +115,9 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       } else if (status && (status === "pending" || (Array.isArray(status) && status.includes("pending")))) {
         // Only show items with no driver assigned when looking for pending/available
         query = query.is("driver_id", null);
+      }
+      if (cityId) {
+        query = query.eq("city_id", cityId);
       }
       if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
