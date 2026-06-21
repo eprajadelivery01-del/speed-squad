@@ -18,7 +18,7 @@ android {
     }
     signingConfigs {
         release {
-            storeFile file("../../epraja-upload-key.keystore")
+            storeFile file("../../entregador-upload.keystore")
             storePassword "epraja2026"
             keyAlias "upload"
             keyPassword "epraja2026"
