@@ -38,7 +38,12 @@ public class DeliveryOverlayPlugin extends Plugin {
         IntentFilter filter = new IntentFilter();
         filter.addAction(IncomingCallActivity.ACTION_CALL_ACCEPTED);
         filter.addAction(IncomingCallActivity.ACTION_CALL_REJECTED);
-        getContext().registerReceiver(callReceiver, filter);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getContext().registerReceiver(callReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            getContext().registerReceiver(callReceiver, filter);
+        }
     }
 
     @PluginMethod
