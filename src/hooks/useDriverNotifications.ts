@@ -8,7 +8,7 @@ import { safeRpc } from "@/lib/safeRpc";
 import { translateDeliveryError } from "@/lib/errorMessages";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-
+import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
 
 const hashId = (str: string) => {
@@ -104,7 +104,45 @@ export function useDriverNotifications() {
         });
       }
     }
-  }, []);
+
+    // Register Push Notifications for Firebase Cloud Messaging
+    if (Capacitor.isNativePlatform()) {
+      let isRegistered = false;
+      
+      PushNotifications.requestPermissions().then((result) => {
+        if (result.receive === "granted") {
+          PushNotifications.register();
+        }
+      });
+
+      const regListener = PushNotifications.addListener("registration", (token) => {
+        console.log("FCM Token recebido:", token.value);
+        if (user?.id) {
+          supabase
+            .from("delivery_drivers")
+            .update({ fcm_token: token.value })
+            .eq("user_id", user.id)
+            .then(({ error }) => {
+              if (error) console.error("Erro ao salvar FCM Token:", error);
+            });
+        }
+      });
+
+      const errListener = PushNotifications.addListener("registrationError", (error: any) => {
+        console.error("Erro no PushNotifications.register:", error);
+      });
+
+      const actListener = PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
+        console.log("Push action performed:", notification);
+      });
+
+      return () => {
+        regListener.then(l => l.remove());
+        errListener.then(l => l.remove());
+        actListener.then(l => l.remove());
+      };
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;

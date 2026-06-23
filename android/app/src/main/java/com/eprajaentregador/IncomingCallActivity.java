@@ -63,8 +63,8 @@ public class IncomingCallActivity extends Activity {
         Button btnAccept = findViewById(R.id.btnAccept);
         Button btnReject = findViewById(R.id.btnReject);
 
-        // Start ringing and vibrating
-        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        // Start ringing
+        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         if (notification == null) {
             notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
         }

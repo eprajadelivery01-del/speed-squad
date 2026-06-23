@@ -13,6 +13,7 @@ import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog
 import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
+import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -38,6 +39,9 @@ export default function DriverHomePage() {
     start.setHours(0, 0, 0, 0);
     return start.toISOString();
   }, []);
+
+  const [rejectedLocalIds, setRejectedLocalIds] = useState<string[]>([]);
+  const [activeIncomingOrder, setActiveIncomingOrder] = useState<any>(null);
 
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
 
@@ -247,8 +251,37 @@ export default function DriverHomePage() {
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
   const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
 
+  useEffect(() => {
+    // Encontra a primeira corrida válida que não foi rejeitada localmente
+    const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id));
+    
+    if (nextOrder && !activeIncomingOrder) {
+      setActiveIncomingOrder(nextOrder);
+    } else if (!nextOrder && activeIncomingOrder) {
+      setActiveIncomingOrder(null);
+    }
+  }, [broadcastDeliveries, rejectedLocalIds, activeIncomingOrder]);
+
+  const handleRejectLocal = (deliveryId: string) => {
+    stopAlert();
+    setRejectedLocalIds(prev => [...prev, deliveryId]);
+    setActiveIncomingOrder(null);
+  };
+
+  const handleAcceptLocal = (deliveryId: string) => {
+    handleAcceptDelivery(deliveryId);
+    setActiveIncomingOrder(null);
+  };
+
   return (
     <DriverLayout>
+      {activeIncomingOrder && (
+        <IncomingOrderScreen 
+          delivery={activeIncomingOrder} 
+          onAccept={handleAcceptLocal} 
+          onReject={handleRejectLocal} 
+        />
+      )}
       <div className="flex flex-col gap-5">
         {/* Greeting */}
         <div>
@@ -408,11 +441,11 @@ export default function DriverHomePage() {
                         <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
                       </div>
                       
-                      {(del.price != null || del.value != null) && (
+                      {(del.price != null) && (
                         <div className="flex flex-col items-end">
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
                           <div className="text-2xl font-black text-success tracking-tighter">
-                            <span className="text-sm mr-0.5">R$</span>{Number(del.price || del.value || 0).toFixed(2)}
+                            <span className="text-sm mr-0.5">R$</span>{Number(del.price ?? 0).toFixed(2)}
                           </div>
                         </div>
                       )}

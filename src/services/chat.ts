@@ -50,8 +50,12 @@ export async function getAdminId() {
     .limit(1)
     .maybeSingle();
   
-  if (error) throw error;
-  return data?.user_id;
+  if (error || !data) {
+    console.error("Erro ao buscar Admin:", error);
+    // Fallback garantido para o ID do Davinyn (Administrador principal)
+    return "c10198da-6c02-42bf-b46a-f25ef07b85b4";
+  }
+  return data.user_id;
 }
 
 export async function getMessages(conversationId: string) {
