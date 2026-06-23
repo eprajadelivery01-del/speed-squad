@@ -120,7 +120,7 @@ export function useDriverNotifications() {
         if (user?.id) {
           supabase
             .from("delivery_drivers")
-            .update({ fcm_token: token.value })
+            .update({ fcm_token: token.value } as any)
             .eq("user_id", user.id)
             .then(({ error }) => {
               if (error) console.error("Erro ao salvar FCM Token:", error);
