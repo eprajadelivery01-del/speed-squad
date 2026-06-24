@@ -43,9 +43,9 @@ export default function DriverDeliveriesPage() {
     ["accepted", "collecting", "in_transit"].includes(d.status)
   );
 
-  // Filter "Minha Agenda": assigned directly (pending/broadcasted) but not yet accepted
-  const agendaDeliveries = myDeliveries.filter(d => 
-    ["pending", "broadcasted"].includes(d.status)
+  // Filter "Histórico": completed or cancelled
+  const historyDeliveries = myDeliveries.filter(d => 
+    ["delivered", "cancelled"].includes(d.status)
   );
 
   const handleAction = (deliveryId: string, currentStatus: string) => {
@@ -104,13 +104,8 @@ export default function DriverDeliveriesPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="mine">
-              Minha Agenda
-              {agendaDeliveries.length > 0 && (
-                <span className="ml-1.5 bg-muted-foreground/20 text-muted-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {agendaDeliveries.length}
-                </span>
-              )}
+            <TabsTrigger value="history">
+              Histórico
             </TabsTrigger>
           </TabsList>
 
@@ -133,16 +128,16 @@ export default function DriverDeliveriesPage() {
             )}
           </TabsContent>
 
-          {/* Minha Agenda: direct assignments */}
-          <TabsContent value="mine" className="mt-4">
+          {/* Histórico: completed and cancelled */}
+          <TabsContent value="history" className="mt-4">
             {loadingDeliveries || !driverId ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            ) : agendaDeliveries.length === 0 ? (
-              <EmptyState icon={<Package className="h-10 w-10" />} title="Sua agenda está vazia" subtitle="Entregas direcionadas a você aparecerão aqui." />
+            ) : historyDeliveries.length === 0 ? (
+              <EmptyState icon={<Package className="h-10 w-10" />} title="Histórico vazio" subtitle="Suas corridas finalizadas aparecerão aqui." />
             ) : (
               <div className="grid gap-4">
-                {agendaDeliveries.map((del) => (
-                  <DeliveryCard key={del.id} delivery={del} onAction={() => handleAction(del.id, del.status)} loading={updating} isAssigned />
+                {historyDeliveries.map((del) => (
+                  <DeliveryCard key={del.id} delivery={del} onAction={() => {}} loading={false} />
                 ))}
               </div>
             )}

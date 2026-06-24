@@ -218,8 +218,8 @@ export function useDriverNotifications() {
 
       // 4) OS notification & Native Overlay
       if (Capacitor.isNativePlatform()) {
-        // Trigger native custom overlay
-        DeliveryOverlay.startOverlay().catch(e => console.warn("Erro ao abrir overlay nativo:", e));
+        // Trigger native custom overlay full screen activity
+        DeliveryOverlay.testIncomingCall({ details: description }).catch(e => console.warn("Erro ao abrir overlay nativo:", e));
 
         if (permissionRef.current === "granted") {
           LocalNotifications.schedule({
