@@ -294,6 +294,32 @@ export default function DriverHomePage() {
     }
   }, [broadcastDeliveries, rejectedLocalIds, activeIncomingOrder]);
 
+  // Listen for native popup acceptance/rejection
+  useEffect(() => {
+    const handleNativeAccept = (e: any) => {
+      if (activeIncomingOrder && e.detail?.id === activeIncomingOrder.id) {
+        setActiveIncomingOrder(null);
+      }
+    };
+    const handleNativeReject = (e: any) => {
+      const id = e.detail?.id;
+      if (id) {
+        setRejectedLocalIds(prev => [...prev, id]);
+        if (activeIncomingOrder?.id === id) {
+          setActiveIncomingOrder(null);
+        }
+      }
+    };
+    
+    window.addEventListener("delivery-accepted", handleNativeAccept);
+    window.addEventListener("delivery-rejected", handleNativeReject);
+    
+    return () => {
+      window.removeEventListener("delivery-accepted", handleNativeAccept);
+      window.removeEventListener("delivery-rejected", handleNativeReject);
+    };
+  }, [activeIncomingOrder]);
+
   const handleRejectLocal = (deliveryId: string) => {
     stopAlert();
     declineDeliveryLocally(deliveryId);
