@@ -49,19 +49,25 @@ export default function DriverHomePage() {
         const initOverlay = async () => {
           try {
             await DeliveryOverlay.requestOverlayPermission();
-            setTimeout(() => {
-               DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
+            setTimeout(async () => {
+               const res = await DeliveryOverlay.startOverlay();
+               if (!res?.success) console.warn("Ainda sem permissão:", res?.reason);
             }, 1000);
           } catch(e) {}
         };
         initOverlay();
 
-        const listener = App.addListener('appStateChange', ({ isActive }) => {
+        const listener = App.addListener('appStateChange', async ({ isActive }) => {
           if (isActive) {
-             DeliveryOverlay.startOverlay().catch(() => {
-               // Se falhar ao iniciar (sem permissão), pede a permissão novamente
+             const res = await DeliveryOverlay.startOverlay();
+             if (!res?.success) {
+               toast({ 
+                 title: "Permissão Necessária", 
+                 description: "Por favor, ative a sobreposição para receber alertas de corridas.", 
+                 variant: "destructive" 
+               });
                DeliveryOverlay.requestOverlayPermission().catch(console.error);
-             });
+             }
           }
         });
 

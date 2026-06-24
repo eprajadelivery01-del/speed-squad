@@ -66,7 +66,10 @@ public class DeliveryOverlayPlugin extends Plugin {
     @PluginMethod
     public void startOverlay(PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
-            call.reject("Permissão de sobreposição não concedida.");
+            JSObject ret = new JSObject();
+            ret.put("success", false);
+            ret.put("reason", "Permissão de sobreposição não concedida.");
+            call.resolve(ret);
             return;
         }
         Intent intent = new Intent(getContext(), OverlayService.class);
@@ -75,7 +78,9 @@ public class DeliveryOverlayPlugin extends Plugin {
         } else {
             getContext().startService(intent);
         }
-        call.resolve();
+        JSObject ret = new JSObject();
+        ret.put("success", true);
+        call.resolve(ret);
     }
 
     @PluginMethod

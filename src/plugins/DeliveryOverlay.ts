@@ -2,7 +2,7 @@ import { registerPlugin, PluginListenerHandle } from '@capacitor/core';
 
 export interface DeliveryOverlayPlugin {
   requestOverlayPermission(): Promise<void>;
-  startOverlay(): Promise<void>;
+  startOverlay(): Promise<{ success: boolean; reason?: string }>;
   stopOverlay(): Promise<void>;
   dismissIncomingCall(): Promise<void>;
   testIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
