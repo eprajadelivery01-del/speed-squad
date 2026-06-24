@@ -21,7 +21,11 @@ public class DeliveryOverlayPlugin extends Plugin {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            String deliveryId = intent.getStringExtra("deliveryId");
             JSObject ret = new JSObject();
+            if (deliveryId != null) {
+                ret.put("deliveryId", deliveryId);
+            }
             if (IncomingCallActivity.ACTION_CALL_ACCEPTED.equals(action)) {
                 ret.put("status", "accepted");
                 notifyListeners("onCallResponse", ret);
@@ -84,8 +88,10 @@ public class DeliveryOverlayPlugin extends Plugin {
     @PluginMethod
     public void testIncomingCall(PluginCall call) {
         String details = call.getString("details", "Nova entrega próxima a você!");
+        String deliveryId = call.getString("deliveryId", "");
         Intent intent = new Intent(getContext(), IncomingCallActivity.class);
         intent.putExtra("details", details);
+        intent.putExtra("deliveryId", deliveryId);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         getContext().startActivity(intent);
         call.resolve();

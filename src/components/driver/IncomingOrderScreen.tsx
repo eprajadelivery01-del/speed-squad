@@ -11,20 +11,8 @@ interface IncomingOrderScreenProps {
 export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOrderScreenProps) {
   const [secondsLeft, setSecondsLeft] = useState(30);
 
-  useEffect(() => {
-    setSecondsLeft(30);
-    const interval = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          clearInterval(interval);
-          onReject(delivery.id);
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [delivery?.id, onReject]);
+  // Timer logic removed because users hate it
+
 
   if (!delivery) return null;
 
@@ -32,7 +20,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
     delivery.pickup_address || delivery.origin_address || delivery.store_address || "Retirada na loja";
   const dropoff =
     delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
-  const value = Number(delivery.value) || Number(delivery.price) || Number(delivery.total_value) || 0;
+  const value = delivery.price ?? delivery.commission ?? delivery.driver_earnings ?? delivery.total_value ?? delivery.value ?? 0;
   const storeName = delivery.companies?.name || "Loja Parceira";
 
   return (
@@ -82,10 +70,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
             </div>
           </div>
 
-          {/* Countdown */}
-          <div className="text-center text-xs text-muted-foreground font-medium mt-2">
-            Expira em <span className="text-foreground font-bold">{secondsLeft}s</span>
-          </div>
+          {/* Countdown removed */}
 
           {/* Buttons */}
           <div className="grid grid-cols-2 gap-3 pt-2">

@@ -13,6 +13,7 @@ import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog
 import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
+import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
 import { Capacitor } from "@capacitor/core";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 
@@ -281,8 +282,37 @@ export default function DriverHomePage() {
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
   const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
 
+  useEffect(() => {
+    // Encontra a primeira corrida válida que não foi rejeitada localmente
+    const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id));
+    
+    if (nextOrder && !activeIncomingOrder) {
+      setActiveIncomingOrder(nextOrder);
+    } else if (!nextOrder && activeIncomingOrder) {
+      setActiveIncomingOrder(null);
+    }
+  }, [broadcastDeliveries, rejectedLocalIds, activeIncomingOrder]);
+
+  const handleRejectLocal = (deliveryId: string) => {
+    stopAlert();
+    setRejectedLocalIds(prev => [...prev, deliveryId]);
+    setActiveIncomingOrder(null);
+  };
+
+  const handleAcceptLocal = (deliveryId: string) => {
+    handleAcceptDelivery(deliveryId);
+    setActiveIncomingOrder(null);
+  };
+
   return (
     <DriverLayout>
+      {activeIncomingOrder && (
+        <IncomingOrderScreen 
+          delivery={activeIncomingOrder} 
+          onAccept={handleAcceptLocal} 
+          onReject={handleRejectLocal} 
+        />
+      )}
       <div className="flex flex-col gap-5">
         {/* Greeting */}
         <div>

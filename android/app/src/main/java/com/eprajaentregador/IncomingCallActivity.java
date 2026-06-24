@@ -87,6 +87,7 @@ public class IncomingCallActivity extends Activity {
 
         // Retrieve data passed from notification/plugin
         String details = getIntent().getStringExtra("details");
+        String deliveryId = getIntent().getStringExtra("deliveryId");
         if (details != null && !details.isEmpty()) {
             tvDetails.setText(details);
         }
@@ -94,6 +95,9 @@ public class IncomingCallActivity extends Activity {
         btnAccept.setOnClickListener(v -> {
             // Broadcast acceptance
             Intent intent = new Intent(ACTION_CALL_ACCEPTED);
+            if (deliveryId != null) {
+                intent.putExtra("deliveryId", deliveryId);
+            }
             sendBroadcast(intent);
             
             // Bring main app to foreground
@@ -107,6 +111,9 @@ public class IncomingCallActivity extends Activity {
         btnReject.setOnClickListener(v -> {
             // Broadcast rejection
             Intent intent = new Intent(ACTION_CALL_REJECTED);
+            if (deliveryId != null) {
+                intent.putExtra("deliveryId", deliveryId);
+            }
             sendBroadcast(intent);
             finish();
         });

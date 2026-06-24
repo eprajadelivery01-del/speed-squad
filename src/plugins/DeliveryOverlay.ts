@@ -5,10 +5,10 @@ export interface DeliveryOverlayPlugin {
   startOverlay(): Promise<void>;
   stopOverlay(): Promise<void>;
   dismissIncomingCall(): Promise<void>;
-  testIncomingCall(options: { details: string }): Promise<void>;
+  testIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
   addListener(
     eventName: 'onCallResponse',
-    listenerFunc: (response: { status: 'accepted' | 'rejected' }) => void
+    listenerFunc: (response: { status: 'accepted' | 'rejected'; deliveryId: string }) => void
   ): Promise<PluginListenerHandle> & PluginListenerHandle;
 }
 

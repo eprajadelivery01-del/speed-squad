@@ -38,9 +38,9 @@ export default function DriverDeliveriesPage() {
   const rawMyDeliveries = myData?.data ?? [];
   const myDeliveries = useUniqueDeliveries(rawMyDeliveries);
 
-  // Filter "Andamento": accepted and being worked on
+  // Filter "Andamento": pending assignments, accepted and being worked on
   const inProgressDeliveries = myDeliveries.filter(d => 
-    ["accepted", "collecting", "in_transit"].includes(d.status)
+    ["pending", "broadcasted", "accepted", "collecting", "in_transit"].includes(d.status)
   );
 
   // Filter "Histórico": completed or cancelled
