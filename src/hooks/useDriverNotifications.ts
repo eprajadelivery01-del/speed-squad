@@ -12,10 +12,11 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 
-const hashId = (str: string) => {
+const hashId = (str: string | number) => {
+  const s = String(str);
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+  for (let i = 0; i < s.length; i++) {
+    hash = ((hash << 5) - hash) + s.charCodeAt(i);
     hash |= 0;
   }
   return Math.abs(hash);
@@ -42,10 +43,29 @@ export const declineDeliveryLocally = (deliveryId: string) => {
     const declined = getDeclinedDeliveries();
     declined.add(deliveryId);
     localStorage.setItem("declined_deliveries", JSON.stringify(Array.from(declined)));
-    // Dispatch custom event to notify current active hook to stop ringing
     window.dispatchEvent(new CustomEvent("delivery-declined", { detail: { deliveryId } }));
   } catch (e) {
     console.error("[Notify] erro ao declinar localmente:", e);
+  }
+};
+
+export const getAcceptedDeliveries = (): Set<string> => {
+  try {
+    const list = localStorage.getItem("accepted_deliveries");
+    return list ? new Set(JSON.parse(list)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+export const acceptDeliveryLocally = (deliveryId: string) => {
+  try {
+    const accepted = getAcceptedDeliveries();
+    accepted.add(deliveryId);
+    localStorage.setItem("accepted_deliveries", JSON.stringify(Array.from(accepted)));
+    window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+  } catch (e) {
+    console.error("[Notify] erro ao aceitar localmente:", e);
   }
 };
 
@@ -189,7 +209,22 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // Busca os dados completos da corrida (nome da loja, valor, endereços reais)
+      // --- ACORDAR A TELA IMEDIATAMENTE ANTES DO AWAIT ---
+      // O Android dá apenas alguns milissegundos para disparar uma Activity quando em background.
+      // Se esperarmos a query do supabase, a janela de tempo fecha e a tela não acende!
+      const immediatePickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || "Local de Coleta";
+      const immediateDropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
+      const immediateValue = Number(rawDelivery.value) || Number(rawDelivery.price) || Number(rawDelivery.total_value) || 0;
+      const immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+      
+      if (Capacitor.isNativePlatform()) {
+        DeliveryOverlay.testIncomingCall({
+          details: immediateDesc,
+          deliveryId: rawDelivery.id
+        }).catch(e => console.warn("Erro ao acordar tela (imediato):", e));
+      }
+
+      // Busca os dados completos da corrida (nome da loja)
       const { data: fullDelivery } = await supabase
         .from("deliveries")
         .select("*, companies(name)")
@@ -231,14 +266,8 @@ export function useDriverNotifications() {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) OS notification & Native Overlay
+      // 4) OS notification
       if (Capacitor.isNativePlatform()) {
-        // Acorda a tela e mostra a IncomingCallActivity (popup nativo)
-        DeliveryOverlay.testIncomingCall({
-          details: description,
-          deliveryId: delivery.id
-        }).catch(e => console.warn("Erro ao acordar tela:", e));
-
         if (permissionRef.current === "granted") {
           LocalNotifications.schedule({
             notifications: [
@@ -367,7 +396,7 @@ export function useDriverNotifications() {
             const deliveryId = response.deliveryId;
             
             if (response.status === "accepted") {
-              window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+              acceptDeliveryLocally(deliveryId);
               stopAlert();
               activeAlertsRef.current.delete(deliveryId);
               
