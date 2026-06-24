@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
 import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
+import { Capacitor } from "@capacitor/core";
+import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -44,6 +46,12 @@ export default function DriverHomePage() {
   const [activeIncomingOrder, setActiveIncomingOrder] = useState<any>(null);
 
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      DeliveryOverlay.startOverlayService().catch((e) => console.error("Erro no DeliveryOverlay:", e));
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;

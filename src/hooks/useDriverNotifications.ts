@@ -108,38 +108,45 @@ export function useDriverNotifications() {
     // Register Push Notifications for Firebase Cloud Messaging
     if (Capacitor.isNativePlatform()) {
       let isRegistered = false;
+      let regListener: any = null;
+      let errListener: any = null;
+      let actListener: any = null;
       
-      PushNotifications.requestPermissions().then((result) => {
-        if (result.receive === "granted") {
-          PushNotifications.register();
-        }
-      });
+      try {
+        PushNotifications.requestPermissions().then((result) => {
+          if (result.receive === "granted") {
+            PushNotifications.register().catch(e => console.warn("PushNotifications.register erro (safe):", e));
+          }
+        }).catch(e => console.warn("PushNotifications.requestPermissions erro:", e));
 
-      const regListener = PushNotifications.addListener("registration", (token) => {
-        console.log("FCM Token recebido:", token.value);
-        if (user?.id) {
-          supabase
-            .from("delivery_drivers")
-            .update({ fcm_token: token.value } as any)
-            .eq("user_id", user.id)
-            .then(({ error }) => {
-              if (error) console.error("Erro ao salvar FCM Token:", error);
-            });
-        }
-      });
+        regListener = PushNotifications.addListener("registration", (token) => {
+          console.log("FCM Token recebido:", token.value);
+          if (user?.id) {
+            supabase
+              .from("delivery_drivers")
+              .update({ fcm_token: token.value } as any)
+              .eq("user_id", user.id)
+              .then(({ error }) => {
+                if (error) console.error("Erro ao salvar FCM Token:", error);
+              });
+          }
+        });
 
-      const errListener = PushNotifications.addListener("registrationError", (error: any) => {
-        console.error("Erro no PushNotifications.register:", error);
-      });
+        errListener = PushNotifications.addListener("registrationError", (error: any) => {
+          console.error("Erro no PushNotifications.register:", error);
+        });
 
-      const actListener = PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
-        console.log("Push action performed:", notification);
-      });
+        actListener = PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
+          console.log("Push action performed:", notification);
+        });
+      } catch (e) {
+        console.warn("FCM Indisponível no dispositivo (Sem Google Play Services ou erro no plugin):", e);
+      }
 
       return () => {
-        regListener.then(l => l.remove());
-        errListener.then(l => l.remove());
-        actListener.then(l => l.remove());
+        if (regListener) regListener.then((l: any) => l.remove()).catch(() => {});
+        if (errListener) errListener.then((l: any) => l.remove()).catch(() => {});
+        if (actListener) actListener.then((l: any) => l.remove()).catch(() => {});
       };
     }
   }, [user?.id]);
@@ -209,9 +216,12 @@ export function useDriverNotifications() {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) OS notification
-      if (permissionRef.current === "granted") {
-        if (Capacitor.isNativePlatform()) {
+      // 4) OS notification & Native Overlay
+      if (Capacitor.isNativePlatform()) {
+        // Trigger native custom overlay
+        DeliveryOverlay.startOverlay().catch(e => console.warn("Erro ao abrir overlay nativo:", e));
+
+        if (permissionRef.current === "granted") {
           LocalNotifications.schedule({
             notifications: [
               {
@@ -224,15 +234,15 @@ export function useDriverNotifications() {
               },
             ],
           }).catch(() => {});
-        } else {
-          try {
-            new Notification("ÉpraJá - Nova corrida!", {
-              body: description,
-              icon: "/logo.png",
-              tag: `delivery-${delivery.id}`,
-            });
-          } catch {}
         }
+      } else if (permissionRef.current === "granted") {
+        try {
+          new Notification("ÉpraJá - Nova corrida!", {
+            body: description,
+            icon: "/logo.png",
+            tag: `delivery-${delivery.id}`,
+          });
+        } catch {}
       }
     };
 
