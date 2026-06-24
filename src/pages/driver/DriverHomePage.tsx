@@ -49,9 +49,30 @@ export default function DriverHomePage() {
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      DeliveryOverlay.requestOverlayPermission()
-        .then(() => DeliveryOverlay.startOverlay())
-        .catch((e) => console.error("Erro no DeliveryOverlay:", e));
+      import('@capacitor/app').then(({ App }) => {
+        const initOverlay = async () => {
+          try {
+            await DeliveryOverlay.requestOverlayPermission();
+            setTimeout(() => {
+               DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
+            }, 1000);
+          } catch(e) {}
+        };
+        initOverlay();
+
+        const listener = App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) {
+             DeliveryOverlay.startOverlay().catch(() => {
+               // Se falhar ao iniciar (sem permissão), pede a permissão novamente
+               DeliveryOverlay.requestOverlayPermission().catch(console.error);
+             });
+          }
+        });
+
+        return () => {
+          listener.then(l => l.remove());
+        };
+      }).catch(console.error);
     }
   }, []);
 
@@ -95,7 +116,7 @@ export default function DriverHomePage() {
     todayCount: todayStatsData?.data.filter(d => (d as any).status === "delivered").length ?? 0,
     todayEarnings: todayStatsData?.data
       .filter(d => (d as any).status === "delivered")
-      .reduce((acc, d) => acc + (Number((d as any).price) || 0), 0) ?? 0,
+      .reduce((acc, d) => acc + (Number((d as any).value) || Number((d as any).price) || 0), 0) ?? 0,
   };
 
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
@@ -451,11 +472,11 @@ export default function DriverHomePage() {
                         <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
                       </div>
                       
-                      {(del.price != null) && (
+                      {((del.value != null && del.value > 0) || (del.price != null && del.price > 0)) && (
                         <div className="flex flex-col items-end">
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
                           <div className="text-2xl font-black text-success tracking-tighter">
-                            <span className="text-sm mr-0.5">R$</span>{Number(del.price ?? 0).toFixed(2)}
+                            <span className="text-sm mr-0.5">R$</span>{Number(del.value || del.price || 0).toFixed(2)}
                           </div>
                         </div>
                       )}
