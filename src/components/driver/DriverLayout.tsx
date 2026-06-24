@@ -145,7 +145,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
     enabled: !!driverId,
   });
   const activeDeliveriesCount = useUniqueDeliveries(myData?.data ?? []).filter(d => 
-    ["accepted", "collecting", "in_transit", "pending", "broadcasted"].includes(d.status)
+    ["accepted", "collecting", "in_transit"].includes(d.status)
   ).length;
 
   const isActive = (href: string) => {
