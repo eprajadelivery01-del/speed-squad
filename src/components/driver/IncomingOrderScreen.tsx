@@ -24,7 +24,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
   const storeName = delivery.companies?.name || "Loja Parceira";
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur flex items-center justify-center p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
       <div className="w-full max-w-md bg-card border border-white/20 dark:border-white/10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col relative">
         
         {/* Header Orange */}
