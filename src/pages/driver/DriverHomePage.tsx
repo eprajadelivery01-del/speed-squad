@@ -117,7 +117,7 @@ export default function DriverHomePage() {
     todayCount: todayStatsData?.data.filter(d => (d as any).status === "delivered").length ?? 0,
     todayEarnings: todayStatsData?.data
       .filter(d => (d as any).status === "delivered")
-      .reduce((acc, d) => acc + (Number((d as any).value) || Number((d as any).price) || 0), 0) ?? 0,
+      .reduce((acc, d) => acc + (Number((d as any).value) || Number((d as any).price) || Number((d as any).total_value) || 0), 0) ?? 0,
   };
 
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
