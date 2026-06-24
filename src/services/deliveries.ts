@@ -184,11 +184,12 @@ export function useUpdateDeliveryStatus() {
 
       let query = supabase.from("deliveries").update(updates as any).eq("id", id);
       if (status === "accepted") {
-        query = query.in("status", ["pending", "broadcasted"] as any);
+        query = query.in("status", ["pending", "broadcasted"] as any).is("driver_id", null);
       }
-      const { error, count } = await query;
+      // Request exact count so we know if 0 rows were updated (meaning someone else took it)
+      const { error, count } = await query.select("id");
       if (error) throw error;
-      if (status === "accepted" && count === 0) {
+      if (status === "accepted" && (!count || count.length === 0)) {
         throw new Error("Esta corrida já foi aceita por outro entregador.");
       }
     },

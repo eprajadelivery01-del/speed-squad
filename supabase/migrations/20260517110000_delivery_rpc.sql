@@ -46,7 +46,17 @@ BEGIN
     delivered_at = CASE WHEN v_db_status = 'completed' THEN v_now ELSE delivered_at END,
     accepted_at = CASE WHEN v_db_status = 'accepted' THEN v_now ELSE accepted_at END,
     collected_at = CASE WHEN v_db_status = 'collecting' THEN v_now ELSE collected_at END
-  WHERE id = p_delivery_id;
+  WHERE id = p_delivery_id
+    -- ANTI-STEAL LOCK: Se for aceitar, a corrida DEVE estar pending ou broadcasted e o driver_id DEVE estar nulo
+    AND (
+      v_db_status != 'accepted' 
+      OR (status IN ('pending', 'broadcasted') AND driver_id IS NULL)
+    );
+
+  -- Se tentou aceitar e a query afetou 0 linhas (alguém roubou primeiro)
+  IF v_db_status = 'accepted' AND NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Esta corrida já foi aceita por outro entregador.');
+  END IF;
 
   -- 4. Also update any associated order status safely
   BEGIN

@@ -372,7 +372,8 @@ export function useDriverNotifications() {
                   .from("deliveries")
                   .update({ status: "accepted", driver_id: driverId })
                   .eq("id", deliveryId)
-                  .in("status", ["pending", "broadcasted"]);
+                  .in("status", ["pending", "broadcasted"])
+                  .is("driver_id", null);
                 
                 if (error) {
                   const { title, description } = translateDeliveryError(error, "accept");
@@ -418,7 +419,8 @@ export function useDriverNotifications() {
                 .from("deliveries")
                 .update({ status: "accepted", driver_id: driverId })
                 .eq("id", deliveryId)
-                .in("status", ["pending", "broadcasted"]);
+                .in("status", ["pending", "broadcasted"])
+                .is("driver_id", null);
               
               if (error) {
                 const { title, description } = translateDeliveryError(error, "accept");

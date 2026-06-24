@@ -24,28 +24,28 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
   const storeName = delivery.companies?.name || "Loja Parceira";
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-      <div className="w-full max-w-md bg-card border border-white/20 dark:border-white/10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col relative">
+    <div className="fixed top-4 left-0 right-0 z-[100] flex justify-center p-4 pointer-events-none animate-in slide-in-from-top-8 fade-in duration-300">
+      <div className="pointer-events-auto w-full max-w-md bg-[#111827] border border-white/10 rounded-3xl shadow-[0_20px_50px_rgb(0,0,0,0.3)] overflow-hidden flex flex-col relative">
         
         {/* Header Orange */}
-        <div className="bg-primary text-primary-foreground p-4 flex justify-between items-center relative">
+        <div className="bg-[#f97316] text-white p-4 flex justify-between items-center relative">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-widest bg-white/20 px-2 py-1 rounded-md">
+            <span className="text-xs font-black uppercase tracking-widest bg-black/20 px-2 py-1 rounded-md">
               Nova Corrida
             </span>
           </div>
-          <button onClick={() => onReject(delivery.id)} className="p-1 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={() => onReject(delivery.id)} className="p-1 rounded-full bg-black/10 hover:bg-black/20 transition-colors">
+            <X className="w-5 h-5 text-white" />
           </button>
         </div>
 
         <div className="p-5 flex flex-col gap-5">
           {/* Store Name and Earnings */}
           <div className="flex justify-between items-start">
-            <h4 className="text-2xl font-extrabold text-foreground tracking-tight">{storeName}</h4>
+            <h4 className="text-2xl font-extrabold text-white tracking-tight">{storeName}</h4>
             <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
-              <div className="text-2xl font-black text-success tracking-tighter">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Ganhos</span>
+              <div className="text-2xl font-black text-[#22c55e] tracking-tighter">
                 <span className="text-sm mr-0.5">R$</span>{Number(value).toFixed(2).replace(".", ",")}
               </div>
             </div>
@@ -54,18 +54,18 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
           {/* Addresses */}
           <div className="flex flex-col gap-3 mt-2">
             <div className="flex items-start gap-4">
-              <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(var(--primary),0.2)] mt-1.5 shrink-0" />
+              <div className="w-3 h-3 rounded-full bg-[#f97316] shadow-[0_0_0_4px_rgba(249,115,22,0.2)] mt-1.5 shrink-0" />
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Coleta</span>
-                <span className="text-sm font-semibold text-foreground mt-0.5 leading-tight">{pickup}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#f97316]">Coleta</span>
+                <span className="text-sm font-semibold text-gray-200 mt-0.5 leading-tight">{pickup}</span>
               </div>
             </div>
             
             <div className="flex items-start gap-4">
-              <div className="w-3 h-3 rounded-full bg-destructive shadow-[0_0_0_4px_rgba(var(--destructive),0.2)] mt-1.5 shrink-0" />
+              <div className="w-3 h-3 rounded-full bg-[#ef4444] shadow-[0_0_0_4px_rgba(239,68,68,0.2)] mt-1.5 shrink-0" />
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-destructive">Entrega</span>
-                <span className="text-sm font-semibold text-foreground mt-0.5 leading-tight">{dropoff}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#ef4444]">Entrega</span>
+                <span className="text-sm font-semibold text-gray-200 mt-0.5 leading-tight">{dropoff}</span>
               </div>
             </div>
           </div>
@@ -78,7 +78,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
               variant="outline"
               size="lg"
               onClick={() => onReject(delivery.id)}
-              className="gap-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold h-14 rounded-xl"
+              className="gap-2 border-[#ef4444] bg-[#ef4444] text-white hover:bg-[#dc2626] hover:text-white font-bold h-14 rounded-xl"
             >
               <X className="w-5 h-5" />
               RECUSAR
@@ -86,7 +86,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
             <Button 
               size="lg" 
               onClick={() => onAccept(delivery.id)} 
-              className="gap-2 bg-success hover:bg-success/90 text-white font-bold h-14 rounded-xl shadow-lg shadow-success/20"
+              className="gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold h-14 rounded-xl shadow-lg shadow-green-500/20"
             >
               <Check className="w-5 h-5" />
               ACEITAR
