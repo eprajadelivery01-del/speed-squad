@@ -15,6 +15,7 @@ sonnerToast.error = function (message: any, options: any) {
     return originalError.apply(this, arguments as any);
   }
 
+  /*
   reportErrorToTelegram({
     error_message: `Alerta para o Usuário: ${text}`,
     stack_trace: `Sonner toast.error exibido na tela do entregador.`,
@@ -24,6 +25,7 @@ sonnerToast.error = function (message: any, options: any) {
       options: options ? JSON.stringify(options) : ""
     }
   }, "App Entregador").catch(() => {});
+  */
   
   return originalError.apply(this, arguments as any);
 };
