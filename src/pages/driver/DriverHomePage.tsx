@@ -49,7 +49,9 @@ export default function DriverHomePage() {
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      DeliveryOverlay.startOverlayService().catch((e) => console.error("Erro no DeliveryOverlay:", e));
+      DeliveryOverlay.requestOverlayPermission()
+        .then(() => DeliveryOverlay.startOverlay())
+        .catch((e) => console.error("Erro no DeliveryOverlay:", e));
     }
   }, []);
 
