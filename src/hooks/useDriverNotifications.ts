@@ -10,9 +10,9 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
+import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 
 const hashId = (str: string) => {
-  let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
     hash |= 0;
