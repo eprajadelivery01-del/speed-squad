@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+?import { useState, useEffect } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
@@ -38,13 +38,13 @@ export default function DriverDeliveriesPage() {
   const rawMyDeliveries = myData?.data ?? [];
   const myDeliveries = useUniqueDeliveries(rawMyDeliveries);
 
-  // Filter "Andamento": pending assignments, accepted and being worked on
-  const inProgressDeliveries = myDeliveries.filter(d => 
-    ["pending", "broadcasted", "accepted", "collecting", "in_transit"].includes(d.status)
+  // Filter "Andamento": accepted and being worked on
+  const inProgressDeliveries = myDeliveries.filter(d =>
+    ["accepted", "collecting", "in_transit"].includes(d.status)
   );
 
   // Filter "Histórico": completed or cancelled
-  const historyDeliveries = myDeliveries.filter(d => 
+  const historyDeliveries = myDeliveries.filter(d =>
     ["delivered", "cancelled"].includes(d.status)
   );
 
@@ -137,7 +137,7 @@ export default function DriverDeliveriesPage() {
             ) : (
               <div className="grid gap-4">
                 {historyDeliveries.map((del) => (
-                  <DeliveryCard key={del.id} delivery={del} onAction={() => {}} loading={false} />
+                  <DeliveryCard key={del.id} delivery={del} onAction={() => { }} loading={false} />
                 ))}
               </div>
             )}
@@ -152,7 +152,7 @@ export default function DriverDeliveriesPage() {
   );
 }
 
-function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {  
+function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
   const [showInfo, setShowInfo] = useState(false);
 
   const getButtonText = () => {
@@ -195,11 +195,11 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
   const hasPago = delivery.notes?.includes("[PAGO]");
   const hasReceber = delivery.notes?.includes("[RECEBER:");
   const paymentBadge = hasPago ? "✅ PAGO" : hasReceber ? delivery.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
-  
+
   let cleanNotes = delivery.notes || "";
   if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
   if (hasReceber) cleanNotes = cleanNotes.replace(/\[RECEBER:.*?\]/, "").trim();
-  
+
   const isProducts = cleanNotes.includes("[PRODUTOS]") || cleanNotes.includes("[ITENS:");
   if (isProducts) {
     cleanNotes = cleanNotes.replace("[PRODUTOS]", "").replace(/\[ITENS:.*?\]/, "").trim();
@@ -209,7 +209,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     <div className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
       {/* Background glow effect */}
       <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/30 transition-colors duration-500" />
-      
+
       {/* Header: Store and Value */}
       <div className="flex justify-between items-start z-10">
         <div className="flex flex-col gap-1">
@@ -229,7 +229,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
           <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{delivery.companies?.name || "Loja Parceira"}</h4>
           <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
-        
+
         {(delivery.price != null || delivery.value != null) && (
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
@@ -243,7 +243,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
       {/* Route Timeline */}
       <div className="relative flex flex-col gap-4 pl-3 py-1 z-10">
         <div className="absolute left-[17px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-foreground/20 rounded-full" />
-        
+
         {/* Pickup */}
         <div className="flex items-start gap-4">
           <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(var(--primary),0.2)] mt-1.5 relative z-10" />
@@ -252,7 +252,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             <span className="text-sm font-semibold text-foreground mt-0.5">{delivery.pickup_address || "Retirada na loja"}</span>
           </div>
         </div>
-        
+
         {/* Dropoff */}
         <div className="flex items-start gap-4">
           <div className="w-3 h-3 rounded-full bg-foreground border-2 border-background shadow-[0_0_0_2px_rgba(var(--foreground),0.2)] mt-1.5 relative z-10" />
@@ -316,12 +316,12 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
           >
             <div className={cn(
               "absolute inset-0 bg-gradient-to-r",
-              delivery.status === "pending" || delivery.status === "broadcasted" 
+              delivery.status === "pending" || delivery.status === "broadcasted"
                 ? "from-primary to-[#ff4713]"
                 : "from-success to-emerald-600"
             )} />
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
-            
+
             <div className="relative flex items-center gap-2">
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : getButtonIcon()}
               {getButtonText()}
