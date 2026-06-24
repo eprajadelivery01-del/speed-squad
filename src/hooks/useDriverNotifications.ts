@@ -396,6 +396,7 @@ export function useDriverNotifications() {
             const deliveryId = response.deliveryId;
             
             if (response.status === "accepted") {
+              window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
               acceptDeliveryLocally(deliveryId);
               stopAlert();
               activeAlertsRef.current.delete(deliveryId);
