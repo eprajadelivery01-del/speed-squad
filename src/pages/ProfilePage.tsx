@@ -107,7 +107,7 @@ export default function ProfilePage() {
 
         const { data: periodDelivered } = await supabase
           .from("deliveries")
-          .select("id, value, price, commission, delivered_at, completed_at, created_at")
+          .select("*")
           .eq("driver_id", driver.id)
           .in("status", DELIVERED_STATUSES)
           .gte("created_at", startIso)
