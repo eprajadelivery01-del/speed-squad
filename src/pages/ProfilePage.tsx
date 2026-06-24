@@ -102,22 +102,18 @@ export default function ProfilePage() {
           end = new Date(year, month - 1, day, 23, 59, 59, 999);
         }
 
-        const { data: allDelivered } = await supabase
+        const startIso = start.toISOString();
+        const endIso = end.toISOString();
+
+        const { data: periodDelivered } = await supabase
           .from("deliveries")
           .select("id, value, price, total_value, commission, delivered_at, completed_at, created_at")
           .eq("driver_id", driver.id)
-          .in("status", DELIVERED_STATUSES);
+          .in("status", DELIVERED_STATUSES)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso);
 
-        const startMs = start.getTime();
-        const endMs = end.getTime();
-        
-        const periodDeliveries = (allDelivered || []).filter((d: any) => {
-          const ref = d.delivered_at || d.completed_at || d.created_at;
-          if (!ref) return false;
-          const t = new Date(ref).getTime();
-          return t >= startMs && t <= endMs;
-        });
-
+        const periodDeliveries = periodDelivered || [];
         const periodCount = periodDeliveries.length;
         const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
         
