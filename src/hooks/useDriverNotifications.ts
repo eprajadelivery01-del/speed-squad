@@ -174,23 +174,36 @@ export function useDriverNotifications() {
     window.addEventListener("delivery-declined", handleDeclineEvent);
 
     // Unified notifier — always fires sound + toast + central + OS notification
-    const notifyNewDelivery = (delivery: any) => {
-      if (!delivery?.id) return;
+    const notifyNewDelivery = async (rawDelivery: any) => {
+      if (!rawDelivery?.id) return;
       
       // Stop notifying if offline
       if (!isOnlineRef.current) return;
       
       // Stop notifying if already declined
       const declined = getDeclinedDeliveries();
-      if (declined.has(delivery.id)) return;
+      if (declined.has(rawDelivery.id)) return;
 
-      if (seenIdsRef.current.has(delivery.id)) return;
-      seenIdsRef.current.add(delivery.id);
-      activeAlertsRef.current.add(delivery.id);
+      if (seenIdsRef.current.has(rawDelivery.id)) return;
+      seenIdsRef.current.add(rawDelivery.id);
+      activeAlertsRef.current.add(rawDelivery.id);
 
-      const address = pickAddress(delivery);
+      // Busca os dados completos da corrida (nome da loja, valor, endereços reais)
+      const { data: fullDelivery } = await supabase
+        .from("deliveries")
+        .select("*, companies(name)")
+        .eq("id", rawDelivery.id)
+        .single();
+        
+      const delivery = fullDelivery || rawDelivery;
+      
+      const storeName = delivery.companies?.name || "Loja Parceira";
+      const pickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || pickAddress(delivery);
+      const dropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
+      const value = delivery.price ?? delivery.commission ?? 0;
+
       const title = "🏍️ Nova corrida disponível!";
-      const description = `Retirada: ${address}`;
+      const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
 
       // 1) Sound (looped) + vibration via hook
       try {
@@ -219,14 +232,17 @@ export function useDriverNotifications() {
 
       // 4) OS notification & Native Overlay
       if (Capacitor.isNativePlatform()) {
-        // Mostra a bolinha flutuante do OverlayService (bubble)
-        DeliveryOverlay.startOverlay().catch(e => console.warn("Erro ao iniciar overlay bubble:", e));
+        // Acorda a tela e mostra a IncomingCallActivity (popup nativo)
+        DeliveryOverlay.testIncomingCall({
+          details: description,
+          deliveryId: delivery.id
+        }).catch(e => console.warn("Erro ao acordar tela:", e));
 
         if (permissionRef.current === "granted") {
           LocalNotifications.schedule({
             notifications: [
               {
-                title: "ÉpraJá - Nova corrida!",
+                title: title,
                 body: description,
                 id: hashId(delivery.id),
                 actionTypeId: "DELIVERY_ACTION",
@@ -238,7 +254,7 @@ export function useDriverNotifications() {
         }
       } else if (permissionRef.current === "granted") {
         try {
-          new Notification("ÉpraJá - Nova corrida!", {
+          new Notification(title, {
             body: description,
             icon: "/logo.png",
             tag: `delivery-${delivery.id}`,
