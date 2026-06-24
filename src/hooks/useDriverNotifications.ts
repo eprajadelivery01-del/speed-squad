@@ -13,6 +13,7 @@ import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 
 const hashId = (str: string) => {
+  let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
     hash |= 0;
@@ -218,8 +219,8 @@ export function useDriverNotifications() {
 
       // 4) OS notification & Native Overlay
       if (Capacitor.isNativePlatform()) {
-        // Trigger native custom overlay full screen activity
-        DeliveryOverlay.testIncomingCall({ details: description, deliveryId: delivery.id }).catch(e => console.warn("Erro ao abrir overlay nativo:", e));
+        // Mostra a bolinha flutuante do OverlayService (bubble)
+        DeliveryOverlay.startOverlay().catch(e => console.warn("Erro ao iniciar overlay bubble:", e));
 
         if (permissionRef.current === "granted") {
           LocalNotifications.schedule({
@@ -296,7 +297,7 @@ export function useDriverNotifications() {
 
       // 3. Native action listener
       if (Capacitor.isNativePlatform()) {
-        LocalNotifications.addListener(
+        actionListener = await LocalNotifications.addListener(
           "localNotificationActionPerformed",
           async (action) => {
             if (action.notification.extra?.type === "delivery") {
@@ -341,46 +342,6 @@ export function useDriverNotifications() {
             }
           }
         );
-
-        DeliveryOverlay.addListener("onCallResponse", async (response) => {
-          const { status, deliveryId } = response;
-          if (!deliveryId) return;
-
-          if (status === "accepted") {
-            stopAlert();
-            activeAlertsRef.current.delete(deliveryId);
-            
-            try {
-              const { data, error } = await safeRpc("update_delivery_status_safe", {
-                p_delivery_id: deliveryId,
-                p_status: "accepted",
-                p_driver_id: driverId,
-              });
-              if (!error && data && (data as any).success) {
-                toast({ title: "✅ Corrida aceita!", description: "Aceita pelo alerta nativo." });
-                updateNotificationStatus(deliveryId, "accepted");
-                return;
-              }
-            } catch {}
-
-            const { error } = await supabase
-              .from("deliveries")
-              .update({ status: "accepted", driver_id: driverId })
-              .eq("id", deliveryId)
-              .in("status", ["pending", "broadcasted"]);
-            
-            if (error) {
-              const { title, description } = translateDeliveryError(error, "accept");
-              toast({ title, description, variant: "destructive" });
-            } else {
-              toast({ title: "✅ Corrida aceita!", description: "Aceita pelo alerta nativo." });
-              updateNotificationStatus(deliveryId, "accepted");
-            }
-          } else if (status === "rejected") {
-            declineDeliveryLocally(deliveryId);
-            updateNotificationStatus(deliveryId, "rejected");
-          }
-        });
       }
 
       // Initial seed: mark all currently-available deliveries as "seen"

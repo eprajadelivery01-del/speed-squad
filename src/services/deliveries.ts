@@ -173,118 +173,23 @@ export function useUpdateDeliveryStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
-      const now = new Date().toISOString();
-      const dbStatus = toDbStatus(status);
-
-      if (!id) throw new Error("ID da entrega é obrigatório");
-
-      // 1. Try the safe, bulletproof, RLS-bypassing RPC function first
-      try {
-        const { data, error } = await safeRpc("update_delivery_status_safe", {
-          p_delivery_id: id,
-          p_status: status,
-          p_driver_id: driverId || null,
-        });
-
-        if (!error && data) {
-          if ((data as any).success) {
-            return;
-          } else if ((data as any).error) {
-            throw new Error((data as any).error);
-          }
-        }
-      } catch (err: any) {
-        // Propaga erro de concorrência se existir
-        if (err.message && (err.message.includes("já foi aceita") || err.message.includes("já aceita"))) {
-          throw new Error("⚡ Esta corrida já foi aceita por outro entregador.");
-        }
-        // Caso contrário (ex: função não existe, erro de rede), ignora e tenta fallback REST
-      }
-
-      // Fallback: Original REST-based combination updates (backward compatible)
-      // Combination 1: dbStatus + completed_at (Ideal normalized database state)
-      const updates1: Record<string, unknown> = { status: dbStatus, updated_at: now };
+      const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
       if (status === "accepted") {
-        updates1.accepted_at = now;
-        if (driverId) updates1.driver_id = driverId;
+        updates.accepted_at = new Date().toISOString();
+        if (driverId) updates.driver_id = driverId;
       }
-      if (status === "collecting") updates1.collected_at = now;
-      if (status === "delivered") updates1.completed_at = now;
-      if (dbStatus === "cancelled") updates1.cancelled_at = now;
+      if (status === "collecting") updates.collected_at = new Date().toISOString();
+      if (status === "delivered") updates.delivered_at = new Date().toISOString();
+      if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
 
-      const res1 = await supabase.from("deliveries").update(updates1 as any).eq("id", id).select();
-
-      if (res1.error || !res1.data || res1.data.length === 0) {
-        // Combination 2: dbStatus + delivered_at
-        const updates2: Record<string, unknown> = { status: dbStatus, updated_at: now };
-        if (status === "accepted") {
-          updates2.accepted_at = now;
-          if (driverId) updates2.driver_id = driverId;
-        }
-        if (status === "collecting") updates2.collected_at = now;
-        if (status === "delivered") updates2.delivered_at = now;
-        if (dbStatus === "cancelled") updates2.cancelled_at = now;
-
-        const res2 = await supabase.from("deliveries").update(updates2 as any).eq("id", id).select();
-
-        if (res2.error || !res2.data || res2.data.length === 0) {
-          // Combination 3: appStatus (status) + completed_at
-          const updates3: Record<string, unknown> = { status: status, updated_at: now };
-          if (status === "accepted") {
-            updates3.accepted_at = now;
-            if (driverId) updates3.driver_id = driverId;
-          }
-          if (status === "collecting") updates3.collected_at = now;
-          if (status === "delivered") updates3.completed_at = now;
-          if (status === "cancelled") updates3.cancelled_at = now;
-
-          const res3 = await supabase.from("deliveries").update(updates3 as any).eq("id", id).select();
-
-          if (res3.error || !res3.data || res3.data.length === 0) {
-            // Combination 4: appStatus (status) + delivered_at (Legacy and default database states)
-            const updates4: Record<string, unknown> = { status: status, updated_at: now };
-            if (status === "accepted") {
-              updates4.accepted_at = now;
-              if (driverId) updates4.driver_id = driverId;
-            }
-            if (status === "collecting") updates4.collected_at = now;
-            if (status === "delivered") updates4.delivered_at = now;
-            if (status === "cancelled") updates4.cancelled_at = now;
-
-            const res4 = await supabase.from("deliveries").update(updates4 as any).eq("id", id).select();
-
-            if (res4.error) {
-              // Translate RLS / permission errors before throwing
-              const msg = (res4.error as any)?.message || "";
-              if (msg.includes("Row level security") || msg.includes("RLS") || msg.includes("permission")) {
-                if (status === "accepted") {
-                  throw new Error("⚡ Esta corrida já foi aceita por outro entregador ou não está mais disponível.");
-                }
-                throw new Error("🔒 Sem permissão para alterar esta entrega. Tente novamente.");
-              }
-              throw res4.error;
-            }
-            if (!res4.data || res4.data.length === 0) {
-              if (status === "accepted") {
-                throw new Error("⚡ Esta corrida já foi aceita por outro entregador ou foi cancelada.");
-              }
-              throw new Error("Não foi possível atualizar a entrega. Ela pode ter sido cancelada.");
-            }
-          }
-        }
+      let query = supabase.from("deliveries").update(updates as any).eq("id", id);
+      if (status === "accepted") {
+        query = query.in("status", ["pending", "broadcasted"] as any);
       }
-
-      // Update linked order status to keep customer informed
-      let orderStatus = "";
-      if (status === "accepted") orderStatus = "confirmed";
-      if (status === "collecting") orderStatus = "preparing";
-      if (status === "in_transit") orderStatus = "delivering";
-      if (status === "delivered") orderStatus = "delivered";
-      if (dbStatus === "cancelled") orderStatus = "cancelled";
-
-      if (orderStatus) {
-        const { error: orderError } = await supabase.from("orders").update({ status: orderStatus as any }).eq("delivery_id", id);
-        if (orderError) console.error("Error updating order status:", orderError);
+      const { error, count } = await query;
+      if (error) throw error;
+      if (status === "accepted" && count === 0) {
+        throw new Error("Esta corrida já foi aceita por outro entregador.");
       }
     },
     onSuccess: () => {

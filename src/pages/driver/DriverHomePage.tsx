@@ -13,8 +13,10 @@ import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog
 import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
+import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
 import { Capacitor } from "@capacitor/core";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
+import { declineDeliveryLocally } from "@/hooks/useDriverNotifications";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -41,6 +43,9 @@ export default function DriverHomePage() {
     return start.toISOString();
   }, []);
 
+  const [rejectedLocalIds, setRejectedLocalIds] = useState<string[]>([]);
+  const [activeIncomingOrder, setActiveIncomingOrder] = useState<any>(null);
+
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
 
   useEffect(() => {
@@ -49,25 +54,19 @@ export default function DriverHomePage() {
         const initOverlay = async () => {
           try {
             await DeliveryOverlay.requestOverlayPermission();
-            setTimeout(async () => {
-               const res = await DeliveryOverlay.startOverlay();
-               if (!res?.success) console.warn("Ainda sem permissão:", res?.reason);
+            setTimeout(() => {
+               DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
             }, 1000);
           } catch(e) {}
         };
         initOverlay();
 
-        const listener = App.addListener('appStateChange', async ({ isActive }) => {
+        const listener = App.addListener('appStateChange', ({ isActive }) => {
           if (isActive) {
-             const res = await DeliveryOverlay.startOverlay();
-             if (!res?.success) {
-               toast({ 
-                 title: "Permissão Necessária", 
-                 description: "Por favor, ative a sobreposição para receber alertas de corridas.", 
-                 variant: "destructive" 
-               });
+             DeliveryOverlay.startOverlay().catch(() => {
+               // Se falhar ao iniciar (sem permissão), pede a permissão novamente
                DeliveryOverlay.requestOverlayPermission().catch(console.error);
-             }
+             });
           }
         });
 
@@ -284,8 +283,38 @@ export default function DriverHomePage() {
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
   const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
 
+  useEffect(() => {
+    // Encontra a primeira corrida válida que não foi rejeitada localmente
+    const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id));
+    
+    if (nextOrder && !activeIncomingOrder) {
+      setActiveIncomingOrder(nextOrder);
+    } else if (!nextOrder && activeIncomingOrder) {
+      setActiveIncomingOrder(null);
+    }
+  }, [broadcastDeliveries, rejectedLocalIds, activeIncomingOrder]);
+
+  const handleRejectLocal = (deliveryId: string) => {
+    stopAlert();
+    declineDeliveryLocally(deliveryId);
+    setRejectedLocalIds(prev => [...prev, deliveryId]);
+    setActiveIncomingOrder(null);
+  };
+
+  const handleAcceptLocal = (deliveryId: string) => {
+    handleAcceptDelivery(deliveryId);
+    setActiveIncomingOrder(null);
+  };
+
   return (
     <DriverLayout>
+      {activeIncomingOrder && (
+        <IncomingOrderScreen 
+          delivery={activeIncomingOrder} 
+          onAccept={handleAcceptLocal} 
+          onReject={handleRejectLocal} 
+        />
+      )}
       <div className="flex flex-col gap-5">
         {/* Greeting */}
         <div>
