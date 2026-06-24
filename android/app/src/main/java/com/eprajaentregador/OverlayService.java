@@ -109,6 +109,13 @@ public class OverlayService extends Service {
                 return false;
             }
         });
+
+        floatingView.findViewById(R.id.closeButton).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stopSelf();
+            }
+        });
     }
 
     @Override
