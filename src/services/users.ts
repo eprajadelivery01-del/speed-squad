@@ -29,7 +29,7 @@ export async function approveUser(userId: string) {
   const { error } = await supabase
     .from("profiles")
     .update({ status: "active" as any })
-    .eq("user_id", userId);
+    .eq("id", userId);
   if (error) throw error;
 }
 
@@ -37,7 +37,7 @@ export async function rejectUser(userId: string) {
   const { error } = await supabase
     .from("profiles")
     .update({ status: "rejected" as any })
-    .eq("user_id", userId);
+    .eq("id", userId);
   if (error) throw error;
 }
 
@@ -49,7 +49,7 @@ export async function updateProfile(userId: string, updates: { id?: string; full
       ...realUpdates, 
       updated_at: new Date().toISOString() 
     })
-    .eq('user_id', userId)
+    .eq('id', userId)
     .select()
     .single();
     

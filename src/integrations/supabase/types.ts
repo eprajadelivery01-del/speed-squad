@@ -713,6 +713,7 @@ export type Database = {
           full_name: string
           id: string
           is_online: boolean | null
+          fcm_token: string | null
           last_location_update: string | null
           latitude: number | null
           license_plate: string | null
@@ -743,6 +744,7 @@ export type Database = {
           full_name: string
           id?: string
           is_online?: boolean | null
+          fcm_token?: string | null
           last_location_update?: string | null
           latitude?: number | null
           license_plate?: string | null
@@ -773,6 +775,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_online?: boolean | null
+          fcm_token?: string | null
           last_location_update?: string | null
           latitude?: number | null
           license_plate?: string | null

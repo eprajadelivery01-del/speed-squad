@@ -27,11 +27,11 @@ export async function getWallet(userId: string) {
   return data;
 }
 
-export async function getTransactions(walletId: string) {
+export async function getTransactions(userId: string) {
   const { data, error } = await supabase
     .from("financial_transactions")
     .select("*")
-    .eq("wallet_id", walletId)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
@@ -64,7 +64,7 @@ export async function requestWithdrawal(amount: number, userId: string) {
   const { error: transError } = await supabase
     .from("financial_transactions")
     .insert({
-      wallet_id: wallet.id,
+      user_id: userId,
       amount: -amount,
       type: "debit",
       description: "Saque solicitado",
@@ -87,11 +87,11 @@ export function useWallet() {
 }
 
 export function useTransactions() {
-  const { data: wallet } = useWallet();
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["transactions", wallet?.id],
-    queryFn: () => (wallet?.id ? getTransactions(wallet.id) : null),
-    enabled: !!wallet?.id,
+    queryKey: ["transactions", user?.id],
+    queryFn: () => (user?.id ? getTransactions(user.id) : null),
+    enabled: !!user?.id,
   });
 }
 
