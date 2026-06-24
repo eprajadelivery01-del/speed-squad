@@ -296,7 +296,7 @@ export function useDriverNotifications() {
 
       // 3. Native action listener
       if (Capacitor.isNativePlatform()) {
-        actionListener = await LocalNotifications.addListener(
+        LocalNotifications.addListener(
           "localNotificationActionPerformed",
           async (action) => {
             if (action.notification.extra?.type === "delivery") {
@@ -341,6 +341,46 @@ export function useDriverNotifications() {
             }
           }
         );
+
+        DeliveryOverlay.addListener("onCallResponse", async (response) => {
+          const { status, deliveryId } = response;
+          if (!deliveryId) return;
+
+          if (status === "accepted") {
+            stopAlert();
+            activeAlertsRef.current.delete(deliveryId);
+            
+            try {
+              const { data, error } = await safeRpc("update_delivery_status_safe", {
+                p_delivery_id: deliveryId,
+                p_status: "accepted",
+                p_driver_id: driverId,
+              });
+              if (!error && data && (data as any).success) {
+                toast({ title: "✅ Corrida aceita!", description: "Aceita pelo alerta nativo." });
+                updateNotificationStatus(deliveryId, "accepted");
+                return;
+              }
+            } catch {}
+
+            const { error } = await supabase
+              .from("deliveries")
+              .update({ status: "accepted", driver_id: driverId })
+              .eq("id", deliveryId)
+              .in("status", ["pending", "broadcasted"]);
+            
+            if (error) {
+              const { title, description } = translateDeliveryError(error, "accept");
+              toast({ title, description, variant: "destructive" });
+            } else {
+              toast({ title: "✅ Corrida aceita!", description: "Aceita pelo alerta nativo." });
+              updateNotificationStatus(deliveryId, "accepted");
+            }
+          } else if (status === "rejected") {
+            declineDeliveryLocally(deliveryId);
+            updateNotificationStatus(deliveryId, "rejected");
+          }
+        });
       }
 
       // Initial seed: mark all currently-available deliveries as "seen"
