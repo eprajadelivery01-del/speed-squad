@@ -160,6 +160,24 @@ export function useDriverNotifications() {
         actListener = PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
           console.log("Push action performed:", notification);
         });
+
+        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+          console.log("Push received in background:", notification);
+          // O payload do FCM costuma vir em notification.data
+          const deliveryId = notification.data?.deliveryId;
+          if (deliveryId) {
+             // WAKE UP THE SCREEN IMMEDIATELY
+             const immediateDesc = notification.data?.details || "Nova Entrega Disponível!";
+             if (Capacitor.isNativePlatform()) {
+               import("@/plugins/DeliveryOverlay").then(({ DeliveryOverlay }) => {
+                 DeliveryOverlay.testIncomingCall({
+                   details: immediateDesc,
+                   deliveryId: deliveryId
+                 }).catch(e => console.warn("Erro ao acordar tela via FCM:", e));
+               });
+             }
+          }
+        });
       } catch (e) {
         console.warn("FCM Indisponível no dispositivo (Sem Google Play Services ou erro no plugin):", e);
       }
@@ -214,7 +232,7 @@ export function useDriverNotifications() {
       // Se esperarmos a query do supabase, a janela de tempo fecha e a tela não acende!
       const immediatePickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || "Local de Coleta";
       const immediateDropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
-      const immediateValue = Number(rawDelivery.value) || Number(rawDelivery.price) || Number(rawDelivery.total_value) || 0;
+      const immediateValue = Number(rawDelivery.value) || Number(rawDelivery.price) || Number(rawDelivery.total_value) || Number(rawDelivery.commission) || Number(rawDelivery.driver_earnings) || 0;
       const immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
@@ -444,7 +462,7 @@ export function useDriverNotifications() {
         try {
           const { data: initial } = await supabase
             .from("available_deliveries")
-            .select("id, created_at, delivery_address, status");
+            .select("*");
 
           if (initial && !cancelled) {
             const cutoff = Date.now() - 60_000;
@@ -476,7 +494,7 @@ export function useDriverNotifications() {
         try {
           const { data } = await supabase
             .from("available_deliveries")
-            .select("id, created_at, delivery_address, status");
+            .select("*");
           
           if (data && !cancelled) {
             const freshIds = new Set(data.map((d: any) => d.id));

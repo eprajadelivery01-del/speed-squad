@@ -15,6 +15,7 @@ import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
 import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { declineDeliveryLocally } from "@/hooks/useDriverNotifications";
 
@@ -50,30 +51,28 @@ export default function DriverHomePage() {
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      import('@capacitor/app').then(({ App }) => {
-        const initOverlay = async () => {
-          try {
-            await DeliveryOverlay.requestOverlayPermission();
-            setTimeout(() => {
-               DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
-            }, 1000);
-          } catch(e) {}
-        };
-        initOverlay();
+      const initOverlay = async () => {
+        try {
+          await DeliveryOverlay.requestOverlayPermission();
+          setTimeout(() => {
+             DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
+          }, 1000);
+        } catch(e) {}
+      };
+      initOverlay();
 
-        const listener = App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) {
-             DeliveryOverlay.startOverlay().catch(() => {
-               // Se falhar ao iniciar (sem permissão), pede a permissão novamente
-               DeliveryOverlay.requestOverlayPermission().catch(console.error);
-             });
-          }
-        });
+      const listener = App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+           DeliveryOverlay.startOverlay().catch(() => {
+             // Se falhar ao iniciar (sem permissão), pede a permissão novamente
+             DeliveryOverlay.requestOverlayPermission().catch(console.error);
+           });
+        }
+      });
 
-        return () => {
-          listener.then(l => l.remove());
-        };
-      }).catch(console.error);
+      return () => {
+        listener.then(l => l.remove());
+      };
     }
   }, []);
 
@@ -237,10 +236,26 @@ export default function DriverHomePage() {
     isQueryingRef.current = false;
   }, []);
 
-  const handleAcceptConsent = () => {
+  const handleAcceptConsent = async () => {
     localStorage.setItem("nexus_location_consent", "true");
     setHasConsent(true);
     setShowConsent(false);
+    
+    if (driverRecord && !isOnline) {
+      setLoading(true);
+      const { error } = await supabase.from("delivery_drivers").update({
+        is_online: true,
+      }).eq("id", driverRecord.id);
+      
+      if (!error) {
+        startTracking(driverRecord.id);
+        toast({ title: "Você está online!" });
+        setIsOnline(true);
+      } else {
+        toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" });
+      }
+      setLoading(false);
+    }
   };
 
   const handleToggle = async () => {
@@ -248,27 +263,52 @@ export default function DriverHomePage() {
     sessionStorage.setItem("sound_enabled", "true");
     sessionStorage.setItem("epj_sound_enabled", "true");
     
-    if (!driverRecord) return;
+    let currentDriverRecord = driverRecord;
+    
+    if (!currentDriverRecord) {
+      if (!user) return;
+      setLoading(true);
+      const { data } = await supabase
+        .from("delivery_drivers")
+        .select("id, is_online, commission_rate, city_id")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (data) {
+        currentDriverRecord = { id: data.id, city_id: data.city_id };
+        setDriverRecord(currentDriverRecord);
+      } else {
+        setLoading(false);
+        return;
+      }
+    }
+
     setLoading(true);
     const newStatus = !isOnline;
     if (newStatus && !hasConsent) { setShowConsent(true); setLoading(false); return; }
+    
     const { error } = await supabase.from("delivery_drivers").update({
       is_online: newStatus,
-    }).eq("id", driverRecord.id);
+    }).eq("id", currentDriverRecord.id);
+    
     if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
-    if (newStatus) { startTracking(driverRecord.id); toast({ title: "Você está online!" }); }
+    
+    if (newStatus) { startTracking(currentDriverRecord.id); toast({ title: "Você está online!" }); }
     else { stopTracking(); toast({ title: "Você está offline" }); }
+    
     setIsOnline(newStatus);
     setLoading(false);
   };
 
   const handleAcceptDelivery = (deliveryId: string) => {
-    if (!driverId) return;
+    if (!driverRecord) return;
     stopAlert();
     updateStatus(
-      { id: deliveryId, status: "accepted" as any, driverId },
+      { id: deliveryId, status: "accepted" as any, driverId: driverRecord.id },
       {
         onSuccess: () => {
+          window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+          setActiveIncomingOrder(null);
           toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
         },
         onError: (error: any) => {

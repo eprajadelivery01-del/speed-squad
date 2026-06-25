@@ -187,9 +187,9 @@ export function useUpdateDeliveryStatus() {
         query = query.in("status", ["pending", "broadcasted"] as any).is("driver_id", null);
       }
       // Request exact count so we know if 0 rows were updated (meaning someone else took it)
-      const { error, count } = await query.select("id");
+      const { error, data } = await query.select("id");
       if (error) throw error;
-      if (status === "accepted" && (!count || count.length === 0)) {
+      if (status === "accepted" && (!data || data.length === 0)) {
         throw new Error("Esta corrida já foi aceita por outro entregador.");
       }
     },
