@@ -51,8 +51,7 @@ export async function getAdminId() {
     .maybeSingle();
   
   if (error || !data) {
-    console.error("Erro ao buscar Admin:", error);
-    // Fallback garantido para o ID do Davinyn (Administrador principal)
+    // Fallback garantido para o ID do Administrador principal
     return "c10198da-6c02-42bf-b46a-f25ef07b85b4";
   }
   return data.user_id;
