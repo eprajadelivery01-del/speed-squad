@@ -47,5 +47,22 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Precisamos da sua localização para mostrar as entregas próximas e rastrear a corrida.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>A localização em segundo plano é necessária para manter os clientes atualizados sobre sua rota.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Precisamos rastrear sua rota para garantir a precisão da entrega.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>A câmera é necessária para capturar os comprovantes de entrega.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Precisamos salvar comprovantes de entrega na sua galeria.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Precisamos de acesso para enviar fotos do comprovante.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
