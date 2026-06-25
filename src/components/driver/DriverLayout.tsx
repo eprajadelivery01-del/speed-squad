@@ -158,7 +158,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   return (
     <div className="h-screen bg-background flex flex-col font-sans overflow-hidden">
       {/* Top Header */}
-      <header className="flex-none bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+      <header className="flex-none bg-card border-b border-border px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src="/logo.png"
@@ -304,7 +304,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="sticky bottom-0 z-50 w-full border-t border-border bg-background pb-safe mt-auto">
+      <nav className="sticky bottom-0 z-50 w-full border-t border-border bg-background pb-[env(safe-area-inset-bottom)] mt-auto">
         <div className="flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {
             const active = isActive(tab.href);
