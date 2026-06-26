@@ -124,7 +124,7 @@ export default function DriverChatPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-[100dvh] bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+    <div className="fixed inset-0 flex flex-col md:flex-row bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* Sidebar - Mobile Responsive */}
       <div className={cn(
         "w-full md:w-96 border-r border-border flex flex-col bg-card shrink-0 transition-all",
@@ -192,7 +192,7 @@ export default function DriverChatPage() {
 
       {/* Chat window */}
       <div className={cn(
-        "flex-1 flex flex-col relative",
+        "flex-1 flex flex-col relative min-h-0",
         !selectedConv && "hidden md:flex"
       )}>
         {selectedConv ? (
@@ -218,7 +218,7 @@ export default function DriverChatPage() {
             {/* Messages Area */}
             <div 
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-4 md:px-8 space-y-1 relative scroll-smooth"
+              className="flex-1 min-h-0 overflow-y-auto p-4 md:px-8 space-y-1 relative scroll-smooth"
               style={{ 
                 backgroundImage: `url('/whatsapp_chat_pattern.png')`,
                 backgroundSize: '400px',
@@ -241,7 +241,7 @@ export default function DriverChatPage() {
             </div>
 
             {/* Input */}
-            <div className="px-4 py-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center gap-4 z-10">
+            <div className="shrink-0 px-4 py-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center gap-4 z-10">
               <div className="flex gap-4 text-muted-foreground shrink-0">
                 <Smile className="h-6 w-6 cursor-pointer" />
                 <Paperclip className="h-6 w-6 cursor-pointer" />
