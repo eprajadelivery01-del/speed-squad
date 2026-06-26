@@ -61,9 +61,6 @@ export function initializeGlobalErrorHandlers(appName: string) {
 
   window.onerror = (message, source, lineno, colno, error) => {
     const errorMsg = String(message);
-    if (errorMsg.includes("Failed to fetch") || errorMsg.includes("refreshAccessToken") || errorMsg.includes("AuthSessionMissingError") || errorMsg.includes("Lock broken") || errorMsg.includes("steal") || errorMsg.includes("offline") || errorMsg.includes("NetworkError") || errorMsg.includes("Script error") || errorMsg.includes("Invalid Refresh Token") || errorMsg.includes("AuthApiError") || errorMsg.includes("catch is not a function") || errorMsg.includes(".rpc(")) {
-      return false;
-    }
 
     reportErrorToTelegram({
       error_message: errorMsg,
@@ -76,12 +73,6 @@ export function initializeGlobalErrorHandlers(appName: string) {
 
   window.onunhandledrejection = (event) => {
     const reason = event.reason;
-    const reasonMsg = reason?.message || String(reason);
-    
-    if (reasonMsg.includes("Failed to fetch") || reasonMsg.includes("refreshAccessToken") || reasonMsg.includes("AuthSessionMissingError") || reasonMsg.includes("Lock broken") || reasonMsg.includes("steal") || reasonMsg.includes("offline") || reasonMsg.includes("NetworkError") || reasonMsg.includes("Script error") || reasonMsg.includes("Invalid Refresh Token") || reasonMsg.includes("AuthApiError") || reasonMsg.includes("catch is not a function") || reasonMsg.includes(".rpc(")) {
-      event.preventDefault();
-      return;
-    }
 
     reportErrorToTelegram({
       error_message: `Unhandled Rejection: ${reason?.message || reason}`,
@@ -104,11 +95,6 @@ export function initializeGlobalErrorHandlers(appName: string) {
 
     // Skip nested reporting to prevent loops
     if (isReporting) return;
-
-    // Ignore expected Supabase token refresh network errors
-    if (msg.includes("Failed to fetch") || msg.includes("refreshAccessToken") || msg.includes("AuthSessionMissingError") || msg.includes("Lock broken") || msg.includes("steal") || msg.includes("offline") || msg.includes("NetworkError") || msg.includes("Script error") || msg.includes("Invalid Refresh Token") || msg.includes("AuthApiError") || msg.includes("catch is not a function") || msg.includes(".rpc(")) {
-      return;
-    }
 
     // Invoke original console logger
     originalConsoleError.apply(console, args);
