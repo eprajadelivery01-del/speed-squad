@@ -124,7 +124,7 @@ export default function DriverChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-[#f0f2f5] dark:bg-[#0b141a] overflow-hidden pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       {/* Sidebar - Mobile Responsive */}
       <div className={cn(
         "w-full md:w-96 border-r border-border flex flex-col bg-card shrink-0 transition-all",

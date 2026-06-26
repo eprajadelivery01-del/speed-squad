@@ -23,9 +23,9 @@ BEGIN
     RETURN QUERY
     SELECT 
         COUNT(id)::INT AS total_deliveries,
-        COALESCE(SUM(delivery_fee), 0) AS gross_earnings,
+        COALESCE(SUM(commission), 0) AS gross_earnings,
         (COUNT(id) * v_commission_rate) AS platform_fee,
-        COALESCE(SUM(delivery_fee), 0) - (COUNT(id) * v_commission_rate) AS net_earnings
+        COALESCE(SUM(commission), 0) - (COUNT(id) * v_commission_rate) AS net_earnings
     FROM public.deliveries
     WHERE driver_id = p_driver_id
       AND status = 'completed' -- 'completed' é o valor salvo no BD para 'delivered'
