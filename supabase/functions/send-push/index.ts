@@ -76,6 +76,10 @@ serve(async (req) => {
           apns: {
             payload: {
               aps: {
+                alert: {
+                  title: "🛵 Nova corrida disponível!",
+                  body: `Coleta: ${record.pickup_address || 'Veja no app'}`
+                },
                 sound: "default",
                 category: "DELIVERY_ACTION"
               }
