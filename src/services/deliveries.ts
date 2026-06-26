@@ -184,7 +184,7 @@ export function useUpdateDeliveryStatus() {
 
       let query = supabase.from("deliveries").update(updates as any).eq("id", id);
       if (status === "accepted") {
-        query = query.in("status", ["pending", "broadcasted"] as any).is("driver_id", null);
+        query = query.in("status", ["pending", "broadcasted"] as any).or(`driver_id.is.null,driver_id.eq.${driverId}`);
       }
       // Request exact count so we know if 0 rows were updated (meaning someone else took it)
       const { error, data } = await query.select("id");
