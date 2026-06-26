@@ -50,7 +50,10 @@ export async function requestWithdrawal(amount: number, userId: string) {
   // Update condicional: só atualiza se o saldo ainda for suficiente (mitigação de race condition)
   const { data: updated, error: updateError } = await supabase
     .from("wallets")
-    .update({ balance: wallet.balance - amount })
+    .update({
+      balance: wallet.balance - amount,
+      total_withdrawn: (wallet.total_withdrawn ?? 0) + amount,
+    })
     .eq("id", wallet.id)
     .eq("user_id", userId)
     .gte("balance", amount)
@@ -61,17 +64,33 @@ export async function requestWithdrawal(amount: number, userId: string) {
     throw new Error("Saldo insuficiente ou operação concorrente detectada");
   }
 
+  // Cria a solicitação de saque na tabela própria
+  const { data: withdrawal, error: withdrawalError } = await supabase
+    .from("withdrawals")
+    .insert({
+      user_id: userId,
+      amount,
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  if (withdrawalError) throw withdrawalError;
+
+  // Registra a transação financeira (enum: earning | fee | withdrawal | refund)
   const { error: transError } = await supabase
     .from("financial_transactions")
     .insert({
       user_id: userId,
       amount: -amount,
-      type: "debit",
+      type: "withdrawal",
       description: "Saque solicitado",
+      reference_id: withdrawal.id,
+      reference_type: "withdrawal",
     });
 
   if (transError) throw transError;
-  return { success: true };
+  return { success: true, withdrawal };
 }
 
 /**
