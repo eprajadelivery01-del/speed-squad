@@ -136,6 +136,9 @@ export async function acceptInvitation(token: string, userData: { email: string;
   if (invitation.role === "driver") {
     await supabase.from("delivery_drivers").insert({
       user_id: authData.user.id,
+      full_name: userData.fullName,
+      phone: userData.phone,
+      document: userData.document,
     });
   }
 

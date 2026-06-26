@@ -6,7 +6,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { safeRpc } from "@/lib/safeRpc";
 import { translateDeliveryError } from "@/lib/errorMessages";
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
