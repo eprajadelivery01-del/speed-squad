@@ -230,11 +230,11 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
           <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
 
-        {(delivery.price != null || delivery.value != null) && (
+        {(delivery.delivery_fee != null || delivery.price != null || delivery.value != null) && (
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
             <div className="text-2xl font-black text-success tracking-tighter">
-              <span className="text-sm mr-0.5">R$</span>{Number(delivery.price || delivery.value || 0).toFixed(2)}
+              <span className="text-sm mr-0.5">R$</span>{Number(delivery.delivery_fee || delivery.price || delivery.value || 0).toFixed(2)}
             </div>
           </div>
         )}

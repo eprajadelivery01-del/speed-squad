@@ -232,7 +232,7 @@ export function useDriverNotifications() {
       // Se esperarmos a query do supabase, a janela de tempo fecha e a tela não acende!
       const immediatePickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || "Local de Coleta";
       const immediateDropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
-      const immediateValue = Number(rawDelivery.value) || Number(rawDelivery.price) || Number(rawDelivery.total_value) || Number(rawDelivery.commission) || Number(rawDelivery.driver_earnings) || 0;
+      const immediateValue = Number(rawDelivery.delivery_fee) || Number(rawDelivery.value) || Number(rawDelivery.price) || Number(rawDelivery.total_value) || Number(rawDelivery.commission) || Number(rawDelivery.driver_earnings) || 0;
       const immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
@@ -254,7 +254,7 @@ export function useDriverNotifications() {
       const storeName = delivery.companies?.name || "Loja Parceira";
       const pickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || pickAddress(delivery);
       const dropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
-      const value = Number(delivery.value) || Number(delivery.price) || Number(delivery.total_value) || 0;
+      const value = Number(delivery.delivery_fee) || Number(delivery.value) || Number(delivery.price) || Number(delivery.total_value) || 0;
 
       const title = "🏍️ Nova corrida disponível!";
       const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;

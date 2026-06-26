@@ -117,8 +117,8 @@ export default function ProfilePage() {
         const periodCount = periodDeliveries.length;
         const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
         
-        // Entregador ganha o valor cheio ('value') ou ('price') ou ('total_value')
-        const grossEarnings = periodDeliveries.reduce((sum, d: any) => sum + (Number(d.value) || Number(d.price) || Number(d.total_value) || 0), 0);
+        // Entregador ganha o valor da taxa de entrega ('delivery_fee') ou ('value') ou ('price') ou ('total_value')
+        const grossEarnings = periodDeliveries.reduce((sum, d: any) => sum + (Number(d.delivery_fee) || Number(d.value) || Number(d.price) || Number(d.total_value) || 0), 0);
         const platformFee = periodDeliveries.reduce((sum, d: any) => sum + Number(d.commission || driverRate), 0);
         const netEarnings = grossEarnings - platformFee;
 
