@@ -210,3 +210,52 @@ export function useReassignDelivery() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveries"] }),
   });
 }
+
+export interface DriverEarningsSummary {
+  total_deliveries: number;
+  gross_earnings: number;
+  platform_fee: number;
+  net_earnings: number;
+}
+
+export function useDriverEarningsSummary(driverId?: string, startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ["driver-earnings-summary", driverId, startDate, endDate],
+    enabled: !!driverId && !!startDate && !!endDate,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_driver_earnings_summary", {
+        p_driver_id: driverId,
+        p_start_date: startDate,
+        p_end_date: endDate,
+      });
+
+      if (error) {
+        console.error("Error fetching earnings summary via RPC:", error);
+        return {
+          total_deliveries: 0,
+          gross_earnings: 0,
+          platform_fee: 0,
+          net_earnings: 0,
+        } as DriverEarningsSummary;
+      }
+
+      if (data && data.length > 0) {
+        const item = data[0];
+        return {
+          total_deliveries: Number(item.total_deliveries || 0),
+          gross_earnings: Number(item.gross_earnings || 0),
+          platform_fee: Number(item.platform_fee || 0),
+          net_earnings: Number(item.net_earnings || 0),
+        } as DriverEarningsSummary;
+      }
+
+      return {
+        total_deliveries: 0,
+        gross_earnings: 0,
+        platform_fee: 0,
+        net_earnings: 0,
+      } as DriverEarningsSummary;
+    },
+  });
+}

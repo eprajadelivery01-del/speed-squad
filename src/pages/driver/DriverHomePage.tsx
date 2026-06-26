@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { findNearestCity } from "@/utils/location";
 import { useCity } from "@/contexts/CityContext";
-import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
+import { useDeliveries, useUpdateDeliveryStatus, useDriverEarningsSummary } from "@/services/deliveries";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,11 @@ export default function DriverHomePage() {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     return start.toISOString();
+  }, []);
+  const todayEndIso = useMemo(() => {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return end.toISOString();
   }, []);
 
   const [rejectedLocalIds, setRejectedLocalIds] = useState<string[]>([]);
@@ -102,21 +107,13 @@ export default function DriverHomePage() {
       });
   }, [user]);
 
-  // Fetch today's stats based on driver
+  // Fetch today's stats based on driver using RPC
   const driverId = driverRecord?.id;
-  const { data: todayStatsData } = useDeliveries({
-    driverId: driverId || undefined,
-    dateFrom: todayStartIso,
-    enabled: !!driverId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
-  });
+  const { data: earningsData } = useDriverEarningsSummary(driverId, todayStartIso, todayEndIso);
 
   const stats = {
-    todayCount: todayStatsData?.data.filter(d => (d as any).status === "delivered").length ?? 0,
-    todayEarnings: todayStatsData?.data
-      .filter(d => (d as any).status === "delivered")
-      .reduce((acc, d) => acc + (Number((d as any).delivery_fee) || Number((d as any).value) || Number((d as any).price) || Number((d as any).total_value) || 0), 0) ?? 0,
+    todayCount: earningsData?.total_deliveries || 0,
+    todayEarnings: earningsData?.net_earnings || 0,
   };
 
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)

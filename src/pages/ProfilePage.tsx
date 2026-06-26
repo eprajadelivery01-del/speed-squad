@@ -105,29 +105,30 @@ export default function ProfilePage() {
         const startMs = start.getTime();
         const endMs = end.getTime();
 
-        // Busca todas as entregas concluídas pelo driver e filtra pela data REAL de conclusão (client-side)
-        // — evita problemas de schema (delivered_at vs completed_at) e de timezone na query.
-        const { data: allDelivered } = await supabase
-          .from("deliveries")
-          .select("*")
-          .eq("driver_id", driver.id)
-          .in("status", DELIVERED_STATUSES);
+        // Calculate dates as ISO strings for the RPC
+        const startIso = start.toISOString();
+        const endIso = end.toISOString();
+
+        // Call the centralized RPC
+        const { data: summaryData, error: summaryError } = await supabase.rpc("get_driver_earnings_summary", {
+          p_driver_id: driver.id,
+          p_start_date: startIso,
+          p_end_date: endIso
+        });
+
+        let grossEarnings = 0;
+        let platformFee = 0;
+        let netEarnings = 0;
+        let periodCount = 0;
+
+        if (!summaryError && summaryData && summaryData.length > 0) {
+          grossEarnings = Number(summaryData[0].gross_earnings || 0);
+          platformFee = Number(summaryData[0].platform_fee || 0);
+          netEarnings = Number(summaryData[0].net_earnings || 0);
+          periodCount = Number(summaryData[0].total_deliveries || 0);
+        }
 
         const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
-
-        const periodDeliveries = (allDelivered || []).filter((d: any) => {
-          const completionStr = d.delivered_at || d.completed_at || d.updated_at || d.created_at;
-          if (!completionStr) return false;
-          const t = new Date(completionStr).getTime();
-          return t >= startMs && t <= endMs;
-        });
-        const periodCount = periodDeliveries.length;
-
-        // Ganho bruto = soma das taxas de entrega recebidas
-        const grossEarnings = periodDeliveries.reduce((sum, d: any) => sum + (Number(d.delivery_fee) || Number(d.value) || Number(d.price) || Number(d.total_value) || Number(d.commission) || 0), 0);
-        // Repasse devido ao app = R$ 0,40 (commission_rate) por corrida concluída
-        const platformFee = periodCount * driverRate;
-        const netEarnings = grossEarnings - platformFee;
 
         setDriverStats({
           deliveries: totalCount || 0,
