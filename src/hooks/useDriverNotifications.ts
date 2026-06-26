@@ -245,7 +245,7 @@ export function useDriverNotifications() {
       // Busca os dados completos da corrida (nome da loja)
       const { data: fullDelivery } = await supabase
         .from("deliveries")
-        .select("*, companies(name)")
+        .select("*, companies!deliveries_company_id_fkey(name)")
         .eq("id", rawDelivery.id)
         .single();
         
