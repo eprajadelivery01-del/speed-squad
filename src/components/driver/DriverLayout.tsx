@@ -304,7 +304,10 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="sticky bottom-0 z-50 w-full border-t border-border bg-background pb-[env(safe-area-inset-bottom)] mt-auto">
+      <nav 
+        className="sticky bottom-0 z-50 w-full border-t border-border bg-background mt-auto"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         <div className="flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {
             const active = isActive(tab.href);
