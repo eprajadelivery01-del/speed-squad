@@ -386,16 +386,21 @@ export function useDriverNotifications() {
                 } catch {}
 
                 // REST fallback
-                const { error } = await supabase
+                const { error, data } = await supabase
                   .from("deliveries")
                   .update({ status: "accepted", driver_id: driverId })
                   .eq("id", deliveryId)
                   .in("status", ["pending", "broadcasted"])
-                  .is("driver_id", null);
+                  .is("driver_id", null)
+                  .select("id");
                 
                 if (error) {
                   const { title, description } = translateDeliveryError(error, "accept");
                   toast({ title, description, variant: "destructive" });
+                } else if (!data || data.length === 0) {
+                  toast({ title: "Ops! Já foi aceita.", description: "Outro entregador aceitou antes de você.", variant: "destructive" });
+                  declineDeliveryLocally(deliveryId);
+                  updateNotificationStatus(deliveryId, "rejected");
                 } else {
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
                   updateNotificationStatus(deliveryId, "accepted");
@@ -433,16 +438,21 @@ export function useDriverNotifications() {
                 }
               } catch {}
 
-              const { error } = await supabase
+              const { error, data: restData } = await supabase
                 .from("deliveries")
                 .update({ status: "accepted", driver_id: driverId })
                 .eq("id", deliveryId)
                 .in("status", ["pending", "broadcasted"])
-                .is("driver_id", null);
+                .is("driver_id", null)
+                .select("id");
               
               if (error) {
                 const { title, description } = translateDeliveryError(error, "accept");
                 toast({ title, description, variant: "destructive" });
+              } else if (!restData || restData.length === 0) {
+                toast({ title: "Ops! Já foi aceita.", description: "Outro entregador aceitou antes de você.", variant: "destructive" });
+                declineDeliveryLocally(deliveryId);
+                updateNotificationStatus(deliveryId, "rejected");
               } else {
                 toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
                 updateNotificationStatus(deliveryId, "accepted");
