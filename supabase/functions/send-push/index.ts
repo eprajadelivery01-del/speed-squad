@@ -66,12 +66,10 @@ serve(async (req) => {
       const message = {
         message: {
           token: token,
-          notification: {
+          data: {
+            delivery_id: record.id,
             title: "🛵 Nova corrida disponível!",
             body: `Coleta: ${record.pickup_address || 'Veja no app'}`
-          },
-          data: {
-            delivery_id: record.id
           },
           apns: {
             payload: {
@@ -83,11 +81,6 @@ serve(async (req) => {
                 sound: "default",
                 category: "DELIVERY_ACTION"
               }
-            }
-          },
-          android: {
-            notification: {
-              sound: "default"
             }
           }
         }
