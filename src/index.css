@@ -166,3 +166,5 @@
     box-shadow: 0 4px 16px 0 hsl(220, 20%, 14%, 0.08), 0 1px 4px 0 hsl(220, 20%, 14%, 0.04);
   }
 }
+  
+#root { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); } 
