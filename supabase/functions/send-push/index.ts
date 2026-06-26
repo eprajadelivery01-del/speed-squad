@@ -67,7 +67,8 @@ serve(async (req) => {
         message: {
           token: token,
           data: {
-            delivery_id: record.id,
+            deliveryId: record.id,
+            details: `Coleta: ${record.pickup_address || 'Veja no app'}`,
             title: "🛵 Nova corrida disponível!",
             body: `Coleta: ${record.pickup_address || 'Veja no app'}`
           },
