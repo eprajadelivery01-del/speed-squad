@@ -1,22 +1,25 @@
-# Speed Squad (App do Entregador)
+# É Pra Já - Lojista (Pronto Agora Hub)
 
 ## Como enviar atualizações para a App Store (Apple)
 Este projeto utiliza Capacitor. Ao fazer alterações, se ocorrer problemas de compilação no Mac devido à falta de arquivos do iOS (`config.xml`, `capacitor.config.json` ou ícones faltando), certifique-se de rodar:
-`npx cap sync ios` e `npx @capacitor/assets generate --ios` no ambiente de compilação, ou garantir que esses arquivos sejam forçados no Github.
+`npx cap sync ios` e `npx @capacitor/assets generate --ios` no ambiente de compilação, ou garantir que esses arquivos sejam forçados no Github. O erro `invalid escape sequence` no Mac também pode ocorrer se o `Package.swift` do Capacitor estiver usando barras invertidas de Windows (`\`) - troque por barras normais (`/`).
 
 ### 1. Pré-requisitos (Chave da API App Store Connect)
 Você precisa de uma chave `.p8` gerada no App Store Connect com acesso de Administrador. Salve-a no Mac remoto:
 ```bash
 mkdir -p ~/.private_keys
-cat << 'EOF' > ~/.private_keys/AuthKey_SUACHAVE.p8
+cat << 'EOF' > ~/.private_keys/AuthKey_GNCVF862P9.p8
 -----BEGIN PRIVATE KEY-----
-(sua chave aqui)
+MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgTJxL5OlCpNhIz+as
+NezPrhS68wdkOc3/sFRAfI99kDqgCgYIKoZIzj0DAQehRANCAARuj2UXxFLjeNzZ
+hl+S6+PG1gXxM9TUNMtwXM7HGmqpO8dKnQuoyNiGmHHFdTkJ23saL7M/jDOc8ogm
+0ChusLJa
 -----END PRIVATE KEY-----
 EOF
 ```
 
 ### 2. Script de Build e Upload (Sem Xcode App)
-Substitua `TEAM_ID`, `KEY_ID` e `ISSUER_ID` pelos seus dados reais.
+Este script usa o Team ID `4YULT95XAK`, Key ID `GNCVF862P9` e Issuer ID `b3214eff-b69b-4b7a-bfd0-0c476ed2605c`.
 
 ```bash
 cd ~/Documents/speed-squad
@@ -31,7 +34,7 @@ cat << EOF > build/ExportOptions.plist
     <key>method</key>
     <string>app-store</string>
     <key>teamID</key>
-    <string>SEU_TEAM_ID</string>
+    <string>4YULT95XAK</string>
     <key>manageAppVersionAndBuildNumber</key>
     <true/>
 </dict>
@@ -41,11 +44,11 @@ EOF
 rm -rf build/App.xcarchive build/App.ipa
 
 # 1. Archive
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release archive -archivePath build/App.xcarchive DEVELOPMENT_TEAM="SEU_TEAM_ID" -allowProvisioningUpdates -authenticationKeyPath "$HOME/.private_keys/AuthKey_SUACHAVE.p8" -authenticationKeyID "SEU_KEY_ID" -authenticationKeyIssuerID "SEU_ISSUER_ID"
+xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release archive -archivePath build/App.xcarchive DEVELOPMENT_TEAM="4YULT95XAK" -allowProvisioningUpdates -authenticationKeyPath "$HOME/.private_keys/AuthKey_GNCVF862P9.p8" -authenticationKeyID "GNCVF862P9" -authenticationKeyIssuerID "b3214eff-b69b-4b7a-bfd0-0c476ed2605c"
 
 # 2. Export
-xcodebuild -exportArchive -archivePath build/App.xcarchive -exportOptionsPlist build/ExportOptions.plist -exportPath build/ -allowProvisioningUpdates -authenticationKeyPath "$HOME/.private_keys/AuthKey_SUACHAVE.p8" -authenticationKeyID "SEU_KEY_ID" -authenticationKeyIssuerID "SEU_ISSUER_ID"
+xcodebuild -exportArchive -archivePath build/App.xcarchive -exportOptionsPlist build/ExportOptions.plist -exportPath build/ -allowProvisioningUpdates -authenticationKeyPath "$HOME/.private_keys/AuthKey_GNCVF862P9.p8" -authenticationKeyID "GNCVF862P9" -authenticationKeyIssuerID "b3214eff-b69b-4b7a-bfd0-0c476ed2605c"
 
 # 3. Upload
-xcrun altool --upload-app -f build/App.ipa -t ios --apiKey "SEU_KEY_ID" --apiIssuer "SEU_ISSUER_ID"
+xcrun altool --upload-app -f build/App.ipa -t ios --apiKey "GNCVF862P9" --apiIssuer "b3214eff-b69b-4b7a-bfd0-0c476ed2605c"
 ```
