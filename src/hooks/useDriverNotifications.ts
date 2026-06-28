@@ -101,17 +101,20 @@ export function useDriverNotifications() {
               ],
             }).catch(() => {});
 
-            try {
-              LocalNotifications.createChannel({
-                id: "delivery-channel-v2",
-                name: "Novas Corridas (Alarme)",
-                description: "Avisos sonoros de novas corridas",
-                importance: 5,
-                visibility: 1,
-                sound: "ring.mp3",
-                vibration: true,
-              }).catch(() => {});
-            } catch(e) {}
+            LocalNotifications.listChannels().then((channels) => {
+              const hasChannel = channels.channels.some(c => c.id === 'new-orders-v2');
+              if (!hasChannel) {
+                LocalNotifications.createChannel({
+                  id: "new-orders-v2",
+                  name: "Novas Corridas (Alarme)",
+                  description: "Avisos sonoros de novas corridas",
+                  importance: 5,
+                  visibility: 1,
+                  sound: "ring.mp3",
+                  vibration: true,
+                }).catch(() => {});
+              }
+            });
           }
         }
       });
@@ -294,7 +297,7 @@ export function useDriverNotifications() {
                 body: description,
                 id: hashId(delivery.id),
                 actionTypeId: "DELIVERY_ACTION",
-                channelId: "delivery-channel-v2",
+                channelId: "new-orders-v2",
                 extra: { type: "delivery", deliveryId: delivery.id },
               },
             ],

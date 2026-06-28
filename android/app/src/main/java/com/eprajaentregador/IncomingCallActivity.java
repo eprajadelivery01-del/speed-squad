@@ -17,9 +17,11 @@ import android.net.Uri;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 
+import android.media.MediaPlayer;
+
 public class IncomingCallActivity extends Activity {
 
-    private Ringtone ringtone;
+    private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
 
     public static final String ACTION_CALL_ACCEPTED = "com.eprajaentregador.ACTION_CALL_ACCEPTED";
@@ -63,18 +65,15 @@ public class IncomingCallActivity extends Activity {
         Button btnAccept = findViewById(R.id.btnAccept);
         Button btnReject = findViewById(R.id.btnReject);
 
-        // Start ringing
-        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-        if (notification == null) {
-            notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        }
-        if (notification != null) {
-            ringtone = RingtoneManager.getRingtone(getApplicationContext(), notification);
-            if (ringtone != null) {
-                // Ensure it plays even on some specific volume streams if needed, 
-                // but default getRingtone is usually okay.
-                ringtone.play();
+        // Start ringing with custom app sound
+        try {
+            mediaPlayer = MediaPlayer.create(this, R.raw.ring);
+            if (mediaPlayer != null) {
+                mediaPlayer.setLooping(true);
+                mediaPlayer.start();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -121,15 +120,23 @@ public class IncomingCallActivity extends Activity {
         });
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (ringtone != null && ringtone.isPlaying()) {
-            ringtone.stop();
+    private void stopRinging() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.release();
+            mediaPlayer = null;
         }
         if (vibrator != null) {
             vibrator.cancel();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopRinging();
         try {
             unregisterReceiver(cancelReceiver);
         } catch (Exception e) {
