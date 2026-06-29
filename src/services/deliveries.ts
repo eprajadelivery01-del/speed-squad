@@ -26,11 +26,10 @@ export interface DeliveryWithRelations {
   customer_phone?: string | null;
 }
 
-// DB enum uses: pending, broadcasted, accepted, collecting, in_route, completed, cancelled
+// DB enum uses: pending, broadcasted, accepted, collecting, in_transit, completed, cancelled
 // Some legacy rows may still contain "completed" or "in_transit" — normalize it to the UI formats.
 const APP_TO_DB_STATUS: Record<string, string> = {
   delivered: "completed",
-  in_transit: "in_route",
 };
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
@@ -173,24 +172,17 @@ export function useUpdateDeliveryStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
-      const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-      if (status === "accepted") {
-        updates.accepted_at = new Date().toISOString();
-        if (driverId) updates.driver_id = driverId;
-      }
-      if (status === "collecting") updates.collected_at = new Date().toISOString();
-      if (status === "delivered") updates.delivered_at = new Date().toISOString();
-      if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
+      const { data, error } = await safeRpc("update_delivery_status_safe", {
+        p_delivery_id: id,
+        p_status: status,
+        p_driver_id: driverId || null,
+      });
 
-      let query = supabase.from("deliveries").update(updates as any).eq("id", id);
-      if (status === "accepted") {
-        query = query.in("status", ["pending", "broadcasted"] as any).or(`driver_id.is.null,driver_id.eq.${driverId}`);
+      if (error) {
+        throw error;
       }
-      // Request exact count so we know if 0 rows were updated (meaning someone else took it)
-      const { error, data } = await query.select("id");
-      if (error) throw error;
-      if (status === "accepted" && (!data || data.length === 0)) {
-        throw new Error("Esta corrida já foi aceita por outro entregador.");
+      if (data && (data as any).success === false) {
+        throw new Error((data as any).error || "Erro ao atualizar entrega.");
       }
     },
     onSuccess: () => {
