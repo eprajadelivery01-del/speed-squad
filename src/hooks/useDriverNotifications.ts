@@ -164,13 +164,31 @@ export function useDriverNotifications() {
           console.log("Push action performed:", notification);
         });
 
-        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        PushNotifications.addListener("pushNotificationReceived", async (notification) => {
           console.log("Push received in background:", notification);
           // O payload do FCM costuma vir em notification.data
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
              // WAKE UP THE SCREEN IMMEDIATELY
-             const immediateDesc = notification.data?.details || "Nova Entrega Disponível!";
+             const immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
+
+             // Evitar o bombardeio: Verifica no banco se a corrida AINDA está pendente. 
+             // Pushes do FCM podem chegar com atraso ou quando o celular acabou de conectar à internet.
+             try {
+                const { data } = await supabase
+                  .from("deliveries")
+                  .select("status, driver_id")
+                  .eq("id", deliveryId)
+                  .single();
+
+                if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
+                    console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
+                    return;
+                }
+             } catch (e) {
+                console.warn("Erro validando FCM status:", e);
+             }
+
              if (Capacitor.isNativePlatform()) {
                import("@/plugins/DeliveryOverlay").then(({ DeliveryOverlay }) => {
                  DeliveryOverlay.testIncomingCall({
