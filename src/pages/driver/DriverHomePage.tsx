@@ -531,17 +531,16 @@ export default function DriverHomePage() {
                             )}>
                               {paymentBadge.replace(/[\[\]]/g, "")}
                             </span>
-                          )}
-                        </div>
+}
                         <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{del.companies?.name || "Loja Parceira"}</h4>
                         <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
                       </div>
                       
-                      {((del.value != null && del.value > 0) || (del.price != null && del.price > 0)) && (
+                      {((del.delivery_fee != null && del.delivery_fee > 0) || (del.value != null && del.value > 0) || (del.price != null && del.price > 0)) && (
                         <div className="flex flex-col items-end">
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
                           <div className="text-2xl font-black text-success tracking-tighter">
-                            <span className="text-sm mr-0.5">R$</span>{Number(del.value || del.price || 0).toFixed(2)}
+                            <span className="text-sm mr-0.5">R$</span>{Number(del.delivery_fee || del.value || del.price || 0).toFixed(2)}
                           </div>
                         </div>
                       )}
