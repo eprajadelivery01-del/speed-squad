@@ -121,17 +121,16 @@ export function useAcceptDelivery() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ deliveryId, driverId }: { deliveryId: string; driverId: string }) => {
-      const { data, error } = await supabase
-        .from("deliveries")
-        .update({ 
-          driver_id: driverId, 
-          status: "accepted",
-          accepted_at: new Date().toISOString() as any
-        })
-        .eq("id", deliveryId)
-        .select()
-        .single();
+      // Use RPC with row-level lock to prevent two drivers accepting the same delivery.
+      const { data, error } = await supabase.rpc("update_delivery_status_safe" as any, {
+        p_delivery_id: deliveryId,
+        p_status: "accepted",
+        p_driver_id: driverId,
+      });
       if (error) throw error;
+      if (data && (data as any).success === false) {
+        throw new Error((data as any).error || "Não foi possível aceitar esta corrida.");
+      }
       return data;
     },
     onSuccess: () => {
