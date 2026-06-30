@@ -216,7 +216,7 @@ export function useDriverEarningsSummary(driverId?: string, startDate?: string, 
     enabled: !!driverId && !!startDate && !!endDate,
     refetchInterval: 60000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_driver_earnings_summary", {
+      const { data, error } = await (supabase.rpc as any)("get_driver_earnings_summary", {
         p_driver_id: driverId,
         p_start_date: startDate,
         p_end_date: endDate,
@@ -232,8 +232,8 @@ export function useDriverEarningsSummary(driverId?: string, startDate?: string, 
         } as DriverEarningsSummary;
       }
 
-      if (data && data.length > 0) {
-        const item = data[0];
+      if (Array.isArray(data) && data.length > 0) {
+        const item = data[0] as any;
         return {
           total_deliveries: Number(item.total_deliveries || 0),
           gross_earnings: Number(item.gross_earnings || 0),

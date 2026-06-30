@@ -532,6 +532,8 @@ export default function DriverHomePage() {
                               {paymentBadge.replace(/[\[\]]/g, "")}
                             </span>
                           )}
+                        </div>
+
                         <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{del.companies?.name || "Loja Parceira"}</h4>
                         <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
                       </div>
