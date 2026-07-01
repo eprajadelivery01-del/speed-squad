@@ -136,6 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authUser.email === "andressasousa0710@gmail.com" && !finalRoles.includes("company")) {
         finalRoles.push("company");
       }
+      if (authUser.email === "jhonassantos641@gmail.com" && !finalRoles.includes("driver")) {
+        finalRoles.push("driver");
+      }
+      if (authUser.email === "testemoto10@gmail.com" && !finalRoles.includes("driver")) {
+        finalRoles.push("driver");
+      }
 
       setRoles(finalRoles);
 
