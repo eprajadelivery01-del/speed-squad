@@ -68,10 +68,10 @@ export default function DriverHomePage() {
 
       const listener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
-           DeliveryOverlay.startOverlay().catch(() => {
-             // Se falhar ao iniciar (sem permissão), pede a permissão novamente
-             DeliveryOverlay.requestOverlayPermission().catch(console.error);
-           });
+            DeliveryOverlay.startOverlay().catch(() => {
+              // Se falhar ao iniciar (sem permissão), pede a permissão novamente
+              DeliveryOverlay.requestOverlayPermission().catch((e) => console.warn("Erro ao pedir overlay:", e));
+            });
         }
       });
 

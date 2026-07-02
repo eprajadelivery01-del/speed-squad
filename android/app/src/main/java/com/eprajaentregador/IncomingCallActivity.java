@@ -23,6 +23,7 @@ public class IncomingCallActivity extends Activity {
 
     private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
+    private android.os.PowerManager.WakeLock wakeLock;
 
     public static final String ACTION_CALL_ACCEPTED = "com.eprajaentregador.ACTION_CALL_ACCEPTED";
     public static final String ACTION_CALL_REJECTED = "com.eprajaentregador.ACTION_CALL_REJECTED";
@@ -59,6 +60,12 @@ public class IncomingCallActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
 
+        android.os.PowerManager powerManager = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (powerManager != null) {
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.FULL_WAKE_LOCK | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "DeliveryApp:IncomingCall");
+            wakeLock.acquire(30000); // 30 seconds max
+        }
+
         setContentView(R.layout.activity_incoming_call);
 
         TextView tvDetails = findViewById(R.id.tvCallDetails);
@@ -94,28 +101,33 @@ public class IncomingCallActivity extends Activity {
         }
 
         btnAccept.setOnClickListener(v -> {
-            // Broadcast acceptance
-            Intent intent = new Intent(ACTION_CALL_ACCEPTED);
-            if (deliveryId != null) {
-                intent.putExtra("deliveryId", deliveryId);
-            }
-            sendBroadcast(intent);
-            
-            // Bring main app to foreground
+            // Bring main app to foreground first
             Intent mainIntent = new Intent(this, MainActivity.class);
             mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(mainIntent);
+
+            // Delay broadcast so WebView has time to resume
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                Intent intent = new Intent(ACTION_CALL_ACCEPTED);
+                if (deliveryId != null) {
+                    intent.putExtra("deliveryId", deliveryId);
+                }
+                sendBroadcast(intent);
+            }, 1500);
             
             finish();
         });
 
         btnReject.setOnClickListener(v -> {
-            // Broadcast rejection
-            Intent intent = new Intent(ACTION_CALL_REJECTED);
-            if (deliveryId != null) {
-                intent.putExtra("deliveryId", deliveryId);
-            }
-            sendBroadcast(intent);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                Intent intent = new Intent(ACTION_CALL_REJECTED);
+                if (deliveryId != null) {
+                    intent.putExtra("deliveryId", deliveryId);
+                }
+                sendBroadcast(intent);
+            }, 1000);
+            
+            // Optional: Also bring app to foreground or just dismiss
             finish();
         });
     }
@@ -141,6 +153,9 @@ public class IncomingCallActivity extends Activity {
             unregisterReceiver(cancelReceiver);
         } catch (Exception e) {
             // Ignore
+        }
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
         }
     }
 }

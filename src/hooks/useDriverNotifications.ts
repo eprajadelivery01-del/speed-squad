@@ -190,12 +190,10 @@ export function useDriverNotifications() {
              }
 
              if (Capacitor.isNativePlatform()) {
-               import("@/plugins/DeliveryOverlay").then(({ DeliveryOverlay }) => {
-                 DeliveryOverlay.testIncomingCall({
-                   details: immediateDesc,
-                   deliveryId: deliveryId
-                 }).catch(e => console.warn("Erro ao acordar tela via FCM:", e));
-               });
+               DeliveryOverlay.testIncomingCall({
+                 details: immediateDesc,
+                 deliveryId: deliveryId
+               }).catch(e => console.warn("Erro ao acordar tela via FCM:", e));
              }
           }
         });
