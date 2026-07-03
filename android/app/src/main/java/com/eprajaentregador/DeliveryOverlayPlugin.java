@@ -1,4 +1,4 @@
-package com.eprajaentregador;
+﻿package com.eprajaentregador;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -17,6 +17,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "DeliveryOverlay")
 public class DeliveryOverlayPlugin extends Plugin {
 
+    public static DeliveryOverlayPlugin instance;
     public static String latestDetails = "";
     public static String latestDeliveryId = "";
 
@@ -42,6 +43,7 @@ public class DeliveryOverlayPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
+        instance = this;
         IntentFilter filter = new IntentFilter();
         filter.addAction(IncomingCallActivity.ACTION_CALL_ACCEPTED);
         filter.addAction(IncomingCallActivity.ACTION_CALL_REJECTED);
@@ -51,6 +53,15 @@ public class DeliveryOverlayPlugin extends Plugin {
         } else {
             getContext().registerReceiver(callReceiver, filter);
         }
+    }
+
+    public void triggerCallResponse(String status, String deliveryId) {
+        JSObject ret = new JSObject();
+        if (deliveryId != null) {
+            ret.put("deliveryId", deliveryId);
+        }
+        ret.put("status", status);
+        notifyListeners("onCallResponse", ret);
     }
 
     @PluginMethod
@@ -113,17 +124,32 @@ public class DeliveryOverlayPlugin extends Plugin {
         String deliveryId = call.getString("deliveryId", "");
         latestDetails = details;
         latestDeliveryId = deliveryId;
-        Intent intent = new Intent(IncomingCallActivity.ACTION_UPDATE_CALL);
-        intent.putExtra("details", details);
-        intent.putExtra("deliveryId", deliveryId);
-        getContext().sendBroadcast(intent);
+        
+        if (IncomingCallActivity.instance != null) {
+            IncomingCallActivity.instance.runOnUiThread(() -> {
+                IncomingCallActivity.instance.updateDetails(details, deliveryId);
+            });
+        } else {
+            Intent intent = new Intent(IncomingCallActivity.ACTION_UPDATE_CALL);
+            intent.putExtra("details", details);
+            intent.putExtra("deliveryId", deliveryId);
+            intent.setPackage(getContext().getPackageName()); // FORÇA EXPLICITO
+            getContext().sendBroadcast(intent);
+        }
         call.resolve();
     }
 
     @PluginMethod
     public void dismissIncomingCall(PluginCall call) {
-        Intent intent = new Intent(IncomingCallActivity.ACTION_CANCEL_CALL);
-        getContext().sendBroadcast(intent);
+        if (IncomingCallActivity.instance != null) {
+            IncomingCallActivity.instance.runOnUiThread(() -> {
+                IncomingCallActivity.instance.finish();
+            });
+        } else {
+            Intent intent = new Intent(IncomingCallActivity.ACTION_CANCEL_CALL);
+            intent.setPackage(getContext().getPackageName());
+            getContext().sendBroadcast(intent);
+        }
         call.resolve();
     }
 }

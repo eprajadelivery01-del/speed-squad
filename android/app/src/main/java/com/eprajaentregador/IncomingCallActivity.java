@@ -1,4 +1,4 @@
-package com.eprajaentregador;
+﻿package com.eprajaentregador;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -9,63 +9,61 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.IntentFilter;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
+import android.media.MediaPlayer;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 
-import android.media.MediaPlayer;
-
 public class IncomingCallActivity extends Activity {
 
+    public static IncomingCallActivity instance;
     private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
     private android.os.PowerManager.WakeLock wakeLock;
+    private String currentDeliveryId = "";
 
     public static final String ACTION_CALL_ACCEPTED = "com.eprajaentregador.ACTION_CALL_ACCEPTED";
     public static final String ACTION_CALL_REJECTED = "com.eprajaentregador.ACTION_CALL_REJECTED";
     public static final String ACTION_CANCEL_CALL = "com.eprajaentregador.ACTION_CANCEL_CALL";
     public static final String ACTION_UPDATE_CALL = "com.eprajaentregador.ACTION_UPDATE_CALL";
 
-    private BroadcastReceiver cancelReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (ACTION_CANCEL_CALL.equals(intent.getAction())) {
-                finish();
-            }
-        }
-    };
-
     private BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (ACTION_UPDATE_CALL.equals(intent.getAction())) {
                 String details = intent.getStringExtra("details");
-                if (details != null && !details.isEmpty()) {
-                    TextView tvDetails = findViewById(R.id.tvCallDetails);
-                    if (tvDetails != null) {
-                        tvDetails.setText(details);
-                    }
-                }
+                String deliveryId = intent.getStringExtra("deliveryId");
+                updateDetails(details, deliveryId);
+            } else if (ACTION_CANCEL_CALL.equals(intent.getAction())) {
+                finish();
             }
         }
     };
 
+    public void updateDetails(String details, String deliveryId) {
+        if (deliveryId != null && !deliveryId.isEmpty()) {
+            currentDeliveryId = deliveryId;
+        }
+        if (details != null && !details.isEmpty()) {
+            TextView tvDetails = findViewById(R.id.tvCallDetails);
+            if (tvDetails != null) {
+                tvDetails.setText(details);
+            }
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        instance = this;
 
-        IntentFilter filter = new IntentFilter(ACTION_CANCEL_CALL);
-        IntentFilter updateFilter = new IntentFilter(ACTION_UPDATE_CALL);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_UPDATE_CALL);
+        filter.addAction(ACTION_CANCEL_CALL);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(cancelReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-            registerReceiver(updateReceiver, updateFilter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(cancelReceiver, filter);
-            registerReceiver(updateReceiver, updateFilter);
+            registerReceiver(updateReceiver, filter);
         }
 
         // Turn screen on and show when locked
@@ -91,7 +89,7 @@ public class IncomingCallActivity extends Activity {
         Button btnAccept = findViewById(R.id.btnAccept);
         Button btnReject = findViewById(R.id.btnReject);
 
-        // Start ringing with custom app sound
+        // Start ringing
         try {
             mediaPlayer = MediaPlayer.create(this, R.raw.ring);
             if (mediaPlayer != null) {
@@ -112,51 +110,49 @@ public class IncomingCallActivity extends Activity {
             }
         }
 
-        // Retrieve data passed from notification/plugin
         String details = getIntent().getStringExtra("details");
-        String deliveryId = getIntent().getStringExtra("deliveryId");
+        currentDeliveryId = getIntent().getStringExtra("deliveryId");
         
         if (DeliveryOverlayPlugin.latestDetails != null && !DeliveryOverlayPlugin.latestDetails.isEmpty()) {
             details = DeliveryOverlayPlugin.latestDetails;
         }
         if (DeliveryOverlayPlugin.latestDeliveryId != null && !DeliveryOverlayPlugin.latestDeliveryId.isEmpty()) {
-            deliveryId = DeliveryOverlayPlugin.latestDeliveryId;
+            currentDeliveryId = DeliveryOverlayPlugin.latestDeliveryId;
         }
 
-        if (details != null && !details.isEmpty()) {
-            tvDetails.setText(details);
-        }
-
-        final String finalDeliveryId = deliveryId; // effectively final for lambdas
+        updateDetails(details, currentDeliveryId);
 
         btnAccept.setOnClickListener(v -> {
-            // Bring main app to foreground first
             Intent mainIntent = new Intent(this, MainActivity.class);
             mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(mainIntent);
 
-            // Aguarda o Capacitor inicializar antes de disparar o evento pro Javascript
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                Intent intent = new Intent(ACTION_CALL_ACCEPTED);
-                if (finalDeliveryId != null) {
-                    intent.putExtra("deliveryId", finalDeliveryId);
+                if (DeliveryOverlayPlugin.instance != null) {
+                    DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", currentDeliveryId);
+                } else {
+                    Intent intent = new Intent(ACTION_CALL_ACCEPTED);
+                    intent.putExtra("deliveryId", currentDeliveryId);
+                    intent.setPackage(getPackageName());
+                    sendBroadcast(intent);
                 }
-                sendBroadcast(intent);
-            }, 3500);
+            }, 1000); // 1000ms is enough because JS is alive and static instance is immediate
             
             finish();
         });
 
         btnReject.setOnClickListener(v -> {
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                Intent intent = new Intent(ACTION_CALL_REJECTED);
-                if (finalDeliveryId != null) {
-                    intent.putExtra("deliveryId", finalDeliveryId);
+                if (DeliveryOverlayPlugin.instance != null) {
+                    DeliveryOverlayPlugin.instance.triggerCallResponse("rejected", currentDeliveryId);
+                } else {
+                    Intent intent = new Intent(ACTION_CALL_REJECTED);
+                    intent.putExtra("deliveryId", currentDeliveryId);
+                    intent.setPackage(getPackageName());
+                    sendBroadcast(intent);
                 }
-                sendBroadcast(intent);
-            }, 1500);
+            }, 500);
             
-            // Optional: Also bring app to foreground or just dismiss
             finish();
         });
     }
@@ -177,9 +173,9 @@ public class IncomingCallActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (instance == this) instance = null;
         stopRinging();
         try {
-            unregisterReceiver(cancelReceiver);
             unregisterReceiver(updateReceiver);
         } catch (Exception e) {
             // Ignore
