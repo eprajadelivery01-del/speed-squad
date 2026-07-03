@@ -175,7 +175,7 @@ export function useDriverNotifications() {
               try {
                  const { data } = await supabase
                    .from("deliveries")
-                   .select("*, companies!deliveries_company_id_fkey(name)")
+                   .select("*, companies!deliveries_company_id_fkey(name), orders(delivery_fee)")
                    .eq("id", deliveryId)
                    .single();
 
@@ -186,7 +186,10 @@ export function useDriverNotifications() {
                  
                  const immediatePickup = data.pickup_address || data.origin_address || data.store_address || data.companies?.name || "Local de Coleta";
                  const immediateDropoff = data.delivery_address || data.dropoff_address || data.address || "Endereço do cliente";
-                 const immediateValue = Number(data.delivery_fee) || Number(data.value) || Number(data.price) || Number(data.total_value) || Number(data.commission) || Number(data.driver_earnings) || 0;
+                 
+                 const orderFee = data.orders?.delivery_fee ? Number(data.orders.delivery_fee) : 0;
+                 const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(data.delivery_fee) || 0, Number(data.value) || 0, Number(data.price) || 0, Number(data.total_value) || 0);
+                 
                  immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
               } catch (e) {
                  console.warn("Erro validando FCM status:", e);
@@ -249,25 +252,10 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // --- ACORDAR A TELA IMEDIATAMENTE ANTES DO AWAIT ---
-      // O Android dá apenas alguns milissegundos para disparar uma Activity quando em background.
-      // Se esperarmos a query do supabase, a janela de tempo fecha e a tela não acende!
-      const immediatePickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || "Local de Coleta";
-      const immediateDropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
-      const immediateValue = Number(rawDelivery.delivery_fee) || Number(rawDelivery.value) || Number(rawDelivery.price) || Number(rawDelivery.total_value) || Number(rawDelivery.commission) || Number(rawDelivery.driver_earnings) || 0;
-      const immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
-      
-      if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.testIncomingCall({
-          details: immediateDesc,
-          deliveryId: rawDelivery.id
-        }).catch(e => console.warn("Erro ao acordar tela (imediato):", e));
-      }
-
       // Busca os dados completos da corrida (nome da loja)
       const { data: fullDelivery } = await supabase
         .from("deliveries")
-        .select("*, companies!deliveries_company_id_fkey(name)")
+        .select("*, companies!deliveries_company_id_fkey(name), orders(delivery_fee)")
         .eq("id", rawDelivery.id)
         .single();
         
@@ -276,10 +264,20 @@ export function useDriverNotifications() {
       const storeName = delivery.companies?.name || "Loja Parceira";
       const pickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || pickAddress(delivery);
       const dropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
-      const value = Number(delivery.delivery_fee) || Number(delivery.value) || Number(delivery.price) || Number(delivery.total_value) || 0;
+      
+      // Calculate correct value taking delivery_fee from joined orders if available
+      const orderFee = delivery.orders?.delivery_fee ? Number(delivery.orders.delivery_fee) : 0;
+      const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0);
 
       const title = "🏍️ Nova corrida disponível!";
       const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
+      
+      if (Capacitor.isNativePlatform()) {
+        DeliveryOverlay.testIncomingCall({
+          details: description,
+          deliveryId: delivery.id
+        }).catch(e => console.warn("Erro ao acordar tela (imediato):", e));
+      }
 
       // 1) Sound (looped) + vibration via hook
       try {
@@ -468,6 +466,7 @@ export function useDriverNotifications() {
                   toast({ title: "❌ Erro", description: "Não foi possível confirmar o aceite na tela bloqueada." });
                 } else {
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
+                  queryClient.invalidateQueries({ queryKey: ["deliveries"] });
                 }
               }).catch(e => {
                  console.warn("Exception no safeRpc lock screen:", e);
