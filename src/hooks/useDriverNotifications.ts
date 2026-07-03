@@ -170,31 +170,34 @@ export function useDriverNotifications() {
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
              // WAKE UP THE SCREEN IMMEDIATELY
-             const immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
+              let immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
 
-             // Evitar o bombardeio: Verifica no banco se a corrida AINDA está pendente. 
-             // Pushes do FCM podem chegar com atraso ou quando o celular acabou de conectar à internet.
-             try {
-                const { data } = await supabase
-                  .from("deliveries")
-                  .select("status, driver_id")
-                  .eq("id", deliveryId)
-                  .single();
+              try {
+                 const { data } = await supabase
+                   .from("deliveries")
+                   .select("*, companies!deliveries_company_id_fkey(name)")
+                   .eq("id", deliveryId)
+                   .single();
 
-                if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
-                    console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
-                    return;
-                }
-             } catch (e) {
-                console.warn("Erro validando FCM status:", e);
-             }
+                 if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
+                     console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
+                     return;
+                 }
+                 
+                 const immediatePickup = data.pickup_address || data.origin_address || data.store_address || data.companies?.name || "Local de Coleta";
+                 const immediateDropoff = data.delivery_address || data.dropoff_address || data.address || "Endereço do cliente";
+                 const immediateValue = Number(data.delivery_fee) || Number(data.value) || Number(data.price) || Number(data.total_value) || Number(data.commission) || Number(data.driver_earnings) || 0;
+                 immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+              } catch (e) {
+                 console.warn("Erro validando FCM status:", e);
+              }
 
-             if (Capacitor.isNativePlatform()) {
-               DeliveryOverlay.testIncomingCall({
-                 details: immediateDesc,
-                 deliveryId: deliveryId
-               }).catch(e => console.warn("Erro ao acordar tela via FCM:", e));
-             }
+              if (Capacitor.isNativePlatform()) {
+                DeliveryOverlay.testIncomingCall({
+                  details: immediateDesc,
+                  deliveryId: deliveryId
+                }).catch(e => console.warn("Erro ao acordar tela via FCM:", e));
+              }
           }
         });
       } catch (e) {
@@ -448,45 +451,28 @@ export function useDriverNotifications() {
               stopAlert();
               activeAlertsRef.current.delete(deliveryId);
               
-              try {
-                const { data, error } = await safeRpc("update_delivery_status_safe", {
-                  p_delivery_id: deliveryId,
-                  p_status: "accepted",
-                  p_driver_id: driverId,
-                });
-                if (!error && data && (data as any).success) {
-                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-                  acceptDeliveryLocally(deliveryId);
-                  toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
-                  updateNotificationStatus(deliveryId, "accepted");
-                  return;
-                }
-              } catch (e) {
-                 console.warn("safeRpc accept falhou no lock screen:", e);
-              }
-
-              const { error, data: restData } = await supabase
-                .from("deliveries")
-                .update({ status: "accepted", driver_id: driverId })
-                .eq("id", deliveryId)
-                .in("status", ["pending", "broadcasted"])
-                .is("driver_id", null)
-                .select("id");
+              // EAGER LOCAL ACCEPT: Oculta da UI imediatamente
+              window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+              acceptDeliveryLocally(deliveryId);
+              updateNotificationStatus(deliveryId, "accepted");
               
-              if (error) {
-                const { title, description } = translateDeliveryError(error, "accept");
-                toast({ title, description, variant: "destructive" });
-              } else if (!restData || restData.length === 0) {
-                toast({ title: "Ops! Já foi aceita.", description: "Outro entregador aceitou antes de você.", variant: "destructive" });
-                window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-                declineDeliveryLocally(deliveryId);
-                updateNotificationStatus(deliveryId, "rejected");
-              } else {
-                window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-                acceptDeliveryLocally(deliveryId);
-                toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
-                updateNotificationStatus(deliveryId, "accepted");
-              }
+              // Executa a requisição no background de forma não bloqueante (Fire and Forget)
+              safeRpc("update_delivery_status_safe", {
+                p_delivery_id: deliveryId,
+                p_status: "accepted",
+                p_driver_id: driverId,
+              }).then(({ data, error }) => {
+                if (error || !data || !(data as any).success) {
+                  // Se falhar de verdade (e.g. corrida roubada ou erro de rede)
+                  console.warn("safeRpc accept falhou no lock screen:", error);
+                  toast({ title: "❌ Erro", description: "Não foi possível confirmar o aceite na tela bloqueada." });
+                } else {
+                  toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
+                }
+              }).catch(e => {
+                 console.warn("Exception no safeRpc lock screen:", e);
+              });
+              
             } else if (response.status === "rejected") {
               window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
               declineDeliveryLocally(deliveryId);
