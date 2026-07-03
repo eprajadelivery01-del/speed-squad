@@ -398,6 +398,8 @@ export function useDriverNotifications() {
                     p_driver_id: driverId,
                   });
                   if (!error && data && (data as any).success) {
+                    window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+                    acceptDeliveryLocally(deliveryId);
                     toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
                     updateNotificationStatus(deliveryId, "accepted");
                     return;
@@ -418,13 +420,17 @@ export function useDriverNotifications() {
                   toast({ title, description, variant: "destructive" });
                 } else if (!data || data.length === 0) {
                   toast({ title: "Ops! Já foi aceita.", description: "Outro entregador aceitou antes de você.", variant: "destructive" });
+                  window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
                   declineDeliveryLocally(deliveryId);
                   updateNotificationStatus(deliveryId, "rejected");
                 } else {
+                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+                  acceptDeliveryLocally(deliveryId);
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
                   updateNotificationStatus(deliveryId, "accepted");
                 }
               } else if (action.actionId === "reject") {
+                window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
                 declineDeliveryLocally(deliveryId);
                 updateNotificationStatus(deliveryId, "rejected");
               }
@@ -439,8 +445,6 @@ export function useDriverNotifications() {
             const deliveryId = response.deliveryId;
             
             if (response.status === "accepted") {
-              window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-              acceptDeliveryLocally(deliveryId);
               stopAlert();
               activeAlertsRef.current.delete(deliveryId);
               
@@ -451,11 +455,15 @@ export function useDriverNotifications() {
                   p_driver_id: driverId,
                 });
                 if (!error && data && (data as any).success) {
+                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+                  acceptDeliveryLocally(deliveryId);
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
                   updateNotificationStatus(deliveryId, "accepted");
                   return;
                 }
-              } catch {}
+              } catch (e) {
+                 console.warn("safeRpc accept falhou no lock screen:", e);
+              }
 
               const { error, data: restData } = await supabase
                 .from("deliveries")
@@ -470,9 +478,12 @@ export function useDriverNotifications() {
                 toast({ title, description, variant: "destructive" });
               } else if (!restData || restData.length === 0) {
                 toast({ title: "Ops! Já foi aceita.", description: "Outro entregador aceitou antes de você.", variant: "destructive" });
+                window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
                 declineDeliveryLocally(deliveryId);
                 updateNotificationStatus(deliveryId, "rejected");
               } else {
+                window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+                acceptDeliveryLocally(deliveryId);
                 toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
                 updateNotificationStatus(deliveryId, "accepted");
               }
@@ -480,6 +491,8 @@ export function useDriverNotifications() {
               window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
               declineDeliveryLocally(deliveryId);
               updateNotificationStatus(deliveryId, "rejected");
+              stopAlert();
+              activeAlertsRef.current.delete(deliveryId);
             }
           }
         );

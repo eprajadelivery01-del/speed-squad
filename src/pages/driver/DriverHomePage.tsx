@@ -17,7 +17,7 @@ import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
-import { declineDeliveryLocally } from "@/hooks/useDriverNotifications";
+import { declineDeliveryLocally, acceptDeliveryLocally, getAcceptedDeliveries, getDeclinedDeliveries } from "@/hooks/useDriverNotifications";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -49,7 +49,9 @@ export default function DriverHomePage() {
     return end.toISOString();
   }, []);
 
-  const [rejectedLocalIds, setRejectedLocalIds] = useState<string[]>([]);
+  const [rejectedLocalIds, setRejectedLocalIds] = useState<string[]>(() => {
+    return Array.from(getDeclinedDeliveries());
+  });
   const [activeIncomingOrder, setActiveIncomingOrder] = useState<any>(null);
 
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
@@ -320,7 +322,11 @@ export default function DriverHomePage() {
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
   const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
 
-  const [acceptedLocalIds, setAcceptedLocalIds] = useState<string[]>([]);
+  const [acceptedLocalIds, setAcceptedLocalIds] = useState<string[]>(() => {
+    return Array.from(getAcceptedDeliveries());
+  });
+
+
 
   useEffect(() => {
     // Encontra a primeira corrida válida que não foi rejeitada nem aceita localmente
@@ -345,7 +351,7 @@ export default function DriverHomePage() {
       }
     };
     const handleNativeReject = (e: any) => {
-      const id = e.detail?.id;
+      const id = e.detail?.id || e.detail?.deliveryId;
       if (id) {
         setRejectedLocalIds(prev => [...prev, id]);
         if (activeIncomingOrder?.id === id) {
@@ -371,6 +377,8 @@ export default function DriverHomePage() {
   };
 
   const handleAcceptLocal = (deliveryId: string) => {
+    setAcceptedLocalIds(prev => [...prev, deliveryId]);
+    acceptDeliveryLocally(deliveryId);
     handleAcceptDelivery(deliveryId);
     setActiveIncomingOrder(null);
   };
