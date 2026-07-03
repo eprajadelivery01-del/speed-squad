@@ -1,4 +1,4 @@
-﻿package com.eprajaentregador;
+package com.eprajaentregador;
 
 import android.app.Activity;
 import android.content.Intent;

@@ -1,4 +1,4 @@
-﻿package com.eprajaentregador;
+package com.eprajaentregador;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
