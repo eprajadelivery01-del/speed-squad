@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateProfile, uploadAvatar } from "@/services/users";
@@ -258,7 +258,7 @@ export default function ProfilePage() {
                 <option value="today">Hoje</option>
                 <option value="yesterday">Ontem</option>
                 <option value="week">Semana</option>
-                <option value="month">MÃªs</option>
+                <option value="month">Mês</option>
                 <option value="custom">Outro</option>
               </select>
             </div>
@@ -275,7 +275,7 @@ export default function ProfilePage() {
             <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-5 mb-4 border border-emerald-100 dark:border-emerald-900/50">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Seu Ganho LÃ­quido</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Seu Ganho Líquido</p>
                   <p className="text-[11px] font-medium text-emerald-700/70 dark:text-emerald-400/70">Livre de taxas</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -293,7 +293,7 @@ export default function ProfilePage() {
                 <Package className="h-5 w-5 text-slate-400 dark:text-zinc-500 mb-3" />
                 <div>
                   <p className="text-xl font-black text-slate-800 dark:text-zinc-100">{driverStats.periodDeliveries}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">Corridas ConcluÃ­das</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">Corridas Concluídas</p>
                 </div>
               </div>
 
