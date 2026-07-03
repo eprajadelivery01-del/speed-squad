@@ -60,9 +60,9 @@ export default function DriverHomePage() {
     if (Capacitor.isNativePlatform()) {
       const initOverlay = async () => {
         try {
-          await DeliveryOverlay.requestOverlayPermission();
+          await (window as any).DeliveryOverlay.requestOverlayPermission();
           setTimeout(() => {
-             DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
+             (window as any).DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
           }, 1000);
         } catch(e) {}
       };
@@ -70,9 +70,9 @@ export default function DriverHomePage() {
 
       const listener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
-            DeliveryOverlay.startOverlay().catch(() => {
+            (window as any).DeliveryOverlay.startOverlay().catch(() => {
               // Se falhar ao iniciar (sem permissão), pede a permissão novamente
-              DeliveryOverlay.requestOverlayPermission().catch((e) => console.warn("Erro ao pedir overlay:", e));
+              (window as any).DeliveryOverlay.requestOverlayPermission().catch((e) => console.warn("Erro ao pedir overlay:", e));
             });
         }
       });
@@ -669,3 +669,4 @@ export default function DriverHomePage() {
     </DriverLayout>
   );
 }
+

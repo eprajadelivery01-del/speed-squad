@@ -52,3 +52,8 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = {
     return DeliveryOverlayPluginRaw.addListener(eventName, listenerFunc);
   }
 };
+
+if (typeof window !== 'undefined') {
+  (window as any).DeliveryOverlay = DeliveryOverlay;
+}
+

@@ -170,7 +170,7 @@ export function useDriverNotifications() {
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
               if (Capacitor.isNativePlatform()) {
-                DeliveryOverlay.testIncomingCall({
+                (window as any).DeliveryOverlay.testIncomingCall({
                   details: "Nova Entrega\nBuscando detalhes da loja...",
                   deliveryId: deliveryId
                 }).catch(e => console.warn("Erro ao acordar tela via FCM (imediato):", e));
@@ -189,7 +189,7 @@ export function useDriverNotifications() {
                      console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
                      // Atualiza para fechar a tela que abrimos acima se a corrida não for mais válida
                      if (Capacitor.isNativePlatform()) {
-                         DeliveryOverlay.dismissIncomingCall().catch(console.warn);
+                         (window as any).DeliveryOverlay.dismissIncomingCall().catch(console.warn);
                      }
                      return;
                  }
@@ -206,7 +206,7 @@ export function useDriverNotifications() {
               }
 
               if (Capacitor.isNativePlatform()) {
-                DeliveryOverlay.updateIncomingCall({
+                (window as any).DeliveryOverlay.updateIncomingCall({
                   details: immediateDesc,
                   deliveryId: deliveryId
                 }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
@@ -267,7 +267,7 @@ export function useDriverNotifications() {
       // Portanto, abrimos o popup primeiro e depois atualizamos ao vivo!
       const immediateDesc = "Nova Entrega\nBuscando detalhes da loja...";
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.testIncomingCall({
+        (window as any).DeliveryOverlay.testIncomingCall({
           details: immediateDesc,
           deliveryId: rawDelivery.id
         }).catch(e => console.warn("Erro ao acordar tela (imediato):", e));
@@ -294,7 +294,7 @@ export function useDriverNotifications() {
       const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.updateIncomingCall({
+        (window as any).DeliveryOverlay.updateIncomingCall({
           details: description,
           deliveryId: delivery.id
         }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
@@ -461,7 +461,7 @@ export function useDriverNotifications() {
         );
 
         // Listener para os botões do Popup Nativo (Tela Bloqueada)
-        overlayListener = await DeliveryOverlay.addListener(
+        overlayListener = await (window as any).DeliveryOverlay.addListener(
           "onCallResponse",
           async (response) => {
             const deliveryId = response.deliveryId;
@@ -718,3 +718,4 @@ export function useDriverNotifications() {
     };
   }, [user, toast, playAlert, stopAlert, addNotification, updateNotificationStatus]);
 }
+
