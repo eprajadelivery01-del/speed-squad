@@ -321,7 +321,7 @@ export default function ProfilePage() {
                 <Star className="h-5 w-5 text-amber-400 mb-3" />
                 <div>
                   <p className="text-xl font-black text-slate-800 dark:text-zinc-100">{driverStats.deliveries}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">Total HistÃ³rico</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">Total Histórico</p>
                 </div>
               </div>
             </div>
@@ -332,10 +332,10 @@ export default function ProfilePage() {
                 <h4 className="text-xs font-black uppercase text-slate-700 dark:text-zinc-300">Entenda seus ganhos</h4>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
-                VocÃª recebe <strong className="text-slate-700 dark:text-zinc-200">100% da Taxa de Entrega</strong> paga pelo cliente. A plataforma cobra apenas <strong className="text-slate-700 dark:text-zinc-200">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> de repasse por cada entrega concluÃ­da.
+                Você recebe <strong className="text-slate-700 dark:text-zinc-200">100% da Taxa de Entrega</strong> paga pelo cliente. A plataforma cobra apenas <strong className="text-slate-700 dark:text-zinc-200">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> de repasse por cada entrega concluída.
               </p>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium mt-1">
-                Lembre-se de realizar o pagamento do repasse via Pix na aba Suporte para evitar bloqueios automÃ¡ticos da sua conta.
+                Lembre-se de realizar o pagamento do repasse via Pix na aba Suporte para evitar bloqueios automáticos da sua conta.
               </p>
             </div>
           </div>
@@ -353,7 +353,7 @@ export default function ProfilePage() {
               <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
                 <ShieldCheck className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
               </div>
-              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">PolÃ­tica de Privacidade</span>
+              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">Política de Privacidade</span>
               <ChevronRight className="h-4 w-4 text-slate-300 dark:text-zinc-600" />
             </button>
             <button onClick={signOut} className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">

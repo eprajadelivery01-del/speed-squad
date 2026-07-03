@@ -62,7 +62,7 @@ export default function DriverHomePage() {
         try {
           await DeliveryOverlay.requestOverlayPermission();
           setTimeout(() => {
-             DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissÃƒÂ£o:", e));
+             DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissÃƒÆ’Ã‚Â£o:", e));
           }, 1000);
         } catch(e) {}
       };
@@ -71,7 +71,7 @@ export default function DriverHomePage() {
       const listener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
             DeliveryOverlay.startOverlay().catch(() => {
-              // Se falhar ao iniciar (sem permissÃƒÂ£o), pede a permissÃƒÂ£o novamente
+              // Se falhar ao iniciar (sem permissÃƒÆ’Ã‚Â£o), pede a permissÃƒÆ’Ã‚Â£o novamente
               DeliveryOverlay.requestOverlayPermission().catch((e) => console.warn("Erro ao pedir overlay:", e));
             });
         }
@@ -248,17 +248,17 @@ export default function DriverHomePage() {
       
       if (!error) {
         startTracking(driverRecord.id);
-        toast({ title: "VocÃƒÂª estÃƒÂ¡ online!" });
+        toast({ title: "VocÃƒÆ’Ã‚Âª estÃƒÆ’Ã‚Â¡ online!" });
         setIsOnline(true);
       } else {
-        toast({ title: "Erro", description: "Falha de conexÃƒÂ£o. Tente novamente.", variant: "destructive" });
+        toast({ title: "Erro", description: "Falha de conexÃƒÆ’Ã‚Â£o. Tente novamente.", variant: "destructive" });
       }
       setLoading(false);
     }
   };
 
   const handleToggle = async () => {
-    unlockAudio(); // Destrava o ÃƒÂ¡udio no clique do usuÃƒÂ¡rio
+    unlockAudio(); // Destrava o ÃƒÆ’Ã‚Â¡udio no clique do usuÃƒÆ’Ã‚Â¡rio
     sessionStorage.setItem("sound_enabled", "true");
     sessionStorage.setItem("epj_sound_enabled", "true");
     
@@ -290,10 +290,10 @@ export default function DriverHomePage() {
       is_online: newStatus,
     }).eq("id", currentDriverRecord.id);
     
-    if (error) { toast({ title: "Erro", description: "Falha de conexÃƒÂ£o. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
+    if (error) { toast({ title: "Erro", description: "Falha de conexÃƒÆ’Ã‚Â£o. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
     
-    if (newStatus) { startTracking(currentDriverRecord.id); toast({ title: "VocÃƒÂª estÃƒÂ¡ online!" }); }
-    else { stopTracking(); toast({ title: "VocÃƒÂª estÃƒÂ¡ offline" }); }
+    if (newStatus) { startTracking(currentDriverRecord.id); toast({ title: "VocÃƒÆ’Ã‚Âª estÃƒÆ’Ã‚Â¡ online!" }); }
+    else { stopTracking(); toast({ title: "VocÃƒÆ’Ã‚Âª estÃƒÆ’Ã‚Â¡ offline" }); }
     
     setIsOnline(newStatus);
     setLoading(false);
@@ -308,7 +308,7 @@ export default function DriverHomePage() {
         onSuccess: () => {
           window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
           setActiveIncomingOrder(null);
-          toast({ title: "Ã¢Å“â€¦ Corrida aceita!", description: "VÃƒÂ¡ atÃƒÂ© o local de retirada." });
+          toast({ title: "ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Corrida aceita!", description: "VÃƒÆ’Ã‚Â¡ atÃƒÆ’Ã‚Â© o local de retirada." });
         },
         onError: (error: any) => {
           const { title, description } = translateDeliveryError(error, "accept");
@@ -329,7 +329,7 @@ export default function DriverHomePage() {
 
 
   useEffect(() => {
-    // Encontra a primeira corrida vÃƒÂ¡lida que nÃƒÂ£o foi rejeitada nem aceita localmente
+    // Encontra a primeira corrida vÃƒÆ’Ã‚Â¡lida que nÃƒÆ’Ã‚Â£o foi rejeitada nem aceita localmente
     const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id) && !acceptedLocalIds.includes(del.id));
     
     if (nextOrder && !activeIncomingOrder) {
@@ -393,13 +393,14 @@ export default function DriverHomePage() {
         />
       )}
       <main className="flex-1 p-4 pb-24">
+        <div className="flex flex-col gap-5">
         {/* Greeting */}
         <div>
           <h2 className="text-2xl font-extrabold text-foreground">
-            Olá, {firstName || "Entregador"} 👋
+            OlÃ¡, {firstName || "Entregador"} ðŸ‘‹
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isOnline ? "Você está recebendo corridas" : "Fique online para receber corridas"}
+            {isOnline ? "VocÃª estÃ¡ recebendo corridas" : "Fique online para receber corridas"}
           </p>
         </div>
 
@@ -453,7 +454,7 @@ export default function DriverHomePage() {
           <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5">
             <MapPin className="h-4 w-4 text-primary shrink-0" />
             <p className="text-sm font-semibold text-foreground">
-              {isDetecting ? "📍 Detectando localização..." : selectedCity ? `📍 ${selectedCity}` : "📍 Aguardando GPS..."}
+              {isDetecting ? "ðŸ“ Detectando localizaÃ§Ã£o..." : selectedCity ? `ðŸ“ ${selectedCity}` : "ðŸ“ Aguardando GPS..."}
             </p>
           </div>
         )}
@@ -469,7 +470,7 @@ export default function DriverHomePage() {
           </div>
           <div className="bg-card rounded-2xl p-4 border border-border">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-              <span className="text-xs">💰</span>
+              <span className="text-xs">ðŸ’°</span>
               <p className="text-[10px] font-bold uppercase tracking-wide">Ganhos hoje</p>
             </div>
             <p className="text-2xl font-extrabold text-primary">R$ {stats.todayEarnings.toFixed(2)}</p>
@@ -478,7 +479,7 @@ export default function DriverHomePage() {
 
         {/* Commission Platform Rate */}
         <div className="text-center bg-card/40 border border-border/50 rounded-2xl py-2.5 px-4 text-xs font-semibold text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Comissão plataforma: <span className="text-primary font-black">R$ {commissionRate.toFixed(2).replace('.', ',')}</span> por corrida</span>
+          <span>ComissÃ£o plataforma: <span className="text-primary font-black">R$ {commissionRate.toFixed(2).replace('.', ',')}</span> por corrida</span>
           <span>Saldo devido: <span className="text-destructive font-black">R$ {(stats.todayCount * commissionRate).toFixed(2).replace('.', ',')}</span></span>
         </div>
 
@@ -487,7 +488,7 @@ export default function DriverHomePage() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
-                🔥 Corridas disponíveis
+                ðŸ”¥ Corridas disponÃ­veis
                 {broadcastDeliveries.length > 0 && (
                   <span className="ml-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                     {broadcastDeliveries.length}
@@ -508,14 +509,14 @@ export default function DriverHomePage() {
             ) : broadcastDeliveries.length === 0 ? (
               <div className="bg-primary/10 border border-primary/20 rounded-2xl px-4 py-3.5 text-center">
                 <p className="text-sm font-bold text-foreground">Aguardando novas corridas...</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Você será notificado quando houver entregas</p>
+                <p className="text-xs text-muted-foreground mt-0.5">VocÃª serÃ¡ notificado quando houver entregas</p>
               </div>
             ) : (
               <div className="grid gap-3">
                 {broadcastDeliveries.map((del: any) => {
                   const hasPago = del.notes?.includes("[PAGO]");
                   const hasReceber = del.notes?.includes("[RECEBER:");
-                  const paymentBadge = hasPago ? "✅ PAGO" : hasReceber ? del.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
+                  const paymentBadge = hasPago ? "âœ… PAGO" : hasReceber ? del.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
                   
                   let cleanNotes = del.notes || "";
                   if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
@@ -601,7 +602,7 @@ export default function DriverHomePage() {
                           <div className="flex-1 min-w-0">
                             {isProducts ? (
                               <>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Conteúdo do Pedido</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">ConteÃºdo do Pedido</p>
                                 <p className="text-xs font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
                                   {cleanNotes}
                                 </p>
@@ -651,6 +652,7 @@ export default function DriverHomePage() {
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
         </button>
+        </div>
       </main>
 
       {/* Floating Chat Button */}
@@ -662,7 +664,7 @@ export default function DriverHomePage() {
       </button>
 
       <LocationConsentDialog open={showConsent} onAccept={handleAcceptConsent} />
-      {/* ── BONASOFT Watermark ── */}
+      {/* â”€â”€ BONASOFT Watermark â”€â”€ */}
       <div className="mt-16 pb-8 text-center opacity-40 select-none pointer-events-none">
         <p className="text-[11px] font-black uppercase tracking-[0.6em] text-muted-foreground ml-2">BONASOFT</p>
       </div>
