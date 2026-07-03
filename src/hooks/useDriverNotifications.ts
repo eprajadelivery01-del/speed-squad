@@ -206,7 +206,7 @@ export function useDriverNotifications() {
               }
 
               if (Capacitor.isNativePlatform()) {
-                (DeliveryOverlay as any).updateIncomingCall({
+                DeliveryOverlay.updateIncomingCall({
                   details: immediateDesc,
                   deliveryId: deliveryId
                 }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
@@ -294,7 +294,7 @@ export function useDriverNotifications() {
       const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
-        (DeliveryOverlay as any).updateIncomingCall({
+        DeliveryOverlay.updateIncomingCall({
           details: description,
           deliveryId: delivery.id
         }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));

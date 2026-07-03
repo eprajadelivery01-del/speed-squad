@@ -6,6 +6,7 @@ export interface DeliveryOverlayPlugin {
   stopOverlay(): Promise<void>;
   dismissIncomingCall(): Promise<void>;
   testIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
+  updateIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
   addListener(
     eventName: 'onCallResponse',
     listenerFunc: (response: { status: 'accepted' | 'rejected'; deliveryId: string }) => void
@@ -38,6 +39,10 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = {
   testIncomingCall: async (options) => {
     if (Capacitor.getPlatform() !== 'android') return;
     return DeliveryOverlayPluginRaw.testIncomingCall(options).catch(e => console.warn('DeliveryOverlay testIncomingCall falhou', e));
+  },
+  updateIncomingCall: async (options) => {
+    if (Capacitor.getPlatform() !== 'android') return;
+    return DeliveryOverlayPluginRaw.updateIncomingCall(options).catch(e => console.warn('DeliveryOverlay updateIncomingCall falhou', e));
   },
   addListener: (eventName, listenerFunc) => {
     if (Capacitor.getPlatform() !== 'android') {

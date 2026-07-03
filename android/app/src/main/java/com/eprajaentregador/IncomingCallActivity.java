@@ -115,9 +115,19 @@ public class IncomingCallActivity extends Activity {
         // Retrieve data passed from notification/plugin
         String details = getIntent().getStringExtra("details");
         String deliveryId = getIntent().getStringExtra("deliveryId");
+        
+        if (DeliveryOverlayPlugin.latestDetails != null && !DeliveryOverlayPlugin.latestDetails.isEmpty()) {
+            details = DeliveryOverlayPlugin.latestDetails;
+        }
+        if (DeliveryOverlayPlugin.latestDeliveryId != null && !DeliveryOverlayPlugin.latestDeliveryId.isEmpty()) {
+            deliveryId = DeliveryOverlayPlugin.latestDeliveryId;
+        }
+
         if (details != null && !details.isEmpty()) {
             tvDetails.setText(details);
         }
+
+        final String finalDeliveryId = deliveryId; // effectively final for lambdas
 
         btnAccept.setOnClickListener(v -> {
             // Bring main app to foreground first
@@ -128,11 +138,11 @@ public class IncomingCallActivity extends Activity {
             // Aguarda o Capacitor inicializar antes de disparar o evento pro Javascript
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 Intent intent = new Intent(ACTION_CALL_ACCEPTED);
-                if (deliveryId != null) {
-                    intent.putExtra("deliveryId", deliveryId);
+                if (finalDeliveryId != null) {
+                    intent.putExtra("deliveryId", finalDeliveryId);
                 }
                 sendBroadcast(intent);
-            }, 1500);
+            }, 3500);
             
             finish();
         });
@@ -140,8 +150,8 @@ public class IncomingCallActivity extends Activity {
         btnReject.setOnClickListener(v -> {
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 Intent intent = new Intent(ACTION_CALL_REJECTED);
-                if (deliveryId != null) {
-                    intent.putExtra("deliveryId", deliveryId);
+                if (finalDeliveryId != null) {
+                    intent.putExtra("deliveryId", finalDeliveryId);
                 }
                 sendBroadcast(intent);
             }, 1500);

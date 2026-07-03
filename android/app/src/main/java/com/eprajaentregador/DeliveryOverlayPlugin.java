@@ -17,6 +17,9 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "DeliveryOverlay")
 public class DeliveryOverlayPlugin extends Plugin {
 
+    public static String latestDetails = "";
+    public static String latestDeliveryId = "";
+
     private BroadcastReceiver callReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -94,6 +97,8 @@ public class DeliveryOverlayPlugin extends Plugin {
     public void testIncomingCall(PluginCall call) {
         String details = call.getString("details", "Nova entrega próxima a você!");
         String deliveryId = call.getString("deliveryId", "");
+        latestDetails = details;
+        latestDeliveryId = deliveryId;
         Intent intent = new Intent(getContext(), IncomingCallActivity.class);
         intent.putExtra("details", details);
         intent.putExtra("deliveryId", deliveryId);
@@ -106,6 +111,8 @@ public class DeliveryOverlayPlugin extends Plugin {
     public void updateIncomingCall(PluginCall call) {
         String details = call.getString("details", "");
         String deliveryId = call.getString("deliveryId", "");
+        latestDetails = details;
+        latestDeliveryId = deliveryId;
         Intent intent = new Intent(IncomingCallActivity.ACTION_UPDATE_CALL);
         intent.putExtra("details", details);
         intent.putExtra("deliveryId", deliveryId);
