@@ -106,26 +106,21 @@ public class IncomingCallActivity extends Activity {
             mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(mainIntent);
 
-            // Delay broadcast so WebView has time to resume
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                Intent intent = new Intent(ACTION_CALL_ACCEPTED);
-                if (deliveryId != null) {
-                    intent.putExtra("deliveryId", deliveryId);
-                }
-                sendBroadcast(intent);
-            }, 1500);
+            Intent intent = new Intent(ACTION_CALL_ACCEPTED);
+            if (deliveryId != null) {
+                intent.putExtra("deliveryId", deliveryId);
+            }
+            sendBroadcast(intent);
             
             finish();
         });
 
         btnReject.setOnClickListener(v -> {
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                Intent intent = new Intent(ACTION_CALL_REJECTED);
-                if (deliveryId != null) {
-                    intent.putExtra("deliveryId", deliveryId);
-                }
-                sendBroadcast(intent);
-            }, 1000);
+            Intent intent = new Intent(ACTION_CALL_REJECTED);
+            if (deliveryId != null) {
+                intent.putExtra("deliveryId", deliveryId);
+            }
+            sendBroadcast(intent);
             
             // Optional: Also bring app to foreground or just dismiss
             finish();

@@ -146,6 +146,8 @@ function toast({ ...props }: Toast) {
       "e-mail ou senha",
       "senha",
       "esta corrida já foi aceita",
+      "corrida já aceita",
+      "outro entregador aceitou",
       "invalid login",
       "acesso negado",
       "exclusivo para entregadores",
