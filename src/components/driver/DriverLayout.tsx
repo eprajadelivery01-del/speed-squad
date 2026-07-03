@@ -156,9 +156,9 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   const currentTab = tabs.find(t => isActive(t.href));
 
   return (
-    <div className="h-screen bg-background flex flex-col font-sans overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-zinc-950 pb-24">
       {/* Top Header */}
-      <header className="flex-none bg-card border-b border-border px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 flex items-center justify-between">
+      <header className="bg-background border-b border-border shadow-sm px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src="/logo.png"
@@ -299,14 +299,14 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       </header>
 
       {/* Page content */}
-      <main className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-24">
+      <main className="flex-1 p-4">
         <div className="max-w-lg mx-auto">{children}</div>
       </main>
 
       {/* Bottom Navigation */}
       <nav 
-        className="sticky bottom-0 z-50 w-full border-t border-border bg-background mt-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="fixed bottom-0 z-50 w-full border-t border-border bg-background pb-6 pt-1"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex h-16 items-center justify-around px-2">
           {tabs.map((tab) => {

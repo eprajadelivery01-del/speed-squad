@@ -392,8 +392,7 @@ export default function DriverHomePage() {
           onReject={handleRejectLocal} 
         />
       )}
-      <main className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-24">
-        <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5">
           {/* Greeting */}
         <div>
           <h2 className="text-2xl font-extrabold text-foreground">
@@ -653,7 +652,6 @@ export default function DriverHomePage() {
           <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
         </button>
       </div>
-    </main>
 
       {/* Floating Chat Button */}
       <button
