@@ -169,7 +169,13 @@ export function useDriverNotifications() {
           // O payload do FCM costuma vir em notification.data
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
-             // WAKE UP THE SCREEN IMMEDIATELY
+              if (Capacitor.isNativePlatform()) {
+                DeliveryOverlay.testIncomingCall({
+                  details: "Nova Entrega\nBuscando detalhes da loja...",
+                  deliveryId: deliveryId
+                }).catch(e => console.warn("Erro ao acordar tela via FCM (imediato):", e));
+              }
+
               let immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
 
               try {
@@ -181,6 +187,10 @@ export function useDriverNotifications() {
 
                  if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
                      console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
+                     // Atualiza para fechar a tela que abrimos acima se a corrida não for mais válida
+                     if (Capacitor.isNativePlatform()) {
+                         DeliveryOverlay.dismissIncomingCall().catch(console.warn);
+                     }
                      return;
                  }
                  
@@ -190,16 +200,16 @@ export function useDriverNotifications() {
                  const orderFee = data.orders?.delivery_fee ? Number(data.orders.delivery_fee) : 0;
                  const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(data.delivery_fee) || 0, Number(data.value) || 0, Number(data.price) || 0, Number(data.total_value) || 0);
                  
-                 immediateDesc = `Nova Entrega\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+                 immediateDesc = `${data.companies?.name || "Loja Parceira"}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
               } catch (e) {
                  console.warn("Erro validando FCM status:", e);
               }
 
               if (Capacitor.isNativePlatform()) {
-                DeliveryOverlay.testIncomingCall({
+                (DeliveryOverlay as any).updateIncomingCall({
                   details: immediateDesc,
                   deliveryId: deliveryId
-                }).catch(e => console.warn("Erro ao acordar tela via FCM:", e));
+                }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
               }
           }
         });
@@ -252,6 +262,17 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
+      // --- ACORDAR A TELA IMEDIATAMENTE ANTES DO AWAIT ---
+      // O Android dá apenas alguns milissegundos para disparar uma Activity quando em background.
+      // Portanto, abrimos o popup primeiro e depois atualizamos ao vivo!
+      const immediateDesc = "Nova Entrega\nBuscando detalhes da loja...";
+      if (Capacitor.isNativePlatform()) {
+        DeliveryOverlay.testIncomingCall({
+          details: immediateDesc,
+          deliveryId: rawDelivery.id
+        }).catch(e => console.warn("Erro ao acordar tela (imediato):", e));
+      }
+
       // Busca os dados completos da corrida (nome da loja)
       const { data: fullDelivery } = await supabase
         .from("deliveries")
@@ -273,10 +294,10 @@ export function useDriverNotifications() {
       const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.testIncomingCall({
+        (DeliveryOverlay as any).updateIncomingCall({
           details: description,
           deliveryId: delivery.id
-        }).catch(e => console.warn("Erro ao acordar tela (imediato):", e));
+        }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
       }
 
       // 1) Sound (looped) + vibration via hook

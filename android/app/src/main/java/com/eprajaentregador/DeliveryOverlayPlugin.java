@@ -103,6 +103,17 @@ public class DeliveryOverlayPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void updateIncomingCall(PluginCall call) {
+        String details = call.getString("details", "");
+        String deliveryId = call.getString("deliveryId", "");
+        Intent intent = new Intent(IncomingCallActivity.ACTION_UPDATE_CALL);
+        intent.putExtra("details", details);
+        intent.putExtra("deliveryId", deliveryId);
+        getContext().sendBroadcast(intent);
+        call.resolve();
+    }
+
+    @PluginMethod
     public void dismissIncomingCall(PluginCall call) {
         Intent intent = new Intent(IncomingCallActivity.ACTION_CANCEL_CALL);
         getContext().sendBroadcast(intent);

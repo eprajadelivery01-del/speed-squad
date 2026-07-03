@@ -28,6 +28,7 @@ public class IncomingCallActivity extends Activity {
     public static final String ACTION_CALL_ACCEPTED = "com.eprajaentregador.ACTION_CALL_ACCEPTED";
     public static final String ACTION_CALL_REJECTED = "com.eprajaentregador.ACTION_CALL_REJECTED";
     public static final String ACTION_CANCEL_CALL = "com.eprajaentregador.ACTION_CANCEL_CALL";
+    public static final String ACTION_UPDATE_CALL = "com.eprajaentregador.ACTION_UPDATE_CALL";
 
     private BroadcastReceiver cancelReceiver = new BroadcastReceiver() {
         @Override
@@ -38,15 +39,33 @@ public class IncomingCallActivity extends Activity {
         }
     };
 
+    private BroadcastReceiver updateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_UPDATE_CALL.equals(intent.getAction())) {
+                String details = intent.getStringExtra("details");
+                if (details != null && !details.isEmpty()) {
+                    TextView tvDetails = findViewById(R.id.tvCallDetails);
+                    if (tvDetails != null) {
+                        tvDetails.setText(details);
+                    }
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         IntentFilter filter = new IntentFilter(ACTION_CANCEL_CALL);
+        IntentFilter updateFilter = new IntentFilter(ACTION_UPDATE_CALL);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(cancelReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(updateReceiver, updateFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(cancelReceiver, filter);
+            registerReceiver(updateReceiver, updateFilter);
         }
 
         // Turn screen on and show when locked
@@ -151,6 +170,7 @@ public class IncomingCallActivity extends Activity {
         stopRinging();
         try {
             unregisterReceiver(cancelReceiver);
+            unregisterReceiver(updateReceiver);
         } catch (Exception e) {
             // Ignore
         }
