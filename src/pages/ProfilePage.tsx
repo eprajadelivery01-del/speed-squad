@@ -102,14 +102,11 @@ export default function ProfilePage() {
           end = new Date(year, month - 1, day, 23, 59, 59, 999);
         }
 
-        const startMs = start.getTime();
-        const endMs = end.getTime();
+        const startIso = format(start, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        const endIso = format(end, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
-        // Calculate dates as ISO strings for the RPC
-        const startIso = start.toISOString();
-        const endIso = end.toISOString();
+        const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
 
-        // Call the centralized RPC
         const { data: summaryData, error: summaryError } = await supabase.rpc("get_driver_earnings_summary", {
           p_driver_id: driver.id,
           p_start_date: startIso,
@@ -123,12 +120,11 @@ export default function ProfilePage() {
 
         if (!summaryError && summaryData && summaryData.length > 0) {
           grossEarnings = Number(summaryData[0].gross_earnings || 0);
-          platformFee = Number(summaryData[0].platform_fee || 0);
-          netEarnings = Number(summaryData[0].net_earnings || 0);
           periodCount = Number(summaryData[0].total_deliveries || 0);
+          
+          platformFee = periodCount * driverRate;
+          netEarnings = grossEarnings - platformFee;
         }
-
-        const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
 
         setDriverStats({
           deliveries: totalCount || 0,
@@ -141,7 +137,7 @@ export default function ProfilePage() {
           commissionRate: driverRate,
         });
       }
-    } catch {
+    } catch (e) {
       // silent
     }
   };
@@ -188,7 +184,6 @@ export default function ProfilePage() {
     <DriverLayout>
       <div className="min-h-screen pb-24 bg-slate-50 dark:bg-zinc-950">
         
-        {/* === HEADER SECTION === */}
         <div className="relative bg-zinc-900 dark:bg-zinc-900 -mx-4 -mt-4 rounded-b-[2.5rem] shadow-xl overflow-hidden pb-8">
           <div className="absolute inset-0 bg-gradient-to-b from-primary/20 to-transparent opacity-20" />
           
@@ -250,7 +245,6 @@ export default function ProfilePage() {
 
         <div className="px-5 -mt-6 relative z-20">
           
-          {/* === DASHBOARD CARDS === */}
           <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-5 shadow-sm border border-slate-100 dark:border-zinc-800 mb-6">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800/50">
               <h3 className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-widest flex items-center gap-2">
@@ -264,7 +258,7 @@ export default function ProfilePage() {
                 <option value="today">Hoje</option>
                 <option value="yesterday">Ontem</option>
                 <option value="week">Semana</option>
-                <option value="month">Mês</option>
+                <option value="month">MÃªs</option>
                 <option value="custom">Outro</option>
               </select>
             </div>
@@ -278,11 +272,10 @@ export default function ProfilePage() {
               />
             )}
 
-            {/* Ganho Líquido - DESTAQUE */}
             <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-5 mb-4 border border-emerald-100 dark:border-emerald-900/50">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500 mb-1">Seu Ganho Líquido</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Seu Ganho LÃ­quido</p>
                   <p className="text-[11px] font-medium text-emerald-700/70 dark:text-emerald-400/70">Livre de taxas</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -296,16 +289,14 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Entregas */}
               <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/50 flex flex-col justify-between">
                 <Package className="h-5 w-5 text-slate-400 dark:text-zinc-500 mb-3" />
                 <div>
-                  <p className="text-2xl font-black text-slate-800 dark:text-zinc-100">{driverStats.periodDeliveries}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mt-1">Corridas Concluídas</p>
+                  <p className="text-xl font-black text-slate-800 dark:text-zinc-100">{driverStats.periodDeliveries}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">Corridas ConcluÃ­das</p>
                 </div>
               </div>
 
-              {/* Ganhos Brutos (Taxa de Entrega) */}
               <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-900/30 flex flex-col justify-between">
                 <Wallet className="h-5 w-5 text-blue-400 mb-3" />
                 <div>
@@ -316,7 +307,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Repasse App */}
               <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-4 border border-rose-100 dark:border-rose-900/30 flex flex-col justify-between">
                 <ArrowUpRight className="h-5 w-5 text-rose-400 mb-3" />
                 <div>
@@ -327,12 +317,11 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Entregas Totais da Vida */}
               <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800/50 flex flex-col justify-between">
                 <Star className="h-5 w-5 text-amber-400 mb-3" />
                 <div>
                   <p className="text-xl font-black text-slate-800 dark:text-zinc-100">{driverStats.deliveries}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mt-1">Total Histórico</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400">Total HistÃ³rico</p>
                 </div>
               </div>
             </div>
@@ -343,15 +332,14 @@ export default function ProfilePage() {
                 <h4 className="text-xs font-black uppercase text-slate-700 dark:text-zinc-300">Entenda seus ganhos</h4>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
-                Você recebe <strong className="text-slate-700 dark:text-zinc-200">100% da Taxa de Entrega</strong> paga pelo cliente. A plataforma cobra apenas <strong className="text-slate-700 dark:text-zinc-200">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> de repasse por cada entrega concluída.
+                VocÃª recebe <strong className="text-slate-700 dark:text-zinc-200">100% da Taxa de Entrega</strong> paga pelo cliente. A plataforma cobra apenas <strong className="text-slate-700 dark:text-zinc-200">R$ {driverStats.commissionRate.toFixed(2).replace('.', ',')}</strong> de repasse por cada entrega concluÃ­da.
               </p>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium mt-1">
-                Lembre-se de realizar o pagamento do repasse via Pix na aba Suporte para evitar bloqueios automáticos da sua conta.
+                Lembre-se de realizar o pagamento do repasse via Pix na aba Suporte para evitar bloqueios automÃ¡ticos da sua conta.
               </p>
             </div>
           </div>
 
-          {/* === SETTINGS MENU === */}
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500 mb-3 ml-4">Legal & Conta</h3>
           <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-zinc-800 overflow-hidden mb-6">
             <button onClick={() => navigate("/terms")} className="w-full flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-zinc-800/50 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -365,7 +353,7 @@ export default function ProfilePage() {
               <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
                 <ShieldCheck className="h-4 w-4 text-slate-500 dark:text-zinc-400" />
               </div>
-              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">Política de Privacidade</span>
+              <span className="flex-1 text-sm font-bold text-slate-700 dark:text-zinc-300 text-left">PolÃ­tica de Privacidade</span>
               <ChevronRight className="h-4 w-4 text-slate-300 dark:text-zinc-600" />
             </button>
             <button onClick={signOut} className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -386,12 +374,12 @@ export default function ProfilePage() {
               <AlertDialogContent className="rounded-[32px] max-w-[90vw] sm:max-w-lg border-0 shadow-2xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-xl font-black">Tem certeza absoluta?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-sm font-medium">Você perderá o acesso e todo o histórico. Essa ação é irreversível.</AlertDialogDescription>
+                  <AlertDialogDescription className="text-sm font-medium">VocÃª perderÃ¡ o acesso e todo o histÃ³rico. Essa aÃ§Ã£o Ã© irreversÃ­vel.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col gap-3 mt-4">
                   <AlertDialogCancel className="rounded-xl font-bold h-12 m-0 bg-slate-100 border-none">Cancelar</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={async () => { try { await deleteAccount(); navigate("/login"); } catch { } }}
+                    onClick={async () => { try { await deleteAccount(); navigate("/login"); } catch (e) { } }}
                     className="bg-rose-500 text-white hover:bg-rose-600 rounded-xl font-black h-12 m-0 shadow-lg shadow-rose-500/30"
                   >
                     Sim, Excluir Minha Conta
@@ -407,7 +395,7 @@ export default function ProfilePage() {
       <Sheet open={editing} onOpenChange={setEditing}>
         <SheetContent side="bottom" hideClose className="h-auto max-h-[85vh] rounded-t-[2.5rem] border-none p-0 bg-white dark:bg-zinc-900 shadow-2xl">
           <SheetTitle className="sr-only">Editar Perfil</SheetTitle>
-          <SheetDescription className="sr-only">Formulário para editar nome e telefone do entregador</SheetDescription>
+          <SheetDescription className="sr-only">FormulÃ¡rio para editar nome e telefone do entregador</SheetDescription>
           <div className="flex flex-col">
             <div className="w-12 h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-full mx-auto mt-4 mb-2" />
             <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-zinc-800">
@@ -447,7 +435,7 @@ export default function ProfilePage() {
                 className="w-full py-4 rounded-[1.5rem] bg-primary text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 mt-4 active:scale-95 transition-all"
               >
                 {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-                {saving ? "Salvando..." : "Salvar Alterações"}
+                {saving ? "Salvando..." : "Salvar AlteraÃ§Ãµes"}
               </button>
             </div>
           </div>

@@ -216,6 +216,18 @@ export function useDriverEarningsSummary(driverId?: string, startDate?: string, 
     enabled: !!driverId && !!startDate && !!endDate,
     refetchInterval: 60000,
     queryFn: async () => {
+      // 1. First fetch driver's real commission rate (defaulting to 0.40)
+      const { data: driver } = await supabase
+        .from("delivery_drivers")
+        .select("commission_rate")
+        .eq("id", driverId)
+        .single();
+        
+      const driverRate = driver?.commission_rate !== null && driver?.commission_rate !== undefined 
+        ? Number(driver.commission_rate) 
+        : 0.40;
+
+      // 2. Fetch stats via RPC (RPC is correct for gross_earnings and total_deliveries but wrong for platform_fee)
       const { data, error } = await (supabase.rpc as any)("get_driver_earnings_summary", {
         p_driver_id: driverId,
         p_start_date: startDate,
@@ -232,21 +244,24 @@ export function useDriverEarningsSummary(driverId?: string, startDate?: string, 
         } as DriverEarningsSummary;
       }
 
+      let total_deliveries = 0;
+      let gross_earnings = 0;
+
       if (Array.isArray(data) && data.length > 0) {
         const item = data[0] as any;
-        return {
-          total_deliveries: Number(item.total_deliveries || 0),
-          gross_earnings: Number(item.gross_earnings || 0),
-          platform_fee: Number(item.platform_fee || 0),
-          net_earnings: Number(item.net_earnings || 0),
-        } as DriverEarningsSummary;
+        total_deliveries = Number(item.total_deliveries || 0);
+        gross_earnings = Number(item.gross_earnings || 0);
       }
 
+      // 3. Compute correctly locally!
+      const platform_fee = total_deliveries * driverRate;
+      const net_earnings = gross_earnings - platform_fee;
+
       return {
-        total_deliveries: 0,
-        gross_earnings: 0,
-        platform_fee: 0,
-        net_earnings: 0,
+        total_deliveries,
+        gross_earnings,
+        platform_fee,
+        net_earnings,
       } as DriverEarningsSummary;
     },
   });

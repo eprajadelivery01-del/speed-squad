@@ -392,14 +392,14 @@ export default function DriverHomePage() {
           onReject={handleRejectLocal} 
         />
       )}
-      <div className="flex flex-col gap-5">
+      <main className="flex-1 p-4 pb-24">
         {/* Greeting */}
         <div>
           <h2 className="text-2xl font-extrabold text-foreground">
-            OlÃƒÂ¡, {firstName || "Entregador"} Ã°Å¸â€˜â€¹
+            Olá, {firstName || "Entregador"} 👋
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isOnline ? "VocÃƒÂª estÃƒÂ¡ recebendo corridas" : "Fique online para receber corridas"}
+            {isOnline ? "Você está recebendo corridas" : "Fique online para receber corridas"}
           </p>
         </div>
 
@@ -453,7 +453,7 @@ export default function DriverHomePage() {
           <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5">
             <MapPin className="h-4 w-4 text-primary shrink-0" />
             <p className="text-sm font-semibold text-foreground">
-              {isDetecting ? "Ã°Å¸â€œÂ Detectando localizaÃƒÂ§ÃƒÂ£o..." : selectedCity ? `Ã°Å¸â€œÂ ${selectedCity}` : "Ã°Å¸â€œÂ Aguardando GPS..."}
+              {isDetecting ? "📍 Detectando localização..." : selectedCity ? `📍 ${selectedCity}` : "📍 Aguardando GPS..."}
             </p>
           </div>
         )}
@@ -469,7 +469,7 @@ export default function DriverHomePage() {
           </div>
           <div className="bg-card rounded-2xl p-4 border border-border">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-              <span className="text-xs">Ã°Å¸â€™Â°</span>
+              <span className="text-xs">💰</span>
               <p className="text-[10px] font-bold uppercase tracking-wide">Ganhos hoje</p>
             </div>
             <p className="text-2xl font-extrabold text-primary">R$ {stats.todayEarnings.toFixed(2)}</p>
@@ -478,8 +478,8 @@ export default function DriverHomePage() {
 
         {/* Commission Platform Rate */}
         <div className="text-center bg-card/40 border border-border/50 rounded-2xl py-2.5 px-4 text-xs font-semibold text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>ComissÃƒÂ£o plataforma: <span className="text-primary font-black">R$ {commissionRate.toFixed(2).replace('.', ',')}</span> por corrida</span>
-          <span>Saldo devido: <span className="text-destructive font-black">R$ {(totalDeliveriesCount * commissionRate).toFixed(2).replace('.', ',')}</span></span>
+          <span>Comissão plataforma: <span className="text-primary font-black">R$ {commissionRate.toFixed(2).replace('.', ',')}</span> por corrida</span>
+          <span>Saldo devido: <span className="text-destructive font-black">R$ {(stats.todayCount * commissionRate).toFixed(2).replace('.', ',')}</span></span>
         </div>
 
         {/* Broadcast Deliveries Section */}
@@ -487,7 +487,7 @@ export default function DriverHomePage() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
-                Ã°Å¸â€â€ Corridas disponÃƒÂ­veis
+                🔥 Corridas disponíveis
                 {broadcastDeliveries.length > 0 && (
                   <span className="ml-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                     {broadcastDeliveries.length}
@@ -508,14 +508,14 @@ export default function DriverHomePage() {
             ) : broadcastDeliveries.length === 0 ? (
               <div className="bg-primary/10 border border-primary/20 rounded-2xl px-4 py-3.5 text-center">
                 <p className="text-sm font-bold text-foreground">Aguardando novas corridas...</p>
-                <p className="text-xs text-muted-foreground mt-0.5">VocÃƒÂª serÃƒÂ¡ notificado quando houver entregas</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Você será notificado quando houver entregas</p>
               </div>
             ) : (
               <div className="grid gap-3">
                 {broadcastDeliveries.map((del: any) => {
                   const hasPago = del.notes?.includes("[PAGO]");
                   const hasReceber = del.notes?.includes("[RECEBER:");
-                  const paymentBadge = hasPago ? "Ã¢Å“â€¦ PAGO" : hasReceber ? del.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
+                  const paymentBadge = hasPago ? "✅ PAGO" : hasReceber ? del.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
                   
                   let cleanNotes = del.notes || "";
                   if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
@@ -601,7 +601,7 @@ export default function DriverHomePage() {
                           <div className="flex-1 min-w-0">
                             {isProducts ? (
                               <>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">ConteÃƒÂºdo do Pedido</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Conteúdo do Pedido</p>
                                 <p className="text-xs font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
                                   {cleanNotes}
                                 </p>
@@ -651,7 +651,7 @@ export default function DriverHomePage() {
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
         </button>
-      </div>
+      </main>
 
       {/* Floating Chat Button */}
       <button
@@ -662,7 +662,7 @@ export default function DriverHomePage() {
       </button>
 
       <LocationConsentDialog open={showConsent} onAccept={handleAcceptConsent} />
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ BONASOFT Watermark Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* ── BONASOFT Watermark ── */}
       <div className="mt-16 pb-8 text-center opacity-40 select-none pointer-events-none">
         <p className="text-[11px] font-black uppercase tracking-[0.6em] text-muted-foreground ml-2">BONASOFT</p>
       </div>
