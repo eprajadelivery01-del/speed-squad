@@ -20,7 +20,14 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
     delivery.pickup_address || delivery.origin_address || delivery.store_address || "Retirada na loja";
   const dropoff =
     delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
-  const value = delivery.delivery_fee ?? delivery.price ?? delivery.commission ?? delivery.driver_earnings ?? delivery.total_value ?? delivery.value ?? 0;
+  const value = Math.max(
+    Number(delivery.delivery_fee) || 0,
+    Number(delivery.price) || 0,
+    Number(delivery.commission) || 0,
+    Number(delivery.driver_earnings) || 0,
+    Number(delivery.total_value) || 0,
+    Number(delivery.value) || 0
+  );
   const storeName = delivery.companies?.name || "Loja Parceira";
 
   return (
