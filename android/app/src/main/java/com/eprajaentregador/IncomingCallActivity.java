@@ -106,21 +106,26 @@ public class IncomingCallActivity extends Activity {
             mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(mainIntent);
 
-            Intent intent = new Intent(ACTION_CALL_ACCEPTED);
-            if (deliveryId != null) {
-                intent.putExtra("deliveryId", deliveryId);
-            }
-            sendBroadcast(intent);
+            // Aguarda o Capacitor inicializar antes de disparar o evento pro Javascript
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                Intent intent = new Intent(ACTION_CALL_ACCEPTED);
+                if (deliveryId != null) {
+                    intent.putExtra("deliveryId", deliveryId);
+                }
+                sendBroadcast(intent);
+            }, 1500);
             
             finish();
         });
 
         btnReject.setOnClickListener(v -> {
-            Intent intent = new Intent(ACTION_CALL_REJECTED);
-            if (deliveryId != null) {
-                intent.putExtra("deliveryId", deliveryId);
-            }
-            sendBroadcast(intent);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                Intent intent = new Intent(ACTION_CALL_REJECTED);
+                if (deliveryId != null) {
+                    intent.putExtra("deliveryId", deliveryId);
+                }
+                sendBroadcast(intent);
+            }, 1500);
             
             // Optional: Also bring app to foreground or just dismiss
             finish();
