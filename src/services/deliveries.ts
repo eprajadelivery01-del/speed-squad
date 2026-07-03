@@ -27,7 +27,7 @@ export interface DeliveryWithRelations {
 }
 
 // DB enum uses: pending, broadcasted, accepted, collecting, in_transit, completed, cancelled
-// Some legacy rows may still contain "completed" or "in_transit" — normalize it to the UI formats.
+// Some legacy rows may still contain "completed" or "in_transit" â€” normalize it to the UI formats.
 const APP_TO_DB_STATUS: Record<string, string> = {
   delivered: "completed",
 };
