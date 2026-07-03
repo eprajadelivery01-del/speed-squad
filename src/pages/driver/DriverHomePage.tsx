@@ -62,7 +62,7 @@ export default function DriverHomePage() {
         try {
           await DeliveryOverlay.requestOverlayPermission();
           setTimeout(() => {
-             DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissÃƒÂ£o:", e));
+             DeliveryOverlay.startOverlay().catch((e) => console.warn("Ainda sem permissão:", e));
           }, 1000);
         } catch(e) {}
       };
@@ -71,7 +71,7 @@ export default function DriverHomePage() {
       const listener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
             DeliveryOverlay.startOverlay().catch(() => {
-              // Se falhar ao iniciar (sem permissÃƒÂ£o), pede a permissÃƒÂ£o novamente
+              // Se falhar ao iniciar (sem permissão), pede a permissão novamente
               DeliveryOverlay.requestOverlayPermission().catch((e) => console.warn("Erro ao pedir overlay:", e));
             });
         }
@@ -115,7 +115,7 @@ export default function DriverHomePage() {
 
   const stats = {
     todayCount: earningsData?.total_deliveries || 0,
-    todayEarnings: earningsData?.netEarnings || 0,
+    todayEarnings: earningsData?.net_earnings || 0,
   };
 
   // Fetch broadcast deliveries (pending/broadcasted, no driver assigned)
@@ -248,17 +248,17 @@ export default function DriverHomePage() {
       
       if (!error) {
         startTracking(driverRecord.id);
-        toast({ title: "VocÃƒÂª estÃƒÂ¡ online!" });
+        toast({ title: "Você está online!" });
         setIsOnline(true);
       } else {
-        toast({ title: "Erro", description: "Falha de conexÃƒÂ£o. Tente novamente.", variant: "destructive" });
+        toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" });
       }
       setLoading(false);
     }
   };
 
   const handleToggle = async () => {
-    unlockAudio(); // Destrava o ÃƒÂ¡udio no clique do usuÃƒÂ¡rio
+    unlockAudio(); // Destrava o áudio no clique do usuário
     sessionStorage.setItem("sound_enabled", "true");
     sessionStorage.setItem("epj_sound_enabled", "true");
     
@@ -290,10 +290,10 @@ export default function DriverHomePage() {
       is_online: newStatus,
     }).eq("id", currentDriverRecord.id);
     
-    if (error) { toast({ title: "Erro", description: "Falha de conexÃƒÂ£o. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
+    if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
     
-    if (newStatus) { startTracking(currentDriverRecord.id); toast({ title: "VocÃƒÂª estÃƒÂ¡ online!" }); }
-    else { stopTracking(); toast({ title: "VocÃƒÂª estÃƒÂ¡ offline" }); }
+    if (newStatus) { startTracking(currentDriverRecord.id); toast({ title: "Você está online!" }); }
+    else { stopTracking(); toast({ title: "Você está offline" }); }
     
     setIsOnline(newStatus);
     setLoading(false);
@@ -308,7 +308,7 @@ export default function DriverHomePage() {
         onSuccess: () => {
           window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
           setActiveIncomingOrder(null);
-          toast({ title: "Ã¢Å“â€¦ Corrida aceita!", description: "VÃƒÂ¡ atÃƒÂ© o local de retirada." });
+          toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
         },
         onError: (error: any) => {
           const { title, description } = translateDeliveryError(error, "accept");
@@ -329,7 +329,7 @@ export default function DriverHomePage() {
 
 
   useEffect(() => {
-    // Encontra a primeira corrida vÃƒÂ¡lida que nÃƒÂ£o foi rejeitada nem aceita localmente
+    // Encontra a primeira corrida válida que não foi rejeitada nem aceita localmente
     const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id) && !acceptedLocalIds.includes(del.id));
     
     if (nextOrder && !activeIncomingOrder) {
