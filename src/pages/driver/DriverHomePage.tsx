@@ -320,22 +320,28 @@ export default function DriverHomePage() {
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
   const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
 
+  const [acceptedLocalIds, setAcceptedLocalIds] = useState<string[]>([]);
+
   useEffect(() => {
-    // Encontra a primeira corrida válida que não foi rejeitada localmente
-    const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id));
+    // Encontra a primeira corrida válida que não foi rejeitada nem aceita localmente
+    const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id) && !acceptedLocalIds.includes(del.id));
     
     if (nextOrder && !activeIncomingOrder) {
       setActiveIncomingOrder(nextOrder);
     } else if (!nextOrder && activeIncomingOrder) {
       setActiveIncomingOrder(null);
     }
-  }, [broadcastDeliveries, rejectedLocalIds, activeIncomingOrder]);
+  }, [broadcastDeliveries, rejectedLocalIds, acceptedLocalIds, activeIncomingOrder]);
 
   // Listen for native popup acceptance/rejection
   useEffect(() => {
     const handleNativeAccept = (e: any) => {
-      if (activeIncomingOrder && e.detail?.id === activeIncomingOrder.id) {
-        setActiveIncomingOrder(null);
+      const id = e.detail?.id;
+      if (id) {
+        setAcceptedLocalIds(prev => [...prev, id]);
+        if (activeIncomingOrder?.id === id) {
+          setActiveIncomingOrder(null);
+        }
       }
     };
     const handleNativeReject = (e: any) => {
