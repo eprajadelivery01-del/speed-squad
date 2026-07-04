@@ -72,6 +72,9 @@ serve(async (req) => {
             title: "🛵 Nova corrida disponível!",
             body: `Coleta: ${record.pickup_address || 'Veja no app'}`
           },
+          android: {
+            priority: "high"
+          },
           apns: {
             payload: {
               aps: {
