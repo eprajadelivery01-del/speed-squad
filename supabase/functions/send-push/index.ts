@@ -67,7 +67,9 @@ serve(async (req) => {
         message: {
           token: token,
           data: {
+            type: "delivery",
             deliveryId: record.id,
+            address: `Coleta: ${record.pickup_address || 'Veja no app'}`,
             details: `Coleta: ${record.pickup_address || 'Veja no app'}`,
             title: "🛵 Nova corrida disponível!",
             body: `Coleta: ${record.pickup_address || 'Veja no app'}`
@@ -103,7 +105,7 @@ serve(async (req) => {
     const results = await Promise.all(requests)
     console.log("FCM Results:", results)
 
-    return new Response(JSON.stringify({ success: true, count: tokens.length }), {
+    return new Response(JSON.stringify({ success: true, count: tokens.length, results: results }), {
       headers: { "Content-Type": "application/json" }
     })
 
