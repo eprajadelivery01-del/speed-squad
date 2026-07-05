@@ -488,7 +488,7 @@ export function useDriverNotifications() {
                   toast({ title: "❌ Erro", description: "Não foi possível confirmar o aceite na tela bloqueada." });
                 } else {
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
-                  queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
                 }
               }).catch(e => {
                  console.warn("Exception no safeRpc lock screen:", e);
