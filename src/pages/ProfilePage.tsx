@@ -107,7 +107,7 @@ export default function ProfilePage() {
 
         const driverRate = driver.commission_rate !== null && driver.commission_rate !== undefined ? Number(driver.commission_rate) : 0.40;
 
-        const { data: summaryData, error: summaryError } = await supabase.rpc("get_driver_earnings_summary", {
+        const { data: summaryData, error: summaryError } = await (supabase.rpc as any)("get_driver_earnings_summary", {
           p_driver_id: driver.id,
           p_start_date: startIso,
           p_end_date: endIso
@@ -118,7 +118,7 @@ export default function ProfilePage() {
         let netEarnings = 0;
         let periodCount = 0;
 
-        if (!summaryError && summaryData && summaryData.length > 0) {
+        if (!summaryError && Array.isArray(summaryData) && summaryData.length > 0) {
           grossEarnings = Number(summaryData[0].gross_earnings || 0);
           periodCount = Number(summaryData[0].total_deliveries || 0);
           
