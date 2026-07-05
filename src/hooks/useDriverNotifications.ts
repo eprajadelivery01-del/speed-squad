@@ -194,11 +194,12 @@ export function useDriverNotifications() {
                      return;
                  }
                  
-                 const immediatePickup = data.pickup_address || data.origin_address || data.store_address || data.companies?.name || "Local de Coleta";
-                 const immediateDropoff = data.delivery_address || data.dropoff_address || data.address || "Endereço do cliente";
-                 
-                 const orderFee = data.orders?.delivery_fee ? Number(data.orders.delivery_fee) : 0;
-                 const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(data.delivery_fee) || 0, Number(data.value) || 0, Number(data.price) || 0, Number(data.total_value) || 0);
+                  const d = data as any;
+                  const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.name || "Local de Coleta";
+                  const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || "Endereço do cliente";
+                  
+                  const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
+                  const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
                  
                  immediateDesc = `${data.companies?.name || "Loja Parceira"}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
               } catch (e) {
