@@ -75,24 +75,45 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
         p_driver_id: driverId,
       });
 
-      if (!error && data && (data as any).success) {
-        toast({
-          title: "✅ Corrida aceita!",
-          description: "Vá até o ponto de retirada.",
-        });
-        updateNotificationStatus(deliveryId, "accepted");
-        markAsRead(notificationId);
-        return;
+      if (!error && data) {
+        if ((data as any).success) {
+          toast({
+            title: "✅ Corrida aceita!",
+            description: "Vá até o ponto de retirada.",
+          });
+          updateNotificationStatus(deliveryId, "accepted");
+          markAsRead(notificationId);
+          return;
+        } else {
+          toast({
+            title: "❌ Ops! Já foi aceita.",
+            description: (data as any).message || "Outro entregador aceitou antes de você.",
+            variant: "destructive",
+          });
+          updateNotificationStatus(deliveryId, "rejected");
+          return;
+        }
       }
 
       // Fallback update direto
-      const { error: updateError } = await supabase
+      const { data: updateData, error: updateError } = await supabase
         .from("deliveries")
         .update({ status: "accepted", driver_id: driverId })
         .eq("id", deliveryId)
-        .in("status", ["pending", "broadcasted"]);
+        .in("status", ["pending", "broadcasted"])
+        .select("id");
 
       if (updateError) throw updateError;
+      
+      if (!updateData || updateData.length === 0) {
+        toast({
+          title: "❌ Ops! Já foi aceita.",
+          description: "Outro entregador aceitou antes de você.",
+          variant: "destructive",
+        });
+        updateNotificationStatus(deliveryId, "rejected");
+        return;
+      }
 
       toast({
         title: "✅ Corrida aceita!",

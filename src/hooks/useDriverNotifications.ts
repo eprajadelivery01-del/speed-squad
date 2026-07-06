@@ -420,12 +420,20 @@ export function useDriverNotifications() {
                     p_status: "accepted",
                     p_driver_id: driverId,
                   });
-                  if (!error && data && (data as any).success) {
-                    window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-                    acceptDeliveryLocally(deliveryId);
-                    toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
-                    updateNotificationStatus(deliveryId, "accepted");
-                    return;
+                  if (!error && data) {
+                    if ((data as any).success) {
+                      window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+                      acceptDeliveryLocally(deliveryId);
+                      toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
+                      updateNotificationStatus(deliveryId, "accepted");
+                      return;
+                    } else {
+                      toast({ title: "Ops! Já foi aceita.", description: (data as any).message || "Outro entregador aceitou antes de você.", variant: "destructive" });
+                      window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
+                      declineDeliveryLocally(deliveryId);
+                      updateNotificationStatus(deliveryId, "rejected");
+                      return;
+                    }
                   }
                 } catch {}
 
@@ -471,10 +479,7 @@ export function useDriverNotifications() {
               stopAlert();
               activeAlertsRef.current.delete(deliveryId);
               
-              // EAGER LOCAL ACCEPT: Oculta da UI imediatamente
-              window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-              acceptDeliveryLocally(deliveryId);
-              updateNotificationStatus(deliveryId, "accepted");
+              // NÃO fazemos aceitação eager local antes de saber se a API retornou sucesso ou erro.
               
               // Executa a requisição no background de forma não bloqueante (Fire and Forget)
               safeRpc("update_delivery_status_safe", {
@@ -484,14 +489,24 @@ export function useDriverNotifications() {
               }).then(({ data, error }) => {
                 if (error || !data || !(data as any).success) {
                   // Se falhar de verdade (e.g. corrida roubada ou erro de rede)
-                  console.warn("safeRpc accept falhou no lock screen:", error);
-                  toast({ title: "❌ Erro", description: "Não foi possível confirmar o aceite na tela bloqueada." });
+                  console.warn("safeRpc accept falhou no lock screen:", error || data);
+                  toast({ title: "❌ Erro", description: (data as any)?.message || "Não foi possível confirmar o aceite na tela bloqueada." });
+                  window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
+                  declineDeliveryLocally(deliveryId);
+                  updateNotificationStatus(deliveryId, "rejected");
                 } else {
+                  // EAGER LOCAL ACCEPT movido para ca no sucesso
+                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+                  acceptDeliveryLocally(deliveryId);
+                  updateNotificationStatus(deliveryId, "accepted");
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
                   window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
                 }
               }).catch(e => {
                  console.warn("Exception no safeRpc lock screen:", e);
+                 window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
+                 declineDeliveryLocally(deliveryId);
+                 updateNotificationStatus(deliveryId, "rejected");
               });
               
             } else if (response.status === "rejected") {
