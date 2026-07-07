@@ -72,6 +72,7 @@ export function translateDeliveryError(error: unknown, context?: "accept" | "upd
   if (
     raw.includes("Failed to fetch") ||
     raw.includes("NetworkError") ||
+    raw.includes("Load failed") ||
     raw.includes("timeout") ||
     raw.includes("offline") ||
     raw.includes("network")

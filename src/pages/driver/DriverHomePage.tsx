@@ -219,7 +219,15 @@ export default function DriverHomePage() {
             longitude: lng,
             updated_at: new Date().toISOString(),
           }).eq("id", drivId);
-          if (locError) console.error("Erro ao atualizar GPS (watch) no BD:", locError);
+          if (locError) {
+            // Ignorar erros de rede comuns (perda de sinal ou app em background no iOS)
+            // para não floodar o Telegram do Monitorepraja.
+            if (locError.message?.includes("Load failed") || locError.message?.includes("Failed to fetch")) {
+               console.warn("Aviso GPS: Sinal de internet ruim ou app em background, update ignorado.");
+            } else {
+               console.error("Erro ao atualizar GPS (watch) no BD:", locError);
+            }
+          }
         },
         (err) => {
           console.warn("watchPosition warning:", err.message);

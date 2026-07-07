@@ -182,7 +182,7 @@ export function useUpdateDeliveryStatus() {
         throw error;
       }
       if (data && (data as any).success === false) {
-        throw new Error((data as any).error || "Erro ao atualizar entrega.");
+        throw new Error((data as any).error || (data as any).message || JSON.stringify(data) || "Erro ao atualizar entrega.");
       }
     },
     onSuccess: () => {
