@@ -130,12 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (authUser.email === "dosanjosmoreiratiago@gmail.com" && !finalRoles.includes("driver")) {
-        finalRoles.push("driver");
-      }
-      if (authUser.email === "andressasousa0710@gmail.com" && !finalRoles.includes("company")) {
-        finalRoles.push("company");
-      }
+      // Removidos os hardcodes de override de email que forçavam sessão de admin/company/driver
+      // independente do usuário que fizesse login.
 
       setRoles(finalRoles);
 
