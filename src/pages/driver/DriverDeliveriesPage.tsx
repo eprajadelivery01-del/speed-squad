@@ -205,6 +205,30 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     cleanNotes = cleanNotes.replace("[PRODUTOS]", "").replace(/\[ITENS:.*?\]/, "").trim();
   }
 
+  // Calculation for "Cobrar do cliente"
+  let chargeAmount = Number(delivery.estimated_value || 0);
+  let chargeMethod = "";
+  let showCharge = false;
+
+  if (delivery.orders && Array.isArray(delivery.orders) && delivery.orders.length > 0) {
+    const orderTotal = delivery.orders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
+    if (orderTotal > 0) {
+      chargeAmount = orderTotal;
+      const methods = new Set(delivery.orders.map((o: any) => o.payment_method).filter(Boolean));
+      if (methods.has('machine')) chargeMethod = "Máquina Móvel";
+      else if (methods.has('money') || methods.has('cash')) chargeMethod = "Dinheiro";
+      else if (methods.has('pix')) chargeMethod = "PIX";
+      else if (methods.has('card')) chargeMethod = "Cartão Online";
+      
+      // We show "Cobrar do cliente" only if it's not already paid online, or if we don't know
+      if (chargeMethod === "Máquina Móvel" || chargeMethod === "Dinheiro" || chargeMethod === "PIX") {
+         showCharge = true;
+      }
+    }
+  } else if (chargeAmount > 0) {
+    showCharge = true;
+  }
+
   return (
     <div className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
       {/* Background glow effect */}
@@ -295,15 +319,24 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
       )}
 
       {/* Valor a cobrar do cliente */}
-      {delivery.estimated_value != null && Number(delivery.estimated_value) > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 flex items-center justify-between z-10">
-          <div className="flex items-center gap-3">
-            <ShoppingBag className="h-5 w-5 text-amber-600" />
-            <span className="text-sm font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">Cobrar do cliente</span>
+      {showCharge && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 flex flex-col gap-2 z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="h-5 w-5 text-amber-600" />
+              <span className="text-sm font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">Cobrar do cliente</span>
+            </div>
+            <span className="text-xl font-black text-amber-700 dark:text-amber-400">
+              <span className="text-sm mr-0.5">R$</span>{chargeAmount.toFixed(2)}
+            </span>
           </div>
-          <span className="text-xl font-black text-amber-700 dark:text-amber-400">
-            <span className="text-sm mr-0.5">R$</span>{Number(delivery.estimated_value).toFixed(2)}
-          </span>
+          {chargeMethod && (
+            <div className="flex justify-end">
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest">
+                {chargeMethod}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

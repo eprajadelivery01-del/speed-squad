@@ -30,6 +30,29 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
   );
   const storeName = delivery.companies?.name || "Loja Parceira";
 
+  // Calculation for "Cobrar do cliente"
+  let chargeAmount = Number(delivery.estimated_value || 0);
+  let chargeMethod = "";
+  let showCharge = false;
+
+  if (delivery.orders && Array.isArray(delivery.orders) && delivery.orders.length > 0) {
+    const orderTotal = delivery.orders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
+    if (orderTotal > 0) {
+      chargeAmount = orderTotal;
+      const methods = new Set(delivery.orders.map((o: any) => o.payment_method).filter(Boolean));
+      if (methods.has('machine')) chargeMethod = "Máquina Móvel";
+      else if (methods.has('money') || methods.has('cash')) chargeMethod = "Dinheiro";
+      else if (methods.has('pix')) chargeMethod = "PIX";
+      else if (methods.has('card')) chargeMethod = "Cartão Online";
+      
+      if (chargeMethod === "Máquina Móvel" || chargeMethod === "Dinheiro" || chargeMethod === "PIX") {
+         showCharge = true;
+      }
+    }
+  } else if (chargeAmount > 0) {
+    showCharge = true;
+  }
+
   return (
     <div className="fixed top-4 left-0 right-0 z-[100] flex justify-center p-4 pointer-events-none animate-in slide-in-from-top-8 fade-in duration-300">
       <div className="pointer-events-auto w-full max-w-md bg-[#111827] border border-white/10 rounded-3xl shadow-[0_20px_50px_rgb(0,0,0,0.3)] overflow-hidden flex flex-col relative">
@@ -57,6 +80,25 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
               </div>
             </div>
           </div>
+          
+          {/* Valor a cobrar */}
+          {showCharge && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black uppercase tracking-widest text-amber-500">Cobrar do cliente</span>
+                <span className="text-xl font-black text-amber-500">
+                  <span className="text-sm mr-0.5">R$</span>{chargeAmount.toFixed(2)}
+                </span>
+              </div>
+              {chargeMethod && (
+                <div className="flex justify-end">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest">
+                    {chargeMethod}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Addresses */}
           <div className="flex flex-col gap-3 mt-2">
