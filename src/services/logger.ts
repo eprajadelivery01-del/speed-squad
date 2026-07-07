@@ -28,7 +28,9 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
     msg.includes("offline") ||
     msg.includes("não encontrada") ||
     msg.includes("acesso negado") ||
-    msg.includes("exclusivo para entregadores")
+    msg.includes("exclusivo para entregadores") ||
+    msg.includes("permissão de sobreposição") ||
+    msg.includes("deliveryoverlay is not defined")
   ) {
     return;
   }
