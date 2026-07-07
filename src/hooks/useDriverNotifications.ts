@@ -473,7 +473,18 @@ export function useDriverNotifications() {
         overlayListener = await (window as any).DeliveryOverlay?.addListener(
           "onCallResponse",
           async (response: any) => {
+            const deliveryId = response.deliveryId;
+            
             if (response.status === "accepted") {
+              stopAlert();
+              activeAlertsRef.current.delete(deliveryId);
+              
+              // NÃO fazemos aceitação eager local antes de saber se a API retornou sucesso ou erro.
+              
+              // Executa a requisição no background de forma não bloqueante (Fire and Forget)
+              safeRpc("update_delivery_status_safe", {
+                p_delivery_id: deliveryId,
+                p_status: "accepted",
                 p_driver_id: driverId,
               }).then(({ data, error }) => {
                 if (error || !data || !(data as any).success) {
