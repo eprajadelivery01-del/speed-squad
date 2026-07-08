@@ -52,6 +52,8 @@ export default function DriverHomePage() {
   const [rejectedLocalIds, setRejectedLocalIds] = useState<string[]>(() => {
     return Array.from(getDeclinedDeliveries());
   });
+  const isSubmittingRef = useRef(false);
+
   const [activeIncomingOrder, setActiveIncomingOrder] = useState<any>(null);
 
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
@@ -309,16 +311,20 @@ export default function DriverHomePage() {
 
   const handleAcceptDelivery = (deliveryId: string) => {
     if (!driverRecord) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     stopAlert();
     updateStatus(
       { id: deliveryId, status: "accepted" as any, driverId: driverRecord.id },
       {
         onSuccess: () => {
+          isSubmittingRef.current = false;
           window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
           setActiveIncomingOrder(null);
           toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
         },
         onError: (error: any) => {
+          isSubmittingRef.current = false;
           const { title, description } = translateDeliveryError(error, "accept");
           toast({ title, description, variant: "destructive" });
         },
