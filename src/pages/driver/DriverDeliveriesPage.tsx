@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
@@ -17,6 +17,7 @@ export default function DriverDeliveriesPage() {
   const [driverId, setDriverId] = useState<string | null>(null);
   const { mutate: updateStatus, isPending: updating } = useUpdateDeliveryStatus();
   const { stopAlert } = useAudioAlert();
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (user) {
@@ -50,6 +51,8 @@ export default function DriverDeliveriesPage() {
 
   const handleAction = (deliveryId: string, currentStatus: string) => {
     if (!driverId) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
 
     let nextStatus: any = "";
     if (currentStatus === "pending" || currentStatus === "broadcasted") nextStatus = "accepted";
@@ -63,6 +66,7 @@ export default function DriverDeliveriesPage() {
         description: `Não foi possível determinar o próximo passo para o status "${currentStatus}".`,
         variant: "destructive",
       });
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -75,6 +79,7 @@ export default function DriverDeliveriesPage() {
       {
         onSuccess: () => {
           toast({ title: "✅ Atualizado!", description: "Entrega atualizada com sucesso." });
+          isSubmittingRef.current = false;
         },
         onError: (error: any) => {
           const { title, description } = translateDeliveryError(
@@ -82,6 +87,7 @@ export default function DriverDeliveriesPage() {
             nextStatus === "accepted" ? "accept" : "update"
           );
           toast({ title, description, variant: "destructive" });
+          isSubmittingRef.current = false;
         },
       }
     );
