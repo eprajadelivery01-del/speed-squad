@@ -62,9 +62,9 @@ export default function DriverHomePage() {
     if (Capacitor.isNativePlatform()) {
       const initOverlay = async () => {
         try {
-          await (window as any).DeliveryOverlay?.requestOverlayPermission();
+          await DeliveryOverlay.requestOverlayPermission();
           setTimeout(() => {
-             (window as any).DeliveryOverlay?.startOverlay().catch((e: any) => console.warn("Ainda sem permissão:", e));
+             DeliveryOverlay.startOverlay().catch((e: any) => console.warn("Ainda sem permissão:", e));
           }, 1000);
         } catch(e) {}
       };
@@ -72,9 +72,9 @@ export default function DriverHomePage() {
 
       const listener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
-            (window as any).DeliveryOverlay?.startOverlay().catch(() => {
+            DeliveryOverlay.startOverlay().catch(() => {
               // Se falhar ao iniciar (sem permissão), pede a permissão novamente
-              (window as any).DeliveryOverlay?.requestOverlayPermission().catch((e: any) => console.warn("Erro ao pedir overlay:", e));
+              DeliveryOverlay.requestOverlayPermission().catch((e: any) => console.warn("Erro ao pedir overlay:", e));
             });
         }
       });
@@ -416,6 +416,33 @@ export default function DriverHomePage() {
             {isOnline ? "Você está recebendo corridas" : "Fique online para receber corridas"}
           </p>
         </div>
+
+        {/* Overlay Permission Configuration */}
+        {Capacitor.isNativePlatform() && (
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-xl mt-0.5">📱</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-foreground">Sobrepor a outros aplicativos</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Permita que o aplicativo se sobreponha para receber chamadas de corridas em tela cheia mesmo com o celular bloqueado ou em outro app.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await DeliveryOverlay.requestOverlayPermission();
+                } catch (e) {
+                  console.warn("Erro ao abrir permissão:", e);
+                }
+              }}
+              className="w-full bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
+            >
+              Configurar Sobreposição de Tela
+            </button>
+          </div>
+        )}
 
         {/* Status Bar */}
         <div className={cn(
