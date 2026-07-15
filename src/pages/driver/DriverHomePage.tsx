@@ -325,6 +325,20 @@ export default function DriverHomePage() {
         },
         onError: (error: any) => {
           isSubmittingRef.current = false;
+          
+          // REVERT LOCAL STATE IF IT WAS EAGERLY ACCEPTED
+          setAcceptedLocalIds(prev => prev.filter(id => id !== deliveryId));
+          const accepted = getAcceptedDeliveries();
+          accepted.delete(deliveryId);
+          try {
+            localStorage.setItem("accepted_deliveries", JSON.stringify(Array.from(accepted)));
+          } catch(e) {}
+          
+          // Mark as rejected so it doesn't pop up again
+          setRejectedLocalIds(prev => [...prev, deliveryId]);
+          declineDeliveryLocally(deliveryId);
+          window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
+
           const { title, description } = translateDeliveryError(error, "accept");
           toast({ title, description, variant: "destructive" });
         },
@@ -417,32 +431,7 @@ export default function DriverHomePage() {
           </p>
         </div>
 
-        {/* Overlay Permission Configuration */}
-        {Capacitor.isNativePlatform() && (
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
-            <div className="flex items-start gap-3">
-              <span className="text-xl mt-0.5">📱</span>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-foreground">Sobrepor a outros aplicativos</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Permita que o aplicativo se sobreponha para receber chamadas de corridas em tela cheia mesmo com o celular bloqueado ou em outro app.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                try {
-                  await DeliveryOverlay.requestOverlayPermission();
-                } catch (e) {
-                  console.warn("Erro ao abrir permissão:", e);
-                }
-              }}
-              className="w-full bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
-            >
-              Configurar Sobreposição de Tela
-            </button>
-          </div>
-        )}
+
 
         {/* Status Bar */}
         <div className={cn(
