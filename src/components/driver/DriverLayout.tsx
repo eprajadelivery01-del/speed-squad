@@ -325,6 +325,9 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
         <div className="max-w-lg mx-auto">{children}</div>
       </main>
 
+      {/* Brand footer */}
+      <BonasoftFooter />
+
       {/* Bottom Navigation */}
       <nav 
         className="fixed bottom-0 z-50 w-full border-t border-border bg-background pb-6 pt-1"
