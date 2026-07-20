@@ -556,6 +556,39 @@ export default function DriverHomePage() {
                     cleanNotes = cleanNotes.replace("[PRODUTOS]", "").replace(/\[ITENS:.*?\]/, "").trim();
                   }
 
+                  let chargeAmount = Number(del.estimated_value || 0);
+                  let chargeMethod = "";
+                  let showCharge = false;
+                  let trocoText = "";
+
+                  if (del.notes) {
+                    const trocoMatch = del.notes.match(/troco\s*(para)?\s*(r\$\s*)?\d+([.,]\d{2})?/i);
+                    if (trocoMatch) {
+                      trocoText = trocoMatch[0];
+                    }
+                  }
+
+                  if (del.orders && Array.isArray(del.orders) && del.orders.length > 0) {
+                    const orderTotal = del.orders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
+                    const orderFee = del.orders.reduce((acc: number, o: any) => acc + Number(o.delivery_fee || 0), 0);
+                    const feeToCharge = orderFee > 0 ? orderFee : Number(del.delivery_fee || del.price || del.value || 0);
+
+                    if (orderTotal > 0) {
+                      chargeAmount = orderTotal + feeToCharge;
+                      const methods = new Set(del.orders.map((o: any) => o.payment_method).filter(Boolean));
+                      if (methods.has('machine')) chargeMethod = "Máquina Móvel";
+                      else if (methods.has('money') || methods.has('cash')) chargeMethod = "Dinheiro";
+                      else if (methods.has('pix')) chargeMethod = "PIX";
+                      else if (methods.has('card')) chargeMethod = "Cartão Online";
+                      
+                      if (chargeMethod === "Máquina Móvel" || chargeMethod === "Dinheiro" || chargeMethod === "PIX") {
+                         showCharge = true;
+                      }
+                    }
+                  } else if (chargeAmount > 0) {
+                    showCharge = true;
+                  }
+
                   return (
                   <div key={del.id} className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
                     {/* Background glow effect */}
@@ -643,6 +676,32 @@ export default function DriverHomePage() {
                             )}
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Valor a cobrar do cliente */}
+                    {showCharge && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex flex-col gap-2 z-10">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black uppercase tracking-widest text-amber-500">Cobrar do cliente</span>
+                          <span className="text-lg font-black text-amber-500">
+                            <span className="text-xs mr-0.5">R$</span>{chargeAmount.toFixed(2)}
+                          </span>
+                        </div>
+                        {(chargeMethod || trocoText) && (
+                          <div className="flex justify-between items-center mt-0.5">
+                            {trocoText ? (
+                              <span className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider bg-amber-500/10 px-2 py-1 rounded-md">
+                                {trocoText}
+                              </span>
+                            ) : <span />}
+                            {chargeMethod && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[9px] font-black uppercase tracking-widest">
+                                {chargeMethod}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 

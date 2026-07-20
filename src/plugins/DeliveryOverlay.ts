@@ -16,42 +16,20 @@ export interface DeliveryOverlayPlugin {
 const DeliveryOverlayPluginRaw = registerPlugin<DeliveryOverlayPlugin>('DeliveryOverlay');
 
 // Wrapper seguro para evitar o erro "UNIMPLEMENTED" no iOS e Web
-export const DeliveryOverlay: DeliveryOverlayPlugin = {
-  requestOverlayPermission: async () => {
-    if (Capacitor.getPlatform() !== 'android') return;
-    return DeliveryOverlayPluginRaw.requestOverlayPermission().catch(e => console.warn('DeliveryOverlay requestOverlayPermission falhou', e));
-  },
-  startOverlay: async () => {
-    if (Capacitor.getPlatform() !== 'android') return { success: false, reason: 'not_android' };
-    return DeliveryOverlayPluginRaw.startOverlay().catch(e => {
-      console.warn('DeliveryOverlay startOverlay falhou', e);
-      return { success: false, reason: e?.message };
-    });
-  },
-  stopOverlay: async () => {
-    if (Capacitor.getPlatform() !== 'android') return;
-    return DeliveryOverlayPluginRaw.stopOverlay().catch(e => console.warn('DeliveryOverlay stopOverlay falhou', e));
-  },
-  dismissIncomingCall: async () => {
-    if (Capacitor.getPlatform() !== 'android') return;
-    return DeliveryOverlayPluginRaw.dismissIncomingCall().catch(e => console.warn('DeliveryOverlay dismissIncomingCall falhou', e));
-  },
-  testIncomingCall: async (options) => {
-    if (Capacitor.getPlatform() !== 'android') return;
-    return DeliveryOverlayPluginRaw.testIncomingCall(options).catch(e => console.warn('DeliveryOverlay testIncomingCall falhou', e));
-  },
-  updateIncomingCall: async (options) => {
-    if (Capacitor.getPlatform() !== 'android') return;
-    return DeliveryOverlayPluginRaw.updateIncomingCall(options).catch(e => console.warn('DeliveryOverlay updateIncomingCall falhou', e));
-  },
-  addListener: (eventName, listenerFunc) => {
-    if (Capacitor.getPlatform() !== 'android') {
-      // Retorna um mock de PluginListenerHandle que não faz nada
-      return Promise.resolve({ remove: async () => {} }) as any;
-    }
-    return DeliveryOverlayPluginRaw.addListener(eventName, listenerFunc);
-  }
-};
+// No Android, passamos a instância original diretamente para evitar qualquer perda de contexto do Capacitor
+export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() === 'android'
+  ? DeliveryOverlayPluginRaw
+  : {
+      requestOverlayPermission: async () => {},
+      startOverlay: async () => ({ success: false, reason: 'not_android' }),
+      stopOverlay: async () => {},
+      dismissIncomingCall: async () => {},
+      testIncomingCall: async () => {},
+      updateIncomingCall: async () => {},
+      addListener: (eventName: any, listenerFunc: any) => {
+        return Promise.resolve({ remove: async () => {} }) as any;
+      }
+    };
 
 if (typeof window !== 'undefined') {
   (window as any).DeliveryOverlay = DeliveryOverlay;
