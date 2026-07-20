@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { BonasoftFooter } from "@/components/shared/BonasoftFooter";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -323,6 +324,9 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       <main className="flex-1 p-4">
         <div className="max-w-lg mx-auto">{children}</div>
       </main>
+
+      {/* Brand footer */}
+      <BonasoftFooter />
 
       {/* Bottom Navigation */}
       <nav 

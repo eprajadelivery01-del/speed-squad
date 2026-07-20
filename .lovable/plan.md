@@ -1,30 +1,63 @@
-Plano para corrigir as notificações de novas entregas:
+## Contexto atual
 
-1. Corrigir o escopo do alerta de novas entregas
-- Garantir que o hook só monitore corridas quando o entregador estiver identificado e online.
-- Usar uma fonte consistente para corridas disponíveis (`available_deliveries`/`deliveries`) e tratar `pending` e `broadcasted` como novas corridas.
-- Remover a lógica frágil que ignora a primeira busca de forma que pode esconder corrida recém-criada antes do listener ficar pronto.
+O app tem um watermark simples "BONASOFT" sem espaçamento e sem identidade visual em:
+- `src/pages/driver/DriverHomePage.tsx` (linha 695-698)
+- `src/pages/driver/DriverDeliveriesPage.tsx` (linha 153-156)
+- `src/components/GlobalErrorBoundary.tsx` (linha 118)
 
-2. Consolidar o disparo de notificação
-- Criar uma função interna única para “nova corrida” que sempre faça as três coisas juntas: tocar som, mostrar toast e adicionar item na central.
-- Evitar duplicidade entre realtime e polling usando um `Set` persistente por hook para IDs já notificados.
-- Incluir endereço correto usando `pickup_address`, `delivery_address`, `dropoff_address` ou `address`, conforme disponível.
+O rodapé real (bottom navigation) está em `src/components/driver/DriverLayout.tsx`. O watermark atual aparece acima da navegação, no final do conteúdo de cada página.
 
-3. Corrigir o som
-- Trocar o áudio remoto por um fallback mais confiável quando o MP3 externo falhar.
-- Marcar o som como desbloqueado após clique do usuário e não depender de uma preferência incompatível entre `localStorage`, `sessionStorage` e Capacitor Preferences.
-- Manter vibração como reforço no mobile.
+## Objetivo
 
-4. Corrigir a central de notificações
-- Garantir que `addNotification` seja chamado tanto no polling quanto no realtime.
-- Tornar os IDs das notificações estáveis o suficiente para não quebrar renderização e manter o contador de não lidas.
+Criar uma identidade visual para **B O N A S O F T** (com espaçamento entre letras) usando o padrão grego (meandro) da imagem de referência, posicionada no rodapé do app. A peça deve transmitir: credibilidade, elegância, autenticidade e organização.
 
-5. Reduzir falhas no nativo/preview
-- Evitar registrar o plugin `BackgroundMode` mais de uma vez, que hoje aparece nos logs como aviso recorrente.
-- Não depender de Service Worker no preview para esse fluxo.
-- Manter notificações locais do Capacitor quando estiver em app nativo e notificações do navegador quando estiver na web.
+## Decisões de design
 
-6. Validação
-- Revisar se o hook é montado pelo `DriverLayout` nas telas do entregador.
-- Rodar teste/verificação seletiva apropriada para garantir que não há erro de TypeScript/runtime no fluxo alterado.
-- Confirmar o comportamento esperado: nova corrida detectada → som toca → toast aparece → item entra na central → badge aumenta.
+- **Padrão escolhido:** faixa horizontal reta (primeiro padrão da imagem) — é mais estável para rodapé, não distorce em telas pequenas e passa solidez.
+- **Estilo:** vetorial com gradientes metálicos dourados/bronze inspirados na referência, linhas finas e simétricas.
+- **Tipografia:** fonte serif clássica para o nome, com tracking amplo (letras espaçadas), centralizado sobre o padrão.
+- **Modo escuro/claro:** o componente adapta a cor do padrão e do texto ao tema atual do app (dark/light) usando tokens do projeto.
+
+## Plano de implementação
+
+### 1. Criar componente reutilizável
+
+Criar `src/components/shared/BonasoftFooter.tsx`:
+- Renderiza um SVG do padrão meandro grego horizontal.
+- Sobrepõe o texto "B O N A S O F T" centralizado.
+- Aceita prop opcional `variant: "light" | "dark"` ou detecta via tema do projeto.
+- Responde ao modo escuro com cores invertidas (bronze claro sobre fundo escuro, bronze escuro sobre fundo claro).
+- Inclui margem e padding adequados para não colidir com a bottom navigation ou conteúdo.
+
+### 2. Gerar/codificar o padrão grego
+
+Criar `public/bonasoft-greek-pattern.svg`:
+- SVG do padrão meandro horizontal reto com ornamento central (palmetta) simplificado.
+- Cores em gradientes dourados/bronze, sem textura 3D para manter leveza e escalabilidade.
+- Repetível horizontalmente e centralizado.
+
+### 3. Aplicar o rodapé nas páginas do driver
+
+Substituir os blocos manuais em:
+- `src/pages/driver/DriverHomePage.tsx`
+- `src/pages/driver/DriverDeliveriesPage.tsx`
+
+Também adicionar `<BonasoftFooter />` automaticamente em `src/components/driver/DriverLayout.tsx`, posicionado entre o `<main>` e a `<nav>` de bottom navigation, garantindo que **todas** as páginas do driver exibam a mesma identidade visual.
+
+### 4. Ajustar GlobalErrorBoundary (se necessário)
+
+Verificar se faz sentido manter ou substituir o "BONASOFT" do `GlobalErrorBoundary.tsx`. Como é tela de erro, pode ser mantido simples ou trocado pela nova marca. Será decidido na implementação conforme harmonia visual.
+
+### 5. Verificação
+
+- Build passa sem erros de TypeScript.
+- Rodapé não cobre botões ou bottom navigation em viewports mobile (384x680 e superiores).
+- Visual coerente nos temas claro e escuro.
+
+## Entregáveis
+
+- `src/components/shared/BonasoftFooter.tsx`
+- `public/bonasoft-greek-pattern.svg`
+- Atualização em `src/components/driver/DriverLayout.tsx`
+- Remoção/substituição dos watermarks manuais em `DriverHomePage.tsx` e `DriverDeliveriesPage.tsx`
+- Possível ajuste em `GlobalErrorBoundary.tsx`
