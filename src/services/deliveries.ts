@@ -130,6 +130,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
 
       const normalizedData = (data ?? []).map((delivery: any) => ({
         ...delivery,
+        customer_phone: delivery.customer_phone || delivery.orders?.customer_phone || null,
         status: toAppStatus(delivery.status),
         delivered_at: delivery.delivered_at ?? delivery.completed_at ?? null,
       }));
