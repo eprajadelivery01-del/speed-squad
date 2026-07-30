@@ -32,8 +32,10 @@
             android:name=".IncomingCallActivity"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:showOnLockScreen="true"
+            android:turnScreenOn="true"
             android:screenOrientation="portrait"
-            android:exported="false"
+            android:excludeFromRecents="true"
+            android:exported="true"
         />
 
         <service

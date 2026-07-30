@@ -15,3 +15,8 @@ entrypoint = "./functions/send-push/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/notify-company/index.ts"
+
+[functions.notify-customer]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/notify-customer/index.ts"
