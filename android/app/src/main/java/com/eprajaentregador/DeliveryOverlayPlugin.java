@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -16,6 +17,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "DeliveryOverlay")
 public class DeliveryOverlayPlugin extends Plugin {
+
+    public static final String PREFS_NAME = "eprajadriver";
 
     public static DeliveryOverlayPlugin instance;
     public static String latestDetails = "";
@@ -136,6 +139,23 @@ public class DeliveryOverlayPlugin extends Plugin {
             intent.setPackage(getContext().getPackageName()); // FORÇA EXPLICITO
             getContext().sendBroadcast(intent);
         }
+        call.resolve();
+    }
+
+    /**
+     * Salva o contexto do entregador (driver_id + auth token) no SharedPreferences.
+     * Chamado pelo JS logo após o login, para que o aceite nativo funcione
+     * mesmo quando o app está morto e o JS não está rodando.
+     */
+    @PluginMethod
+    public void saveDriverContext(PluginCall call) {
+        String driverId = call.getString("driverId", "");
+        String userToken = call.getString("userToken", "");
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+                .putString("driver_id", driverId)
+                .putString("user_token", userToken)
+                .apply();
         call.resolve();
     }
 

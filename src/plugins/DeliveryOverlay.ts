@@ -7,6 +7,7 @@ export interface DeliveryOverlayPlugin {
   dismissIncomingCall(): Promise<void>;
   testIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
   updateIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
+  saveDriverContext(options: { driverId: string; userToken: string }): Promise<void>;
   addListener(
     eventName: 'onCallResponse',
     listenerFunc: (response: { status: 'accepted' | 'rejected'; deliveryId: string }) => void
@@ -26,6 +27,7 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
       dismissIncomingCall: async () => {},
       testIncomingCall: async () => {},
       updateIncomingCall: async () => {},
+      saveDriverContext: async () => {},
       addListener: (eventName: any, listenerFunc: any) => {
         return Promise.resolve({ remove: async () => {} }) as any;
       }

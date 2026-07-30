@@ -376,6 +376,18 @@ export function useDriverNotifications() {
       const driverId = driverRow.id;
       isOnlineRef.current = driverRow.is_online ?? false;
 
+      // Persiste driver_id + token no SharedPreferences nativo para que o aceite
+      // funcione via HTTP mesmo quando o JS está morto (tela bloqueada, app killed)
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const userToken = session?.access_token ?? "";
+          DeliveryOverlay.saveDriverContext({ driverId, userToken }).catch(() => {});
+        } catch (e) {
+          console.warn("[Notify] saveDriverContext falhou:", e);
+        }
+      }
+
       // 2. Realtime listener to driver status changes (online/offline toggle)
       const driverChannel = supabase
         .channel(`driver-profile-${user.id}-${Date.now()}`)
