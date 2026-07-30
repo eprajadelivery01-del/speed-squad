@@ -77,9 +77,17 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String deliveryId = data.get("deliveryId");
         String address    = data.get("address");
         String title      = data.get("title");
+
+        if (address != null && address.contains("Veja no app")) {
+            address = address.replace("Veja no app", "Retirada na Loja");
+        }
+
         String details    = (title  != null && !title.isEmpty()   ? title + "\n"  : "")
                           + (address != null && !address.isEmpty() ? address        : "");
         if (details.trim().isEmpty()) details = "Nova corrida disponível!";
+        if (details.contains("Veja no app")) {
+            details = details.replace("Veja no app", "Retirada na Loja");
+        }
 
         // Salva para a IncomingCallActivity ler quando abrir
         DeliveryOverlayPlugin.latestDetails    = details;

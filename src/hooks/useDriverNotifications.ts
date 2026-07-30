@@ -166,28 +166,29 @@ export function useDriverNotifications() {
 
         PushNotifications.addListener("pushNotificationReceived", async (notification) => {
           console.log("Push received in background:", notification);
-          // O payload do FCM costuma vir em notification.data
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
+              let immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
+              if (immediateDesc.includes("Veja no app")) {
+                immediateDesc = immediateDesc.replace(/Veja no app/g, "Retirada na Loja");
+              }
+
               if (Capacitor.isNativePlatform()) {
                 DeliveryOverlay.testIncomingCall({
-                  details: "Nova Entrega\nBuscando detalhes da loja...",
+                  details: immediateDesc,
                   deliveryId: deliveryId
                 }).catch((e: any) => console.warn("Erro ao acordar tela via FCM (imediato):", e));
               }
 
-              let immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
-
               try {
                  const { data } = await supabase
                    .from("deliveries")
-                   .select("*, companies!deliveries_company_id_fkey(name), orders(delivery_fee)")
+                   .select("*, companies!deliveries_company_id_fkey(name, address), orders(delivery_fee)")
                    .eq("id", deliveryId)
                    .single();
 
                  if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
                      console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
-                     // Atualiza para fechar a tela que abrimos acima se a corrida não for mais válida
                      if (Capacitor.isNativePlatform()) {
                          DeliveryOverlay.dismissIncomingCall().catch(console.warn);
                      }
@@ -195,13 +196,14 @@ export function useDriverNotifications() {
                  }
                  
                   const d = data as any;
-                  const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.name || "Local de Coleta";
+                  const storeName = d.companies?.name || "Loja Parceira";
+                  const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.address || storeName || "Local de Coleta";
                   const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || "Endereço do cliente";
                   
                   const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
                   const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
                  
-                 immediateDesc = `${data.companies?.name || "Loja Parceira"}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+                  immediateDesc = `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
               } catch (e) {
                  console.warn("Erro validando FCM status:", e);
               }
@@ -215,7 +217,7 @@ export function useDriverNotifications() {
           }
         });
       } catch (e) {
-        console.warn("FCM Indisponível no dispositivo (Sem Google Play Services ou erro no plugin):", e);
+        console.warn("FCM Indisponível no dispositivo:", e);
       }
 
       return () => {
@@ -233,7 +235,6 @@ export function useDriverNotifications() {
     let actionListener: PluginListenerHandle | null = null;
     let overlayListener: PluginListenerHandle | null = null;
 
-    // Check custom event for locally declined runs
     const handleDeclineEvent = (e: any) => {
       const { deliveryId } = e.detail || {};
       if (deliveryId) {
@@ -248,14 +249,10 @@ export function useDriverNotifications() {
     };
     window.addEventListener("delivery-declined", handleDeclineEvent);
 
-    // Unified notifier — always fires sound + toast + central + OS notification
     const notifyNewDelivery = async (rawDelivery: any) => {
       if (!rawDelivery?.id) return;
-      
-      // Stop notifying if offline
       if (!isOnlineRef.current) return;
       
-      // Stop notifying if already declined
       const declined = getDeclinedDeliveries();
       if (declined.has(rawDelivery.id)) return;
 
@@ -263,10 +260,12 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // --- ACORDAR A TELA IMEDIATAMENTE ANTES DO AWAIT ---
-      // O Android dá apenas alguns milissegundos para disparar uma Activity quando em background.
-      // Portanto, abrimos o popup primeiro e depois atualizamos ao vivo!
-      const immediateDesc = "Nova Entrega\nBuscando detalhes da loja...";
+      const storeName = rawDelivery.companies?.name || rawDelivery.company_name || "Loja Parceira";
+      const pickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || storeName || "Retirada na Loja";
+      const dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
+      const fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
+
+      const immediateDesc = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}${fee > 0 ? `\nGanhos: R$ ${fee.toFixed(2).replace('.', ',')}` : ''}`;
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.testIncomingCall({
           details: immediateDesc,
@@ -274,25 +273,23 @@ export function useDriverNotifications() {
         }).catch((e: any) => console.warn("Erro ao acordar tela (imediato):", e));
       }
 
-      // Busca os dados completos da corrida (nome da loja)
       const { data: fullDelivery } = await supabase
         .from("deliveries")
-        .select("*, companies!deliveries_company_id_fkey(name), orders(delivery_fee)")
+        .select("*, companies!deliveries_company_id_fkey(name, address), orders(delivery_fee)")
         .eq("id", rawDelivery.id)
         .single();
          
       const delivery = fullDelivery || rawDelivery;
       
-      const storeName = delivery.companies?.name || "Loja Parceira";
-      const pickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || pickAddress(delivery);
-      const dropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
+      const fullStoreName = delivery.companies?.name || storeName;
+      const fullPickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || delivery.companies?.address || fullStoreName || "Retirada na Loja";
+      const fullDropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
       
-      // Calculate correct value taking delivery_fee from joined orders if available
       const orderFee = delivery.orders?.delivery_fee ? Number(delivery.orders.delivery_fee) : 0;
-      const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0);
+      const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0, fee);
 
       const title = "🏍️ Nova corrida disponível!";
-      const description = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
+      const description = `${fullStoreName}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.updateIncomingCall({
@@ -301,7 +298,6 @@ export function useDriverNotifications() {
         }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
       }
 
-      // 1) Sound (looped) + vibration via hook
       try {
         playAlert(true);
       } catch (e) {

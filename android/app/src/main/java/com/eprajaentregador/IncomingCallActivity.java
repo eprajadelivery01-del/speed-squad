@@ -1,22 +1,28 @@
 package com.eprajaentregador;
 
 import android.app.Activity;
-import android.content.Intent;
-import android.os.Build;
-import android.os.Bundle;
-import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.TextView;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.media.MediaPlayer;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.TextView;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -25,21 +31,23 @@ import java.nio.charset.StandardCharsets;
 public class IncomingCallActivity extends Activity {
 
     private static final String TAG = "IncomingCallActivity";
+    public static final String ACTION_UPDATE_CALL = "com.eprajaentregador.UPDATE_CALL";
+    public static final String ACTION_CANCEL_CALL = "com.eprajaentregador.CANCEL_CALL";
+    public static final String ACTION_CALL_ACCEPTED = "com.eprajaentregador.CALL_ACCEPTED";
+    public static final String ACTION_CALL_REJECTED = "com.eprajaentregador.CALL_REJECTED";
 
-    // Supabase REST credentials (anon key — público por design)
     private static final String SUPABASE_URL = "https://nptkxlrhrlssdsevpgqe.supabase.co";
     private static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wdGt4bHJocmxzc2RzZXZwZ3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDE4MTQsImV4cCI6MjA5MDYxNzgxNH0.t8Cu-yFnSqOURT4GXCZ_mBghpxucT89nRBFlBNA1vZs";
 
     public static IncomingCallActivity instance;
+
     private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
-    private android.os.PowerManager.WakeLock wakeLock;
+    private PowerManager.WakeLock wakeLock;
     private String currentDeliveryId = "";
 
-    public static final String ACTION_CALL_ACCEPTED = "com.eprajaentregador.ACTION_CALL_ACCEPTED";
-    public static final String ACTION_CALL_REJECTED = "com.eprajaentregador.ACTION_CALL_REJECTED";
-    public static final String ACTION_CANCEL_CALL = "com.eprajaentregador.ACTION_CANCEL_CALL";
-    public static final String ACTION_UPDATE_CALL = "com.eprajaentregador.ACTION_UPDATE_CALL";
+    private Handler checkHandler;
+    private Runnable checkRunnable;
 
     private BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
@@ -49,6 +57,7 @@ public class IncomingCallActivity extends Activity {
                 String deliveryId = intent.getStringExtra("deliveryId");
                 updateDetails(details, deliveryId);
             } else if (ACTION_CANCEL_CALL.equals(intent.getAction())) {
+                stopRinging();
                 finish();
             }
         }
@@ -59,6 +68,9 @@ public class IncomingCallActivity extends Activity {
             currentDeliveryId = deliveryId;
         }
         if (details != null && !details.isEmpty()) {
+            if (details.contains("Veja no app")) {
+                details = details.replace("Veja no app", "Retirada na Loja");
+            }
             TextView tvDetails = findViewById(R.id.tvCallDetails);
             if (tvDetails != null) {
                 tvDetails.setText(details);
@@ -92,12 +104,12 @@ public class IncomingCallActivity extends Activity {
                 | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
 
         // Wake lock agressivo para garantir que a tela acende
-        android.os.PowerManager powerManager = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (powerManager != null) {
             wakeLock = powerManager.newWakeLock(
-                    android.os.PowerManager.FULL_WAKE_LOCK
-                            | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP
-                            | android.os.PowerManager.ON_AFTER_RELEASE,
+                    PowerManager.FULL_WAKE_LOCK
+                            | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                            | PowerManager.ON_AFTER_RELEASE,
                     "DeliveryApp:IncomingCall");
             wakeLock.acquire(60000); // 60 segundos max
         }
@@ -143,46 +155,37 @@ public class IncomingCallActivity extends Activity {
 
         updateDetails(details, currentDeliveryId);
 
+        // Inicia verificação automática a cada 1.5s se a corrida continua disponível
+        startStatusCheckLoop();
+
         // ===== BOTÃO ACEITAR =====
         btnAccept.setOnClickListener(v -> {
             btnAccept.setEnabled(false);
             btnAccept.setText("Aceitando...");
             stopRinging();
+            stopStatusCheckLoop();
 
             final String deliveryId = currentDeliveryId;
 
-            // Se JS estiver vivo, dispara via plugin (caminho normal — app em foreground)
             if (DeliveryOverlayPlugin.instance != null) {
                 Log.d(TAG, "Aceitar via JS plugin. deliveryId=" + deliveryId);
-                // Abre o MainActivity primeiro para ter contexto JS
                 Intent mainIntent = new Intent(this, MainActivity.class);
                 mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(mainIntent);
 
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
                 }, 800);
 
                 finish();
             } else {
-                // JS morto (app em background/killed) → aceita DIRETAMENTE via HTTP nativo
                 Log.d(TAG, "Aceitar via HTTP nativo (JS indisponível). deliveryId=" + deliveryId);
                 new Thread(() -> {
                     boolean success = acceptDeliveryViaNativeHttp(deliveryId);
                     runOnUiThread(() -> {
-                        if (success) {
-                            Log.d(TAG, "Aceite nativo com sucesso!");
-                            // Abre o app para o entregador ver os detalhes
-                            Intent mainIntent = new Intent(IncomingCallActivity.this, MainActivity.class);
-                            mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                            startActivity(mainIntent);
-                        } else {
-                            Log.e(TAG, "Falha no aceite nativo.");
-                            // Mesmo assim abre o app para o usuário verificar
-                            Intent mainIntent = new Intent(IncomingCallActivity.this, MainActivity.class);
-                            mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                            startActivity(mainIntent);
-                        }
+                        Intent mainIntent = new Intent(IncomingCallActivity.this, MainActivity.class);
+                        mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        startActivity(mainIntent);
                         finish();
                     });
                 }).start();
@@ -192,50 +195,106 @@ public class IncomingCallActivity extends Activity {
         // ===== BOTÃO REJEITAR =====
         btnReject.setOnClickListener(v -> {
             stopRinging();
+            stopStatusCheckLoop();
             if (DeliveryOverlayPlugin.instance != null) {
                 DeliveryOverlayPlugin.instance.triggerCallResponse("rejected", currentDeliveryId);
-            } else {
-                // Apenas rejeita localmente; o JS fará a limpeza quando abrir
-                Intent intent = new Intent(ACTION_CALL_REJECTED);
-                intent.putExtra("deliveryId", currentDeliveryId);
-                intent.setPackage(getPackageName());
-                sendBroadcast(intent);
             }
+            Intent intent = new Intent(ACTION_CALL_REJECTED);
+            intent.putExtra("deliveryId", currentDeliveryId);
+            sendBroadcast(intent);
             finish();
         });
     }
 
-    /**
-     * Aceita a corrida diretamente via chamada HTTP REST ao Supabase.
-     * Usado quando o app está morto/background e o JS não está disponível.
-     * Utiliza a RPC update_delivery_status_safe para evitar condição de corrida.
-     */
-    private boolean acceptDeliveryViaNativeHttp(String deliveryId) {
-        try {
-            // Recupera o driver_id salvo localmente
-            android.content.SharedPreferences prefs = getSharedPreferences("eprajadriver", Context.MODE_PRIVATE);
-            String driverId = prefs.getString("driver_id", "");
-
-            if (driverId.isEmpty()) {
-                Log.w(TAG, "driver_id não encontrado no SharedPreferences. Tentando aceitar via PATCH direto.");
-                return acceptViaPatch(deliveryId, prefs.getString("user_token", ""));
+    private void startStatusCheckLoop() {
+        if (checkHandler == null) {
+            checkHandler = new Handler(Looper.getMainLooper());
+        }
+        checkRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (currentDeliveryId != null && !currentDeliveryId.isEmpty()) {
+                    checkDeliveryAvailabilityAsync(currentDeliveryId);
+                }
+                if (checkHandler != null && checkRunnable != null) {
+                    checkHandler.postDelayed(this, 1500);
+                }
             }
+        };
+        checkHandler.post(checkRunnable);
+    }
 
-            // Chama a RPC update_delivery_status_safe
+    private void stopStatusCheckLoop() {
+        if (checkHandler != null && checkRunnable != null) {
+            checkHandler.removeCallbacks(checkRunnable);
+            checkRunnable = null;
+        }
+    }
+
+    private void checkDeliveryAvailabilityAsync(String deliveryId) {
+        new Thread(() -> {
+            try {
+                URL url = new URL(SUPABASE_URL + "/rest/v1/available_deliveries?id=eq." + deliveryId + "&select=id");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("apikey", SUPABASE_ANON_KEY);
+                conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_ANON_KEY);
+                conn.setConnectTimeout(3000);
+                conn.setReadTimeout(3000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder content = new StringBuilder();
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+                    conn.disconnect();
+
+                    String json = content.toString().trim();
+                    // Se o resultado for "[]", a corrida NÃO está mais na view available_deliveries (já aceita ou cancelada)
+                    if ("[]".equals(json)) {
+                        Log.d(TAG, "Corrida " + deliveryId + " já foi aceita por outro motorista. Fechando popup automaticamente!");
+                        runOnUiThread(() -> {
+                            stopRinging();
+                            stopStatusCheckLoop();
+                            finish();
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Erro ao checar se corrida está disponível: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private boolean acceptDeliveryViaNativeHttp(String deliveryId) {
+        SharedPreferences prefs = getSharedPreferences(DeliveryOverlayPlugin.PREFS_NAME, Context.MODE_PRIVATE);
+        String driverId  = prefs.getString("driver_id", "");
+        String userToken = prefs.getString("user_token", "");
+
+        if (driverId.isEmpty()) {
+            Log.e(TAG, "Sem driver_id no SharedPreferences.");
+            return acceptViaPatch(deliveryId, userToken);
+        }
+
+        try {
             URL url = new URL(SUPABASE_URL + "/rest/v1/rpc/update_delivery_status_safe");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("apikey", SUPABASE_ANON_KEY);
-            conn.setRequestProperty("Authorization", "Bearer " + prefs.getString("user_token", SUPABASE_ANON_KEY));
+            conn.setRequestProperty("Authorization", "Bearer " + (userToken.isEmpty() ? SUPABASE_ANON_KEY : userToken));
             conn.setDoOutput(true);
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
 
             JSONObject body = new JSONObject();
             body.put("p_delivery_id", deliveryId);
-            body.put("p_status", "accepted");
-            body.put("p_driver_id", driverId);
+            body.put("p_status",      "accepted");
+            body.put("p_driver_id",   driverId);
 
             byte[] bodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
             OutputStream os = conn.getOutputStream();
@@ -253,9 +312,6 @@ public class IncomingCallActivity extends Activity {
         }
     }
 
-    /**
-     * Fallback: aceita via PATCH direto se não tiver driver_id cacheado.
-     */
     private boolean acceptViaPatch(String deliveryId, String token) {
         try {
             URL url = new URL(SUPABASE_URL + "/rest/v1/deliveries?id=eq." + deliveryId + "&status=in.(pending,broadcasted)&driver_id=is.null");
@@ -305,6 +361,7 @@ public class IncomingCallActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         if (instance == this) instance = null;
+        stopStatusCheckLoop();
         stopRinging();
         try {
             unregisterReceiver(updateReceiver);
