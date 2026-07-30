@@ -131,6 +131,17 @@ export function useAcceptDelivery() {
       if (data && (data as any).success === false) {
         throw new Error((data as any).error || "Não foi possível aceitar esta corrida.");
       }
+
+      // Notifica o cliente via Edge Function informando que o entregador aceitou a corrida
+      try {
+        supabase.functions.invoke('notify-customer', {
+          body: {
+            deliveryId,
+            deliveryStatus: 'accepted'
+          }
+        }).catch(e => console.warn('[useAcceptDelivery] Erro ao invocar notify-customer:', e));
+      } catch {}
+
       return data;
     },
     onSuccess: () => {
