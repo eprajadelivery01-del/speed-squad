@@ -322,6 +322,7 @@ export default function DriverHomePage() {
           window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
           setActiveIncomingOrder(null);
           toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
+          navigate("/driver/deliveries");
         },
         onError: (error: any) => {
           isSubmittingRef.current = false;
@@ -376,6 +377,7 @@ export default function DriverHomePage() {
         if (activeIncomingOrder?.id === id) {
           setActiveIncomingOrder(null);
         }
+        navigate("/driver/deliveries");
       }
     };
     const handleNativeReject = (e: any) => {

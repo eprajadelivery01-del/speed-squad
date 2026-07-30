@@ -10,10 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function DriverDeliveriesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [driverId, setDriverId] = useState<string | null>(null);
   const { mutate: updateStatus, isPending: updating } = useUpdateDeliveryStatus();
   const { stopAlert } = useAudioAlert();
@@ -32,9 +34,23 @@ export default function DriverDeliveriesPage() {
     }
   }, [user]);
 
+  // Refetch when delivery is accepted
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+    const handleAccepted = () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+    };
+    window.addEventListener("delivery-accepted", handleAccepted);
+    return () => {
+      window.removeEventListener("delivery-accepted", handleAccepted);
+    };
+  }, [queryClient]);
+
   const { data: myData, isLoading: loadingDeliveries } = useDeliveries({
     driverId: driverId || undefined,
     enabled: !!driverId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
   const rawMyDeliveries = myData?.data ?? [];
   const myDeliveries = useUniqueDeliveries(rawMyDeliveries);

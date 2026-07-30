@@ -22,6 +22,40 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Busca detalhes completos da corrida incluindo empresa e taxa de entrega
+    let companyName = "Loja Parceira";
+    let pickupAddr = record.pickup_address || record.origin_address || record.store_address || "";
+    let dropoffAddr = record.delivery_address || record.dropoff_address || record.address || "";
+    let deliveryFee = Number(record.delivery_fee) || Number(record.value) || Number(record.price) || Number(record.total_value) || 0;
+
+    if (record.company_id) {
+      const { data: comp } = await supabaseClient
+        .from('companies')
+        .select('name, address')
+        .eq('id', record.company_id)
+        .maybeSingle();
+      if (comp) {
+        if (comp.name) companyName = comp.name;
+        if (!pickupAddr && comp.address) pickupAddr = comp.address;
+      }
+    }
+
+    if (record.order_id) {
+      const { data: ord } = await supabaseClient
+        .from('orders')
+        .select('delivery_fee')
+        .eq('id', record.order_id)
+        .maybeSingle();
+      if (ord && Number(ord.delivery_fee) > 0) {
+        deliveryFee = Number(ord.delivery_fee);
+      }
+    }
+
+    if (!pickupAddr) pickupAddr = "Retirada na loja";
+    if (!dropoffAddr) dropoffAddr = "Endereço do cliente";
+
+    const formattedDetails = `${companyName}\nColeta: ${pickupAddr}\nEntrega: ${dropoffAddr}\nGanhos: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+
     let query = supabaseClient
       .from('delivery_drivers')
       .select('fcm_token')
@@ -69,10 +103,10 @@ serve(async (req) => {
           data: {
             type: "delivery",
             deliveryId: record.id,
-            address: `Coleta: ${record.pickup_address || 'Veja no app'}`,
-            details: `Coleta: ${record.pickup_address || 'Veja no app'}`,
+            address: formattedDetails,
+            details: formattedDetails,
             title: "🛵 Nova corrida disponível!",
-            body: `Coleta: ${record.pickup_address || 'Veja no app'}`
+            body: formattedDetails
           },
           android: {
             priority: "high"
@@ -82,7 +116,7 @@ serve(async (req) => {
               aps: {
                 alert: {
                   title: "🛵 Nova corrida disponível!",
-                  body: `Coleta: ${record.pickup_address || 'Veja no app'}`
+                  body: formattedDetails
                 },
                 sound: "default",
                 category: "DELIVERY_ACTION"
