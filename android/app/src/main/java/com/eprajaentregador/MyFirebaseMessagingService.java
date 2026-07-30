@@ -38,83 +38,100 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 String title = data.get("title");
 
                 String details = (title != null ? title + "\n" : "") + (address != null ? address : "");
+                if (details.trim().isEmpty()) details = "Nova Entrega Disponível!";
 
-                // Armazena no plugin para uso posterior
-                DeliveryOverlayPlugin.latestDetails = details.isEmpty() ? "Nova Entrega!" : details;
+                // Armazena nos campos estáticos para o IncomingCallActivity ler
+                DeliveryOverlayPlugin.latestDetails = details;
                 DeliveryOverlayPlugin.latestDeliveryId = deliveryId != null ? deliveryId : "";
 
-                // Cria o canal de notificação (obrigatório Android 8+)
+                // Garante canal de notificação criado
                 createNotificationChannel();
 
-                // Intent para abrir a IncomingCallActivity
-                Intent fullScreenIntent = new Intent(this, IncomingCallActivity.class);
-                fullScreenIntent.putExtra("details", details);
-                fullScreenIntent.putExtra("deliveryId", deliveryId);
-                fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                        | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                // Intent da IncomingCallActivity (o popup nativo)
+                Intent activityIntent = new Intent(this, IncomingCallActivity.class);
+                activityIntent.putExtra("details", details);
+                activityIntent.putExtra("deliveryId", deliveryId);
+                activityIntent.addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                        Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                );
 
-                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                // PendingIntent para o fullScreenIntent — abre o popup nativo
+                int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                    piFlags |= PendingIntent.FLAG_IMMUTABLE;
                 }
+                PendingIntent fullScreenPI = PendingIntent.getActivity(this, 0, activityIntent, piFlags);
 
-                PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
-                        this, 0, fullScreenIntent, flags);
+                // PendingIntent para toque na notificação (mesma Activity)
+                PendingIntent tapPI = PendingIntent.getActivity(this, 1, activityIntent, piFlags);
 
-                // Intent para tocar ao clicar na notificação (mesmo destino)
-                PendingIntent contentPendingIntent = PendingIntent.getActivity(
-                        this, 1, fullScreenIntent, flags);
-
-                // Monta a notificação com fullScreenIntent
-                Notification.Builder builder;
+                // Monta a notificação com fullScreenIntent e categoria CALL
+                Notification notification;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    builder = new Notification.Builder(this, CHANNEL_ID);
+                    notification = new Notification.Builder(this, CHANNEL_ID)
+                            .setSmallIcon(android.R.drawable.sym_call_incoming)
+                            .setContentTitle("🏍️ Nova corrida disponível!")
+                            .setContentText(details)
+                            .setStyle(new Notification.BigTextStyle().bigText(details))
+                            .setAutoCancel(false)
+                            .setOngoing(true)
+                            .setCategory(Notification.CATEGORY_CALL)
+                            .setVisibility(Notification.VISIBILITY_PUBLIC)
+                            .setContentIntent(tapPI)
+                            .setFullScreenIntent(fullScreenPI, true)
+                            .build();
                 } else {
-                    builder = new Notification.Builder(this);
-                    builder.setPriority(Notification.PRIORITY_MAX);
-                }
-
-                builder.setSmallIcon(android.R.drawable.ic_dialog_info)
-                        .setContentTitle("🏍️ Nova corrida disponível!")
-                        .setContentText(details.isEmpty() ? "Toque para ver detalhes" : details)
-                        .setStyle(new Notification.BigTextStyle().bigText(details.isEmpty() ? "Toque para ver detalhes" : details))
-                        .setAutoCancel(true)
-                        .setCategory(Notification.CATEGORY_CALL)
-                        .setVisibility(Notification.VISIBILITY_PUBLIC)
-                        .setContentIntent(contentPendingIntent)
-                        .setFullScreenIntent(fullScreenPendingIntent, true); // <- CHAVE: abre sobre outros apps e com tela apagada
-
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                    builder.setDefaults(Notification.DEFAULT_ALL);
+                    notification = new Notification.Builder(this)
+                            .setSmallIcon(android.R.drawable.sym_call_incoming)
+                            .setContentTitle("🏍️ Nova corrida disponível!")
+                            .setContentText(details)
+                            .setStyle(new Notification.BigTextStyle().bigText(details))
+                            .setAutoCancel(false)
+                            .setOngoing(true)
+                            .setPriority(Notification.PRIORITY_MAX)
+                            .setCategory(Notification.CATEGORY_CALL)
+                            .setVisibility(Notification.VISIBILITY_PUBLIC)
+                            .setDefaults(Notification.DEFAULT_ALL)
+                            .setContentIntent(tapPI)
+                            .setFullScreenIntent(fullScreenPI, true)
+                            .build();
                 }
 
                 NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
                 if (nm != null) {
-                    nm.notify(NOTIFICATION_ID, builder.build());
+                    nm.notify(NOTIFICATION_ID, notification);
                 }
 
-                Log.d(TAG, "Notificação full-screen disparada para delivery: " + deliveryId);
+                Log.d(TAG, "fullScreenIntent disparado para deliveryId=" + deliveryId);
             }
         }
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm == null) return;
+
+            // Remove canal antigo e recria com IMPORTANCE_HIGH para garantir fullScreenIntent
+            NotificationChannel existing = nm.getNotificationChannel(CHANNEL_ID);
+            if (existing != null && existing.getImportance() < NotificationManager.IMPORTANCE_HIGH) {
+                nm.deleteNotificationChannel(CHANNEL_ID);
+            }
+
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Novas Corridas",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Alertas de novas corridas disponíveis");
+            channel.setDescription("Alertas de novas corridas - popup de tela cheia");
             channel.enableVibration(true);
             channel.setShowBadge(true);
+            channel.setBypassDnd(true);
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-
-            NotificationManager nm = getSystemService(NotificationManager.class);
-            if (nm != null) {
-                nm.createNotificationChannel(channel);
-            }
+            nm.createNotificationChannel(channel);
         }
     }
 
