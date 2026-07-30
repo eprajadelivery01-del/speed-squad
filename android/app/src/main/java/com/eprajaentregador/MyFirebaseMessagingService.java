@@ -21,6 +21,16 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private static final String CHANNEL_ID = "delivery-incoming-v4";
     private static final int NOTIF_ID = 6666;
 
+    private int hashId(String str) {
+        if (str == null) return 0;
+        int hash = 0;
+        for (int i = 0; i < str.length(); i++) {
+            hash = ((hash << 5) - hash) + str.charAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
@@ -31,6 +41,36 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         Map<String, String> data = remoteMessage.getData();
         String type = data.get("type");
         Log.d(TAG, "type=" + type + " | data=" + data);
+
+        // ── CANCELAMENTO: Quando outro entregador aceita a corrida ou ela é cancelada
+        if ("cancel_delivery".equals(type)) {
+            String deliveryId = data.get("deliveryId");
+            Log.d(TAG, "Corrida " + deliveryId + " aceita por outro motorista. Encerrando notificação e popup!");
+
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.cancel(NOTIF_ID);
+                if (deliveryId != null && !deliveryId.isEmpty()) {
+                    nm.cancel(hashId(deliveryId));
+                }
+            }
+
+            if (IncomingCallActivity.instance != null) {
+                IncomingCallActivity.instance.runOnUiThread(() -> {
+                    try {
+                        IncomingCallActivity.instance.finish();
+                    } catch (Exception e) {
+                        Log.w(TAG, "Erro ao fechar IncomingCallActivity: " + e.getMessage());
+                    }
+                });
+            }
+
+            Intent cancelIntent = new Intent(IncomingCallActivity.ACTION_CANCEL_CALL);
+            cancelIntent.putExtra("deliveryId", deliveryId);
+            cancelIntent.setPackage(getPackageName());
+            sendBroadcast(cancelIntent);
+            return;
+        }
 
         if (!"delivery".equals(type)) return;
 
@@ -48,7 +88,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         Log.d(TAG, "Popup para deliveryId=" + deliveryId);
 
         // ── CAMADA 1: via OverlayService (foreground service pode chamar startActivity no Android 10+)
-        //    É a abordagem mais confiável — o foreground service tem permissão explícita.
         try {
             Intent svcIntent = new Intent(this, OverlayService.class);
             svcIntent.setAction(ACTION_SHOW_POPUP);
@@ -102,7 +141,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                         .setDefaults(Notification.DEFAULT_ALL);
             }
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
-                    .setContentTitle("🏍️ Nova corrida disponível!")
+                    .setContentTitle("Moto Nova corrida disponível!")
                     .setContentText(details)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setCategory(Notification.CATEGORY_CALL)
@@ -115,6 +154,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.notify(NOTIF_ID, builder.build());
+                if (deliveryId != null && !deliveryId.isEmpty()) {
+                    nm.notify(hashId(deliveryId), builder.build());
+                }
                 Log.d(TAG, "Notificação fullScreenIntent disparada.");
             }
         } catch (Exception e) {

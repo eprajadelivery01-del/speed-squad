@@ -6,21 +6,97 @@ serve(async (req) => {
   try {
     const payload = await req.json()
     const record = payload.record
+    const oldRecord = payload.old_record
+    const eventType = payload.type // 'INSERT' or 'UPDATE'
     
-    // Only process INSERT events for deliveries
-    if (payload.type !== 'INSERT' || !record) {
-      return new Response("Not an insert event", { status: 200 })
-    }
-
-    // Apenas envia notificação se estiver pendente ou broadcasted
-    if (record.status !== 'pending' && record.status !== 'broadcasted') {
-       return new Response("Not a pending delivery", { status: 200 })
+    if (!record) {
+      return new Response("No record payload", { status: 200 })
     }
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    const serviceAccountStr = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
+    if (!serviceAccountStr) {
+      throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable")
+    }
+    
+    const serviceAccount = JSON.parse(serviceAccountStr)
+    const client = new JWT({
+      email: serviceAccount.client_email,
+      key: serviceAccount.private_key,
+      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+    })
+    
+    const accessTokenObj = await client.getAccessToken()
+    const accessToken = accessTokenObj.token
+    const projectId = serviceAccount.project_id
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
+
+    // =========================================================================
+    // CASE A: UPDATE EVENT — Delivery accepted or cancelled by another driver
+    // =========================================================================
+    const wasPending = oldRecord && (oldRecord.status === 'pending' || oldRecord.status === 'broadcasted')
+    const isNoLongerPending = record.status !== 'pending' && record.status !== 'broadcasted'
+
+    if (eventType === 'UPDATE' && wasPending && isNoLongerPending) {
+      console.log(`Corrida ${record.id} aceita/cancelada. Enviando comando CANCEL_DELIVERY para os demais entregadores...`)
+
+      let query = supabaseClient
+        .from('delivery_drivers')
+        .select('fcm_token')
+        .not('fcm_token', 'is', null)
+        .eq('is_online', true)
+
+      // Exclui o motorista que aceitou (se houver) para economizar push
+      if (record.driver_id) {
+        query = query.neq('id', record.driver_id)
+      }
+
+      const { data: drivers } = await query
+      if (!drivers || drivers.length === 0) {
+        return new Response("No online drivers to cancel notification", { status: 200 })
+      }
+
+      const tokens = drivers.map(d => d.fcm_token).filter(Boolean)
+      const cancelRequests = tokens.map(token => {
+        const message = {
+          message: {
+            token: token,
+            data: {
+              type: "cancel_delivery",
+              deliveryId: record.id
+            },
+            android: {
+              priority: "high"
+            }
+          }
+        }
+        return fetch(fcmUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(message)
+        }).then(res => res.json())
+      })
+
+      const cancelResults = await Promise.all(cancelRequests)
+      console.log("FCM Cancel Results:", cancelResults)
+      return new Response(JSON.stringify({ success: true, action: "cancelled", count: tokens.length }), {
+        headers: { "Content-Type": "application/json" }
+      })
+    }
+
+    // =========================================================================
+    // CASE B: INSERT EVENT (or UPDATE to pending/broadcasted) — New Delivery
+    // =========================================================================
+    if (record.status !== 'pending' && record.status !== 'broadcasted') {
+       return new Response("Not a pending delivery", { status: 200 })
+    }
 
     // Busca detalhes completos da corrida incluindo empresa e taxa de entrega
     let companyName = "Loja Parceira";
@@ -74,26 +150,6 @@ serve(async (req) => {
 
     const tokens = drivers.map(d => d.fcm_token).filter(Boolean)
     console.log(`Enviando push para ${tokens.length} dispositivos...`)
-
-    const serviceAccountStr = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
-    if (!serviceAccountStr) {
-      throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable. Add it via supabase secrets set FIREBASE_SERVICE_ACCOUNT='{...}'")
-    }
-    
-    const serviceAccount = JSON.parse(serviceAccountStr)
-    
-    // Autenticar com Google usando JWT
-    const client = new JWT({
-      email: serviceAccount.client_email,
-      key: serviceAccount.private_key,
-      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
-    })
-    
-    const accessTokenObj = await client.getAccessToken()
-    const accessToken = accessTokenObj.token
-
-    const projectId = serviceAccount.project_id
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
     // Firebase HTTP v1 API aceita apenas 1 mensagem por request
     const requests = tokens.map(token => {
