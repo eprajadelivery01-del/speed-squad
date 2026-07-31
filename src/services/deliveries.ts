@@ -186,17 +186,36 @@ export function useUpdateDeliveryStatus() {
         throw new Error((data as any).error || (data as any).message || JSON.stringify(data) || "Erro ao atualizar entrega.");
       }
 
-      // Notifica o cliente via Edge Function informando a mudança de status da entrega (ex: in_transit, collecting, delivered)
+      // Atualiza também o status na tabela orders para manter total sincronia e disparar o Realtime do cliente
       try {
-        console.log("PUSH ENVIADO PARA O CLIENTE (Status da entrega):", status);
-        supabase.functions.invoke('notify-customer', {
-          body: {
-            deliveryId: id,
-            deliveryStatus: status,
-            status: status
+        const { data: delData } = await supabase.from("deliveries").select("order_id").eq("id", id).maybeSingle();
+        const orderId = delData?.order_id;
+        
+        if (orderId) {
+          let newOrderStatus: string | null = null;
+          if (["in_transit", "in_route"].includes(status)) {
+            newOrderStatus = "delivering";
+          } else if (["delivered", "completed"].includes(status)) {
+            newOrderStatus = "delivered";
           }
-        }).catch(e => console.warn('[useUpdateDeliveryStatus] Erro ao invocar notify-customer:', e));
-      } catch {}
+
+          if (newOrderStatus) {
+            await supabase.from("orders").update({ status: newOrderStatus, updated_at: new Date().toISOString() }).eq("id", orderId);
+          }
+
+          console.log("PUSH ENVIADO PARA O CLIENTE (Status da entrega):", orderId, status);
+          await supabase.functions.invoke('notify-customer', {
+            body: {
+              orderId,
+              deliveryId: id,
+              deliveryStatus: status,
+              status: newOrderStatus || status
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[useUpdateDeliveryStatus] Erro ao sincronizar status do pedido/notificar cliente:', e);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveries"] });
