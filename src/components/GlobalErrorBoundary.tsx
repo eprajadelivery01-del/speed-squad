@@ -63,13 +63,27 @@ export class GlobalErrorBoundary extends Component<Props, State> {
           
           <p style={{
             color: "rgba(255,255,255,0.6)",
-            marginBottom: "24px",
+            marginBottom: "16px",
             fontSize: "14px",
             lineHeight: "1.5",
             maxWidth: "300px",
           }}>
-            Ocorreu um erro inesperado no aplicativo. Tente recarregar a página ou voltar ao início.
+            Ocorreu um erro inesperado no aplicativo.
           </p>
+
+          <div style={{
+            padding: "12px 16px",
+            background: "rgba(234, 179, 8, 0.15)",
+            border: "1px solid rgba(234, 179, 8, 0.4)",
+            borderRadius: "12px",
+            color: "#fef08a",
+            fontWeight: "700",
+            fontSize: "13px",
+            marginBottom: "24px",
+            maxWidth: "320px",
+          }}>
+            ⚠️ TIRE UM PRINT OU COPIE A TELA E ENVIE PARA A BONASOFT.
+          </div>
           
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "280px" }}>
             <button
