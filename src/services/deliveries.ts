@@ -203,14 +203,17 @@ export function useUpdateDeliveryStatus() {
             await supabase.from("orders").update({ status: newOrderStatus, updated_at: new Date().toISOString() }).eq("id", orderId);
           }
 
-          console.log("PUSH ENVIADO PARA O CLIENTE (Status da entrega):", orderId, status);
+          console.log(`[notify-customer] ENVIANDO PUSH PARA O PEDIDO #${(orderId || "").slice(0, 6).toUpperCase()} | deliveryStatus: ${status}`);
           await supabase.functions.invoke('notify-customer', {
             body: {
               orderId,
+              order_id: orderId,
               deliveryId: id,
               deliveryStatus: status,
               status: newOrderStatus || status
             }
+          }).then(res => {
+            console.log(`[notify-customer] PUSH ENTREGUE PELO FIREBASE PARA O PEDIDO #${(orderId || "").slice(0, 6).toUpperCase()}:`, res);
           });
         }
       } catch (e) {
