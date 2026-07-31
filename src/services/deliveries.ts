@@ -185,6 +185,18 @@ export function useUpdateDeliveryStatus() {
       if (data && (data as any).success === false) {
         throw new Error((data as any).error || (data as any).message || JSON.stringify(data) || "Erro ao atualizar entrega.");
       }
+
+      // Notifica o cliente via Edge Function informando a mudança de status da entrega (ex: in_transit, collecting, delivered)
+      try {
+        console.log("PUSH ENVIADO PARA O CLIENTE (Status da entrega):", status);
+        supabase.functions.invoke('notify-customer', {
+          body: {
+            deliveryId: id,
+            deliveryStatus: status,
+            status: status
+          }
+        }).catch(e => console.warn('[useUpdateDeliveryStatus] Erro ao invocar notify-customer:', e));
+      } catch {}
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveries"] });
