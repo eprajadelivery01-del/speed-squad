@@ -31,11 +31,31 @@ const statusMessages: Record<string, { title: string; description: string }> = {
     title: '📦 Pedido pronto!',
     description: 'Seu pedido está pronto e aguardando o entregador.',
   },
+  accepted: {
+    title: '🏍️ Entregador a caminho da loja!',
+    description: 'Um entregador aceitou a corrida para retirar seu pedido.',
+  },
+  collecting: {
+    title: '🏪 Entregador na loja!',
+    description: 'O entregador chegou na loja para coletar seu pedido.',
+  },
   delivering: {
     title: '🛵 Saiu para entrega!',
     description: 'O entregador está a caminho do seu endereço.',
   },
+  in_route: {
+    title: '🛵 Saiu para entrega!',
+    description: 'O entregador está a caminho do seu endereço com seu pedido.',
+  },
+  in_transit: {
+    title: '🛵 Saiu para entrega!',
+    description: 'O entregador está a caminho do seu endereço com seu pedido.',
+  },
   delivered: {
+    title: '🎉 Pedido entregue!',
+    description: 'Seu pedido foi entregue. Bom apetite!',
+  },
+  completed: {
     title: '🎉 Pedido entregue!',
     description: 'Seu pedido foi entregue. Bom apetite!',
   },
@@ -65,18 +85,13 @@ serve(async (req) => {
     const payload = await req.json();
     console.log("Customer Push Webhook payload received:", payload);
 
-    const record = payload.record;
+    const record = payload.record || payload;
     const oldRecord = payload.old_record;
+    const targetOrderId = record.orderId || record.order_id || record.id;
+    const newStatus = payload.deliveryStatus || payload.status || record.status || record.deliveryStatus;
 
-    if (!record || !record.id) {
-      return new Response(JSON.stringify({ error: 'No record found' }), { status: 400 });
-    }
-
-    const newStatus = record.status;
-    const oldStatus = oldRecord ? oldRecord.status : null;
-
-    if (newStatus === oldStatus) {
-      return new Response(JSON.stringify({ message: 'Status did not change, ignoring' }), { status: 200 });
+    if (!targetOrderId) {
+      return new Response(JSON.stringify({ error: 'No orderId or record found' }), { status: 400 });
     }
 
     const msg = statusMessages[newStatus];
@@ -84,15 +99,31 @@ serve(async (req) => {
       return new Response(JSON.stringify({ message: `Status '${newStatus}' has no mapping, ignoring` }), { status: 200 });
     }
 
+    // Se record não possui customer_id/user_id, buscar a order no banco
+    let customerId = payload.customer_id || record.customer_id;
+    let userId = payload.user_id || record.user_id;
+
+    if (!customerId && !userId && targetOrderId) {
+      const { data: orderData } = await adminClient
+        .from('orders')
+        .select('customer_id, user_id')
+        .eq('id', targetOrderId)
+        .maybeSingle();
+      if (orderData) {
+        customerId = orderData.customer_id;
+        userId = orderData.user_id;
+      }
+    }
+
     // Find customer's fcm_token
     let customerQuery = adminClient
       .from('customers')
       .select('fcm_token');
 
-    if (record.customer_id) {
-      customerQuery = customerQuery.or(`id.eq.${record.customer_id},user_id.eq.${record.customer_id}`);
-    } else if (record.user_id) {
-      customerQuery = customerQuery.eq('user_id', record.user_id);
+    if (customerId) {
+      customerQuery = customerQuery.or(`id.eq.${customerId},user_id.eq.${customerId}`);
+    } else if (userId) {
+      customerQuery = customerQuery.eq('user_id', userId);
     } else {
       return new Response(JSON.stringify({ message: 'No customer identifier found, ignoring' }), { status: 200 });
     }
@@ -102,13 +133,14 @@ serve(async (req) => {
 
     const customer = customerData && customerData.find(c => c.fcm_token);
     if (!customer || !customer.fcm_token) {
+      console.log(`[notify-customer] Cliente ${customerId || userId} não possui token FCM cadastrado.`);
       return new Response(JSON.stringify({ message: 'Customer does not have an FCM token' }), { status: 200 });
     }
 
     const message = {
       data: {
         type: 'order_status',
-        orderId: record.id,
+        orderId: targetOrderId,
         status: newStatus,
         title: msg.title,
         body: msg.description
@@ -120,7 +152,8 @@ serve(async (req) => {
       android: {
         priority: 'high' as const,
         notification: {
-          sound: 'default'
+          sound: 'default',
+          channelId: 'marketplace_orders'
         }
       },
       apns: {
@@ -134,15 +167,15 @@ serve(async (req) => {
       token: customer.fcm_token
     };
 
-    console.log(`Sending push to customer with token ${customer.fcm_token}`);
+    console.log(`[notify-customer] ENVIANDO PUSH PARA O PEDIDO #${targetOrderId} | token: ${customer.fcm_token} | status: ${newStatus}`);
     const response = await admin.messaging().send(message);
-    console.log("FCM Response:", response);
+    console.log("[notify-customer] PUSH ENTREGUE PELO FIREBASE:", response);
 
     return new Response(JSON.stringify({ success: true, response }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
-    console.error("Error sending push to customer:", err);
+    console.error("[notify-customer] Erro ao enviar push para o cliente:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 });
