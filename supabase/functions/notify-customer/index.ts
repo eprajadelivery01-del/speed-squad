@@ -20,7 +20,7 @@ try {
 
 const statusMessages: Record<string, { title: string; description: string }> = {
   confirmed: {
-    title: '✅ Pedido confirmado!',
+    title: '✅ Pedido confirmado',
     description: 'A loja aceitou seu pedido.',
   },
   preparing: {
@@ -28,36 +28,40 @@ const statusMessages: Record<string, { title: string; description: string }> = {
     description: 'A loja começou a preparar seu pedido.',
   },
   ready: {
-    title: '📦 Pedido pronto!',
-    description: 'Seu pedido está pronto e aguardando o entregador.',
+    title: '📦 Pedido pronto',
+    description: 'Seu pedido está pronto na loja.',
   },
   accepted: {
-    title: '🏍️ Entregador a caminho da loja!',
-    description: 'Um entregador aceitou a corrida para retirar seu pedido.',
+    title: '🚚 Saiu para entrega!',
+    description: 'Seu pedido saiu para entrega e está a caminho.',
   },
   collecting: {
-    title: '🏪 Entregador na loja!',
-    description: 'O entregador chegou na loja para coletar seu pedido.',
+    title: '🚚 Saiu para entrega!',
+    description: 'Seu pedido saiu para entrega e está a caminho.',
+  },
+  broadcasted: {
+    title: '🚚 Saiu para entrega!',
+    description: 'Seu pedido saiu para entrega e está a caminho.',
   },
   delivering: {
-    title: '🛵 Saiu para entrega!',
-    description: 'O entregador está a caminho do seu endereço.',
+    title: '🚚 Saiu para entrega!',
+    description: 'Seu pedido saiu para entrega e está a caminho.',
   },
   in_route: {
-    title: '🛵 Saiu para entrega!',
-    description: 'O entregador está a caminho do seu endereço com seu pedido.',
+    title: '🚚 Saiu para entrega!',
+    description: 'Seu pedido saiu para entrega e está a caminho.',
   },
   in_transit: {
-    title: '🛵 Saiu para entrega!',
-    description: 'O entregador está a caminho do seu endereço com seu pedido.',
+    title: '🚚 Saiu para entrega!',
+    description: 'Seu pedido saiu para entrega e está a caminho.',
   },
   delivered: {
     title: '🎉 Pedido entregue!',
-    description: 'Seu pedido foi entregue. Bom apetite!',
+    description: 'Seu pedido foi entregue com sucesso.',
   },
   completed: {
     title: '🎉 Pedido entregue!',
-    description: 'Seu pedido foi entregue. Bom apetite!',
+    description: 'Seu pedido foi entregue com sucesso.',
   },
   cancelled: {
     title: '❌ Pedido cancelado',
