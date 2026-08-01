@@ -339,7 +339,7 @@ serve(async (req) => {
         priority: 'high' as const,
         notification: {
           sound: 'default',
-          channelId: 'default',
+          channelId: 'marketplace_orders',
           priority: 'high' as const,
           visibility: 'public' as const
         }
