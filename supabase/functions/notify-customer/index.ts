@@ -89,6 +89,21 @@ serve(async (req) => {
     const payload = await req.json();
     console.log("Customer Push Webhook payload received:", payload);
 
+    // Se a requisição for para salvar token FCM do cliente com admin service role
+    if (payload.action === 'save_token' || (payload.fcmToken && !payload.status && !payload.deliveryStatus)) {
+      const fcmToken = payload.fcmToken || payload.fcm_token;
+      const targetId = payload.customerId || payload.customer_id || payload.userId || payload.user_id || payload.phone;
+      if (fcmToken && targetId) {
+        console.log(`[notify-customer] SALVANDO TOKEN FCM COM ADMIN ROLE PARA CLIENTE: ${targetId}`);
+        await Promise.allSettled([
+          adminClient.from('customers').update({ fcm_token: fcmToken, updated_at: new Date().toISOString() }).or(`id.eq.${targetId},user_id.eq.${targetId},phone.eq.${targetId}`),
+          adminClient.from('profiles').update({ fcm_token: fcmToken, updated_at: new Date().toISOString() }).eq('id', targetId),
+          adminClient.from('users').update({ fcm_token: fcmToken, updated_at: new Date().toISOString() }).eq('id', targetId),
+        ]);
+        return new Response(JSON.stringify({ success: true, message: 'FCM token saved' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+
     const record = payload.record || payload;
     const oldRecord = payload.old_record;
     const targetOrderId = record.orderId || record.order_id || record.id;
@@ -176,7 +191,7 @@ serve(async (req) => {
         priority: 'high' as const,
         notification: {
           sound: 'default',
-          channelId: 'marketplace_orders'
+          channelId: 'default'
         }
       },
       apns: {
