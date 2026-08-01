@@ -71,12 +71,10 @@ export default function DriverDeliveriesPage() {
     isSubmittingRef.current = true;
 
     let nextStatus: any = "";
-    if (currentStatus === "pending" || currentStatus === "broadcasted") {
-      nextStatus = "accepted";
-    } else {
-      // O entregador só tem UMA AÇÃO: Marcar entrega concluída diretamente
-      nextStatus = "delivered";
-    }
+    if (currentStatus === "pending" || currentStatus === "broadcasted") nextStatus = "accepted";
+    else if (currentStatus === "accepted") nextStatus = "collecting";
+    else if (currentStatus === "collecting") nextStatus = "in_transit" as any;
+    else if (currentStatus === ("in_transit" as any)) nextStatus = "delivered" as any;
 
     if (!nextStatus) {
       toast({
@@ -183,9 +181,12 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     switch (delivery.status) {
       case "pending":
       case "broadcasted": return "Aceitar Corrida";
+      case "accepted": return "Cheguei no Local";
+      case "collecting": return "Iniciar Entrega";
+      case "in_transit": return "Concluir Entrega";
       case "delivered": return "Concluído";
       case "cancelled": return "Cancelado";
-      default: return "Concluir Entrega";
+      default: return "Finalizar";
     }
   };
 
@@ -193,16 +194,18 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
     switch (delivery.status) {
       case "pending":
       case "broadcasted": return <CheckCircle className="h-4 w-4" />;
-      case "delivered": return <CheckCircle className="h-4 w-4" />;
-      default: return <CheckCircle className="h-4 w-4" />;
+      case "accepted": return <Package className="h-4 w-4" />;
+      case "collecting": return <Play className="h-4 w-4" />;
+      case "in_transit": return <CheckCircle className="h-4 w-4" />;
+      default: return null;
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "accepted":
-      case "collecting":
-      case "in_transit": return "Aceito";
+      case "accepted": return "Aceito";
+      case "collecting": return "Coletando";
+      case "in_transit": return "Em Rota";
       case "delivered": return "Concluído";
       case "cancelled": return "Cancelado";
       default: return status;

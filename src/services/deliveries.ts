@@ -193,7 +193,7 @@ export function useUpdateDeliveryStatus() {
         
         if (orderId) {
           let newOrderStatus: string | null = null;
-          if (["accepted", "collecting", "in_transit", "in_route"].includes(status)) {
+          if (["in_transit", "in_route"].includes(status)) {
             newOrderStatus = "delivering";
           } else if (["delivered", "completed"].includes(status)) {
             newOrderStatus = "delivered";
