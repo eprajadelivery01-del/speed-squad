@@ -99,12 +99,13 @@ serve(async (req) => {
     }
 
     if (newStatus === 'cancelled' && targetOrderId) {
-      console.log(`[notify-customer] FORÇANDO ATUALIZAÇÃO ADMIN DE CANCELAMENTO DO PEDIDO #${targetOrderId}`);
+      const cleanId = String(targetOrderId).replace('#', '').trim();
+      console.log(`[notify-customer] FORÇANDO ATUALIZAÇÃO ADMIN DE CANCELAMENTO DO PEDIDO #${cleanId}`);
       try {
         await Promise.all([
-          adminClient.from('orders').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', targetOrderId),
-          adminClient.from('deliveries').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('order_id', targetOrderId),
-          adminClient.from('available_deliveries').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('order_id', targetOrderId),
+          adminClient.from('orders').update({ status: 'cancelled', updated_at: new Date().toISOString() }).or(`id.eq.${cleanId},id.ilike.${cleanId}%`),
+          adminClient.from('deliveries').update({ status: 'cancelled', updated_at: new Date().toISOString() }).or(`order_id.eq.${cleanId},order_id.ilike.${cleanId}%`),
+          adminClient.from('available_deliveries').update({ status: 'cancelled', updated_at: new Date().toISOString() }).or(`order_id.eq.${cleanId},order_id.ilike.${cleanId}%`),
         ]);
       } catch (errDb) {
         console.error(`[notify-customer] Erro ao atualizar banco para cancelado via adminClient:`, errDb);
