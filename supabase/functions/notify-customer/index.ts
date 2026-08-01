@@ -98,6 +98,19 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No orderId or record found' }), { status: 400 });
     }
 
+    if (newStatus === 'cancelled' && targetOrderId) {
+      console.log(`[notify-customer] FORÇANDO ATUALIZAÇÃO ADMIN DE CANCELAMENTO DO PEDIDO #${targetOrderId}`);
+      try {
+        await Promise.all([
+          adminClient.from('orders').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', targetOrderId),
+          adminClient.from('deliveries').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('order_id', targetOrderId),
+          adminClient.from('available_deliveries').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('order_id', targetOrderId),
+        ]);
+      } catch (errDb) {
+        console.error(`[notify-customer] Erro ao atualizar banco para cancelado via adminClient:`, errDb);
+      }
+    }
+
     const msg = statusMessages[newStatus];
     if (!msg) {
       return new Response(JSON.stringify({ message: `Status '${newStatus}' has no mapping, ignoring` }), { status: 200 });
