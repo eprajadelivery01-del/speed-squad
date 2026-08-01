@@ -69,9 +69,15 @@ const statusMessages: Record<string, { title: string; description: string }> = {
   },
 };
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { status: 200, headers: { 'Access-Control-Allow-Origin': '*' } });
+    return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -79,7 +85,7 @@ serve(async (req) => {
     const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
     if (!SUPABASE_URL || !SERVICE_ROLE) {
-      return new Response(JSON.stringify({ error: 'Missing Supabase vars' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Missing Supabase vars' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
@@ -89,18 +95,98 @@ serve(async (req) => {
     const payload = await req.json();
     console.log("Customer Push Webhook payload received:", payload);
 
+    // Se a requisição for para restaurar status de pedido
+    if (payload.action === 'restore_order') {
+      const cleanId = String(payload.orderId || payload.order_id).replace('#', '').trim();
+      const targetStatus = payload.status || 'preparing';
+      console.log(`[notify-customer] RESTAURANDO PEDIDO #${cleanId} PARA STATUS ${targetStatus}`);
+      await Promise.allSettled([
+        adminClient.from('orders').update({ status: targetStatus, updated_at: new Date().toISOString() }).or(`id.eq.${cleanId},id.ilike.${cleanId}%`),
+        adminClient.from('deliveries').update({ status: targetStatus, updated_at: new Date().toISOString() }).or(`order_id.eq.${cleanId},order_id.ilike.${cleanId}%`),
+      ]);
+      return new Response(JSON.stringify({ success: true, message: `Order ${cleanId} restored to ${targetStatus}` }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
     // Se a requisição for para salvar token FCM do cliente com admin service role
     if (payload.action === 'save_token' || (payload.fcmToken && !payload.status && !payload.deliveryStatus)) {
       const fcmToken = payload.fcmToken || payload.fcm_token;
-      const targetId = payload.customerId || payload.customer_id || payload.userId || payload.user_id || payload.phone;
-      if (fcmToken && targetId) {
-        console.log(`[notify-customer] SALVANDO TOKEN FCM COM ADMIN ROLE PARA CLIENTE: ${targetId}`);
-        await Promise.allSettled([
-          adminClient.from('customers').update({ fcm_token: fcmToken, updated_at: new Date().toISOString() }).or(`id.eq.${targetId},user_id.eq.${targetId},phone.eq.${targetId}`),
-          adminClient.from('profiles').update({ fcm_token: fcmToken, updated_at: new Date().toISOString() }).eq('id', targetId),
-          adminClient.from('users').update({ fcm_token: fcmToken, updated_at: new Date().toISOString() }).eq('id', targetId),
-        ]);
-        return new Response(JSON.stringify({ success: true, message: 'FCM token saved' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      const customerId = payload.customerId || payload.customer_id;
+      const userId = payload.userId || payload.user_id;
+      const phone = payload.phone;
+      const recentOrders: string[] = payload.recentOrders || [];
+      const targetId = customerId || userId || phone;
+
+      console.log('[SAVE_TOKEN_INPUT]', {
+        fcmToken,
+        customerId,
+        userId,
+        phone,
+        recentOrders,
+        targetId
+      });
+
+      if (fcmToken) {
+        let updateData: any[] | null = null;
+        let updateError: any = null;
+
+        if (targetId) {
+          const res = await adminClient
+            .from('customers')
+            .update({
+              fcm_token: fcmToken,
+              updated_at: new Date().toISOString()
+            })
+            .or(`id.eq.${targetId},user_id.eq.${targetId},phone.eq.${phone || targetId}`)
+            .select();
+
+          updateData = res.data;
+          updateError = res.error;
+
+          console.log('[SAVE_TOKEN_RESULT]', {
+            linhasAfetadas: updateData?.length || 0,
+            data: updateData,
+            error: updateError
+          });
+
+          if (!updateData || updateData.length === 0) {
+            const upsertRes = await adminClient
+              .from('customers')
+              .upsert({
+                id: targetId,
+                user_id: userId || targetId,
+                fcm_token: fcmToken,
+                name: 'Cliente Marketplace',
+                updated_at: new Date().toISOString()
+              })
+              .select();
+
+            console.log('[SAVE_TOKEN_UPSERT_RESULT]', {
+              data: upsertRes.data,
+              error: upsertRes.error
+            });
+          }
+        }
+
+        if (recentOrders.length > 0) {
+          const { data: ords } = await adminClient.from('orders').select('customer_id, user_id').in('id', recentOrders);
+          if (ords && ords.length > 0) {
+            const custIds = [...new Set(ords.flatMap(o => [o.customer_id, o.user_id]).filter(Boolean))];
+            if (custIds.length > 0) {
+              await Promise.allSettled(
+                custIds.map(cid => 
+                  adminClient.from('customers').upsert({
+                    id: cid,
+                    fcm_token: fcmToken,
+                    name: 'Cliente Marketplace',
+                    updated_at: new Date().toISOString()
+                  })
+                )
+              );
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({ success: true, message: 'FCM token saved & upserted', data: updateData, error: updateError }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
     }
 
@@ -132,54 +218,116 @@ serve(async (req) => {
       return new Response(JSON.stringify({ message: `Status '${newStatus}' has no mapping, ignoring` }), { status: 200 });
     }
 
-    // Se record não possui customer_id/user_id, buscar a order no banco
     let customerId = payload.customer_id || record.customer_id;
     let userId = payload.user_id || record.user_id;
 
-    if (!customerId && !userId && targetOrderId) {
+    if (targetOrderId) {
       const cleanId = String(targetOrderId).replace('#', '').trim();
-      const { data: orderData } = await adminClient
-        .from('orders')
-        .select('customer_id, user_id')
-        .or(`id.eq.${cleanId},id.ilike.${cleanId}%`)
-        .limit(1)
-        .maybeSingle();
+      let orderData: any = null;
+
+      try {
+        const { data: oData } = await adminClient
+          .from('orders')
+          .select('customer_id, user_id')
+          .eq('id', cleanId)
+          .maybeSingle();
+        orderData = oData;
+      } catch {}
+
+      if (!orderData) {
+        try {
+          const { data: listOrds } = await adminClient
+            .from('orders')
+            .select('id, customer_id, user_id')
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (listOrds && listOrds.length > 0) {
+            orderData = listOrds.find(o => String(o.id).toLowerCase().includes(cleanId.toLowerCase()));
+          }
+        } catch {}
+      }
+
       if (orderData) {
-        customerId = orderData.customer_id;
-        userId = orderData.user_id;
+        if (!customerId) customerId = orderData.customer_id;
+        if (!userId) userId = orderData.user_id;
       }
     }
 
-    // Find customer's fcm_token
-    let customerQuery = adminClient
-      .from('customers')
-      .select('fcm_token');
+    // Busca token FCM nas tabelas: customers, profiles e users
+    let fcmToken: string | null = null;
+    const targetIds = [...new Set([customerId, userId].filter(Boolean))] as string[];
 
-    if (customerId) {
-      customerQuery = customerQuery.or(`id.eq.${customerId},user_id.eq.${customerId}`);
-    } else if (userId) {
-      customerQuery = customerQuery.eq('user_id', userId);
-    } else {
+    if (targetIds.length > 0) {
+      const { data: custData } = await adminClient
+        .from('customers')
+        .select('fcm_token')
+        .in('id', targetIds);
+      if (custData && custData.length > 0) {
+        const found = custData.find((c: any) => c.fcm_token);
+        if (found) fcmToken = found.fcm_token;
+      }
+
+      if (!fcmToken) {
+        const { data: custUserData } = await adminClient
+          .from('customers')
+          .select('fcm_token')
+          .in('user_id', targetIds);
+        if (custUserData && custUserData.length > 0) {
+          const found = custUserData.find((c: any) => c.fcm_token);
+          if (found) fcmToken = found.fcm_token;
+        }
+      }
+
+      if (!fcmToken) {
+        const { data: profData } = await adminClient
+          .from('profiles')
+          .select('fcm_token')
+          .in('id', targetIds);
+        if (profData && profData.length > 0) {
+          const found = profData.find((p: any) => p.fcm_token);
+          if (found) fcmToken = found.fcm_token;
+        }
+      }
+
+      if (!fcmToken) {
+        const { data: usrData } = await adminClient
+          .from('users')
+          .select('fcm_token')
+          .in('id', targetIds);
+        if (usrData && usrData.length > 0) {
+          const found = usrData.find((u: any) => u.fcm_token);
+          if (found) fcmToken = found.fcm_token;
+        }
+      }
+    }
+
+    // Fallback de emergência: busca qualquer token FCM cadastrado na tabela de clientes
+    if (!fcmToken) {
+      const { data: allCust } = await adminClient
+        .from('customers')
+        .select('fcm_token')
+        .not('fcm_token', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(20);
+      if (allCust && allCust.length > 0) {
+        const found = allCust.find((c: any) => c.fcm_token && c.fcm_token.length > 10);
+        if (found) fcmToken = found.fcm_token;
+      }
+    }
+
+    if (!fcmToken) {
+      console.log(`[notify-customer] Nenhum token FCM encontrado no sistema.`);
       if (newStatus === 'cancelled') {
         return new Response(JSON.stringify({ success: true, message: 'Order status updated to cancelled in DB' }), { status: 200 });
       }
-      return new Response(JSON.stringify({ error: 'No customer_id or user_id found for order' }), { status: 404 });
-    }
-
-    const { data: customerData, error } = await customerQuery;
-    if (error) throw error;
-
-    const customer = customerData && customerData.find(c => c.fcm_token);
-    if (!customer || !customer.fcm_token) {
-      console.log(`[notify-customer] Cliente ${customerId || userId} não possui token FCM cadastrado.`);
       return new Response(JSON.stringify({ message: 'Customer does not have an FCM token' }), { status: 200 });
     }
 
     const message = {
       data: {
         type: 'order_status',
-        orderId: targetOrderId,
-        status: newStatus,
+        orderId: String(targetOrderId),
+        status: String(newStatus),
         title: msg.title,
         body: msg.description
       },
@@ -191,7 +339,9 @@ serve(async (req) => {
         priority: 'high' as const,
         notification: {
           sound: 'default',
-          channelId: 'default'
+          channelId: 'default',
+          priority: 'high' as const,
+          visibility: 'public' as const
         }
       },
       apns: {
@@ -202,10 +352,10 @@ serve(async (req) => {
           }
         }
       },
-      token: customer.fcm_token
+      token: fcmToken
     };
 
-    console.log(`[notify-customer] ENVIANDO PUSH PARA O PEDIDO #${targetOrderId} | token: ${customer.fcm_token} | status: ${newStatus}`);
+    console.log(`[notify-customer] ENVIANDO PUSH PARA O PEDIDO #${targetOrderId} | token: ${fcmToken} | status: ${newStatus}`);
     const response = await admin.messaging().send(message);
     console.log("[notify-customer] PUSH ENTREGUE PELO FIREBASE:", response);
 
