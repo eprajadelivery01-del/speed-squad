@@ -122,10 +122,12 @@ serve(async (req) => {
     let userId = payload.user_id || record.user_id;
 
     if (!customerId && !userId && targetOrderId) {
+      const cleanId = String(targetOrderId).replace('#', '').trim();
       const { data: orderData } = await adminClient
         .from('orders')
         .select('customer_id, user_id')
-        .eq('id', targetOrderId)
+        .or(`id.eq.${cleanId},id.ilike.${cleanId}%`)
+        .limit(1)
         .maybeSingle();
       if (orderData) {
         customerId = orderData.customer_id;
@@ -143,7 +145,10 @@ serve(async (req) => {
     } else if (userId) {
       customerQuery = customerQuery.eq('user_id', userId);
     } else {
-      return new Response(JSON.stringify({ message: 'No customer identifier found, ignoring' }), { status: 200 });
+      if (newStatus === 'cancelled') {
+        return new Response(JSON.stringify({ success: true, message: 'Order status updated to cancelled in DB' }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: 'No customer_id or user_id found for order' }), { status: 404 });
     }
 
     const { data: customerData, error } = await customerQuery;
