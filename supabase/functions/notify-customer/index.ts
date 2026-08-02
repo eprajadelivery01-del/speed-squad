@@ -360,10 +360,21 @@ serve(async (req) => {
     console.log("[notify-customer] PUSH ENTREGUE PELO FIREBASE:", response);
 
     return new Response(JSON.stringify({ success: true, response }), {
-      headers: { 'Content-Type': 'application/json' },
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
     console.error("[notify-customer] Erro ao enviar push para o cliente:", err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    if (err?.message?.includes('NotRegistered') || err?.code === 'messaging/registration-token-not-registered') {
+      console.log(`[notify-customer] Token FCM expirado/inválido. Limpando token obsoleto de customers...`);
+      try {
+        await adminClient.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
+      } catch {}
+      return new Response(JSON.stringify({ success: false, message: 'Token FCM obsoleto limpo. Aguardando registro do novo token pelo app.' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
