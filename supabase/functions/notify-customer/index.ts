@@ -32,12 +32,12 @@ const statusMessages: Record<string, { title: string; description: string }> = {
     description: 'Seu pedido está pronto na loja.',
   },
   accepted: {
-    title: '🚚 Saiu para entrega!',
-    description: 'Seu pedido saiu para entrega e está a caminho.',
+    title: '🛵 Entregador aceitou!',
+    description: 'Um entregador aceitou seu pedido e vai retirar na loja.',
   },
   collecting: {
-    title: '🚚 Saiu para entrega!',
-    description: 'Seu pedido saiu para entrega e está a caminho.',
+    title: '🏬 Entregador na loja!',
+    description: 'O entregador chegou à loja e está retirando seu pedido.',
   },
   broadcasted: {
     title: '🚚 Saiu para entrega!',
@@ -253,18 +253,30 @@ serve(async (req) => {
       }
     }
 
-    // Busca token FCM nas tabelas: customers, profiles e users
+    // Busca token FCM nas tabelas: device_tokens, customers, profiles e users
     let fcmToken: string | null = null;
     const targetIds = [...new Set([customerId, userId].filter(Boolean))] as string[];
 
     if (targetIds.length > 0) {
-      const { data: custData } = await adminClient
-        .from('customers')
-        .select('fcm_token')
-        .in('id', targetIds);
-      if (custData && custData.length > 0) {
-        const found = custData.find((c: any) => c.fcm_token);
-        if (found) fcmToken = found.fcm_token;
+      const { data: dtData } = await adminClient
+        .from('device_tokens')
+        .select('token')
+        .or(`customer_id.in.(${targetIds.join(',')}),user_id.in.(${targetIds.join(',')})`)
+        .order('updated_at', { ascending: false });
+      if (dtData && dtData.length > 0) {
+        const found = dtData.find((d: any) => d.token);
+        if (found) fcmToken = found.token;
+      }
+
+      if (!fcmToken) {
+        const { data: custData } = await adminClient
+          .from('customers')
+          .select('fcm_token')
+          .in('id', targetIds);
+        if (custData && custData.length > 0) {
+          const found = custData.find((c: any) => c.fcm_token);
+          if (found) fcmToken = found.fcm_token;
+        }
       }
 
       if (!fcmToken) {
@@ -301,7 +313,19 @@ serve(async (req) => {
       }
     }
 
-    // Fallback de emergência: busca qualquer token FCM cadastrado na tabela de clientes
+    // Fallback de emergência: busca qualquer token FCM recente na tabela device_tokens ou customers
+    if (!fcmToken) {
+      const { data: allDeviceTokens } = await adminClient
+        .from('device_tokens')
+        .select('token')
+        .order('updated_at', { ascending: false })
+        .limit(10);
+      if (allDeviceTokens && allDeviceTokens.length > 0) {
+        const found = allDeviceTokens.find((d: any) => d.token && d.token.length > 10);
+        if (found) fcmToken = found.token;
+      }
+    }
+
     if (!fcmToken) {
       const { data: allCust } = await adminClient
         .from('customers')
