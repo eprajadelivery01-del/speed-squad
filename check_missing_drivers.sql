@@ -36,10 +36,11 @@ ORDER BY p.created_at DESC;
 
 -- 4) ENTREGADORES SEM ROLE 'driver' em user_roles
 --    (existem em delivery_drivers mas não aparecem por falta de permissão/role)
-SELECT d.id AS driver_id, d.user_id, p.email, p.full_name, d.created_at
+SELECT d.id AS driver_id, d.user_id, u.email, p.full_name, d.created_at
 FROM public.delivery_drivers d
 LEFT JOIN public.user_roles r ON r.user_id = d.user_id AND r.role::text = 'driver'
 LEFT JOIN public.profiles p ON p.id = d.user_id
+LEFT JOIN auth.users u ON u.id = d.user_id
 WHERE r.user_id IS NULL
 ORDER BY d.created_at DESC;
 
