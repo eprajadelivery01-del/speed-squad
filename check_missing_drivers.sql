@@ -22,8 +22,9 @@ ORDER BY u.created_at DESC;
 
 -- 3) USUÁRIOS COM PERFIL DE ENTREGADOR MAS SEM REGISTRO EM delivery_drivers
 --    (esses são os que "somem" da lista de entregadores)
-SELECT p.id, p.email, p.full_name, p.created_at
+SELECT p.id, u.email, p.full_name, p.created_at
 FROM public.profiles p
+JOIN auth.users u ON u.id = p.id
 LEFT JOIN public.delivery_drivers d ON d.user_id = p.id
 WHERE d.id IS NULL
   AND (
@@ -35,10 +36,11 @@ ORDER BY p.created_at DESC;
 
 -- 4) ENTREGADORES SEM ROLE 'driver' em user_roles
 --    (existem em delivery_drivers mas não aparecem por falta de permissão/role)
-SELECT d.id AS driver_id, d.user_id, p.email, p.full_name, d.created_at
+SELECT d.id AS driver_id, d.user_id, u.email, p.full_name, d.created_at
 FROM public.delivery_drivers d
 LEFT JOIN public.user_roles r ON r.user_id = d.user_id AND r.role::text = 'driver'
 LEFT JOIN public.profiles p ON p.id = d.user_id
+LEFT JOIN auth.users u ON u.id = d.user_id
 WHERE r.user_id IS NULL
 ORDER BY d.created_at DESC;
 
@@ -52,11 +54,12 @@ WHERE u.id IS NULL;
 
 -- 6) ENTREGADORES INATIVOS / NÃO APROVADOS
 --    (não sumiram do banco — só estão filtrados na UI)
-SELECT d.id, p.email, p.full_name,
+SELECT d.id, u.email, p.full_name,
        to_jsonb(d) - 'id' - 'user_id' AS driver_flags,
        d.created_at
 FROM public.delivery_drivers d
 LEFT JOIN public.profiles p ON p.id = d.user_id
+LEFT JOIN auth.users u ON u.id = d.user_id
 WHERE COALESCE((to_jsonb(d)->>'is_active')::boolean, true) = false
    OR COALESCE((to_jsonb(d)->>'is_approved')::boolean, true) = false
    OR COALESCE(to_jsonb(d)->>'status', 'active') NOT IN ('active','approved','online','offline')
