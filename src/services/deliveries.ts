@@ -216,6 +216,9 @@ export function useUpdateDeliveryStatus() {
           const bodyMsg = `Seu pedido mudou para: ${status}`;
 
           console.log(`[push-notification] ENVIANDO PUSH PARA O PEDIDO #${(orderId || "").slice(0, 6).toUpperCase()} | deliveryStatus: ${status}`);
+          // Notificação de status gerenciada automaticamente pelo banco via Trigger tr_order_update_push_notification.
+          // Desativamos a chamada manual frontend para evitar duplicidade na central de notificações.
+          /*
           await Promise.allSettled([
             supabase.functions.invoke('send-push', {
               body: {
@@ -237,6 +240,7 @@ export function useUpdateDeliveryStatus() {
           ]).then(res => {
             console.log(`[push-notification] PUSH DISPARADO PARA O PEDIDO #${(orderId || "").slice(0, 6).toUpperCase()}:`, res);
           });
+          */
         }
       } catch (e) {
         console.warn('[useUpdateDeliveryStatus] Erro ao sincronizar status do pedido/notificar cliente:', e);
