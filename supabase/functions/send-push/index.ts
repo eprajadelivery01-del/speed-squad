@@ -180,7 +180,7 @@ serve(async (req) => {
             deliveryId: record.id,
             address: formattedDetails,
             details: formattedDetails,
-            title: "🛵 Nova corrida disponível!",
+            title: "",
             body: formattedDetails
           },
           android: {
