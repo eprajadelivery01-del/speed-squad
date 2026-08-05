@@ -22,8 +22,9 @@ ORDER BY u.created_at DESC;
 
 -- 3) USUÁRIOS COM PERFIL DE ENTREGADOR MAS SEM REGISTRO EM delivery_drivers
 --    (esses são os que "somem" da lista de entregadores)
-SELECT p.id, p.email, p.full_name, p.created_at
+SELECT p.id, u.email, p.full_name, p.created_at
 FROM public.profiles p
+JOIN auth.users u ON u.id = p.id
 LEFT JOIN public.delivery_drivers d ON d.user_id = p.id
 WHERE d.id IS NULL
   AND (
