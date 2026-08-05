@@ -98,39 +98,58 @@ serve(async (req) => {
        return new Response("Not a pending delivery", { status: 200 })
     }
 
-    // Busca detalhes completos da corrida incluindo empresa e taxa de entrega
-    let companyName = "Loja Parceira";
-    let pickupAddr = record.pickup_address || record.origin_address || record.store_address || "";
-    let dropoffAddr = record.delivery_address || record.dropoff_address || record.address || "";
-    let deliveryFee = Number(record.delivery_fee) || Number(record.value) || Number(record.price) || Number(record.total_value) || 0;
+    // Busca detalhes completos da corrida incluindo empresa, endereços de coleta/entrega e taxa do entregador
+    let companyName = record.company_name || record.store_name || "";
+    let pickupAddr = record.pickup_address || record.origin_address || record.store_address || record.pickup_location || "";
+    let dropoffAddr = record.delivery_address || record.dropoff_address || record.address || record.destination_address || record.customer_address || "";
+    let deliveryFee = Number(record.delivery_fee) || Number(record.driver_fee) || Number(record.value) || Number(record.price) || Number(record.total_value) || 0;
 
-    if (record.company_id) {
+    // 1. Se houver order_id, buscar os dados reais do pedido (endereço do cliente, taxa e loja)
+    if (record.order_id) {
+      const { data: ord } = await supabaseClient
+        .from('orders')
+        .select('*')
+        .eq('id', record.order_id)
+        .maybeSingle();
+
+      if (ord) {
+        if (!companyName) {
+          companyName = ord.company_name || ord.store_name || ord.company_title || "";
+        }
+        if (!dropoffAddr) {
+          dropoffAddr = ord.delivery_address || ord.customer_address || ord.address || "";
+          if (!dropoffAddr && ord.street) {
+            dropoffAddr = `${ord.street}, ${ord.number || 'S/N'}${ord.neighborhood ? ' - ' + ord.neighborhood : ''}`;
+          }
+        }
+        if (!deliveryFee || deliveryFee === 0) {
+          deliveryFee = Number(ord.delivery_fee) || Number(ord.shipping_fee) || Number(ord.driver_fee) || Number(ord.total_delivery_fee) || 0;
+        }
+        if (!record.company_id && ord.company_id) {
+          record.company_id = ord.company_id;
+        }
+      }
+    }
+
+    // 2. Se houver company_id, buscar nome fantasia e endereço oficial da loja
+    const companyId = record.company_id;
+    if (companyId) {
       const { data: comp } = await supabaseClient
         .from('companies')
-        .select('name, address')
-        .eq('id', record.company_id)
+        .select('name, address, trade_name')
+        .eq('id', companyId)
         .maybeSingle();
       if (comp) {
-        if (comp.name) companyName = comp.name;
+        if (!companyName) companyName = comp.trade_name || comp.name || "Loja Parceira";
         if (!pickupAddr && comp.address) pickupAddr = comp.address;
       }
     }
 
-    if (record.order_id) {
-      const { data: ord } = await supabaseClient
-        .from('orders')
-        .select('delivery_fee')
-        .eq('id', record.order_id)
-        .maybeSingle();
-      if (ord && Number(ord.delivery_fee) > 0) {
-        deliveryFee = Number(ord.delivery_fee);
-      }
-    }
+    if (!companyName) companyName = "Loja Parceira";
+    if (!pickupAddr) pickupAddr = "Retirada na Loja";
+    if (!dropoffAddr) dropoffAddr = "Endereço do Cliente";
 
-    if (!pickupAddr) pickupAddr = "Retirada na loja";
-    if (!dropoffAddr) dropoffAddr = "Endereço do cliente";
-
-    const formattedDetails = `${companyName}\nColeta: ${pickupAddr}\nEntrega: ${dropoffAddr}\nGanhos: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+    const formattedDetails = `🏬 Loja: ${companyName}\n📍 Coleta: ${pickupAddr}\n🏁 Entrega: ${dropoffAddr}\n💰 Ganhos: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
 
     let query = supabaseClient
       .from('delivery_drivers')

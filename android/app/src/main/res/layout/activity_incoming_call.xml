@@ -25,13 +25,14 @@
 
     <TextView
         android:id="@+id/tvCallDetails"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Detalhes da corrida..."
-        android:textColor="#CCCCCC"
-        android:textSize="18sp"
+        android:textColor="#F8FAFC"
+        android:textSize="17sp"
+        android:lineSpacingExtra="4dp"
         android:gravity="center"
-        android:layout_marginBottom="48dp"/>
+        android:layout_marginBottom="32dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
