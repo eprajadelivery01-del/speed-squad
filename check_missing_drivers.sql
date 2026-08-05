@@ -54,11 +54,12 @@ WHERE u.id IS NULL;
 
 -- 6) ENTREGADORES INATIVOS / NÃO APROVADOS
 --    (não sumiram do banco — só estão filtrados na UI)
-SELECT d.id, p.email, p.full_name,
+SELECT d.id, u.email, p.full_name,
        to_jsonb(d) - 'id' - 'user_id' AS driver_flags,
        d.created_at
 FROM public.delivery_drivers d
 LEFT JOIN public.profiles p ON p.id = d.user_id
+LEFT JOIN auth.users u ON u.id = d.user_id
 WHERE COALESCE((to_jsonb(d)->>'is_active')::boolean, true) = false
    OR COALESCE((to_jsonb(d)->>'is_approved')::boolean, true) = false
    OR COALESCE(to_jsonb(d)->>'status', 'active') NOT IN ('active','approved','online','offline')
