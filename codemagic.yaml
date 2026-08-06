@@ -11,7 +11,7 @@ workflows:
       vars:
         XCODE_PROJECT: "App.xcodeproj"
         XCODE_SCHEME: "App"
-        BUNDLE_ID: "com.eprajaentregador"
+        BUNDLE_ID: "br.com.epraja.appFma"
       node: v22.0.0
 
     scripts:
@@ -30,12 +30,13 @@ workflows:
       - name: Install manual certificate
         script: keychain add-certificates --certificate ios_distribution.p12 --certificate-password "epraja2026"
 
-      - name: Fetch and set up signing profile
+      - name: Install manual provisioning profile
         script: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp epraja_dist.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/ 2>/dev/null || true
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create 2>/dev/null || true
-          xcode-project use-profiles --warn-only
+          cp epraja_dist.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Set up code signing settings on Xcode project
+        script: xcode-project use-profiles
 
       - name: Increment build number
         script: |
@@ -53,8 +54,7 @@ workflows:
         script: |
           xcode-project build-ipa \
             --project "ios/App/$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME" \
-            --archive-flags="-allowProvisioningUpdates"
+            --scheme "$XCODE_SCHEME"
 
     artifacts:
       - build/ios/ipa/*.ipa
