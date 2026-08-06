@@ -11,7 +11,7 @@ workflows:
       vars:
         XCODE_PROJECT: "App.xcodeproj"
         XCODE_SCHEME: "App"
-        BUNDLE_ID: "br.com.epraja.appFma"
+        BUNDLE_ID: "com.eprajaentregador"
       node: v22.0.0
 
     scripts:
@@ -36,7 +36,7 @@ workflows:
           cp epraja_dist.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
       - name: Set up code signing settings on Xcode project
-        script: xcode-project use-profiles
+        script: xcode-project use-profiles --warn-only
 
       - name: Increment build number
         script: |
