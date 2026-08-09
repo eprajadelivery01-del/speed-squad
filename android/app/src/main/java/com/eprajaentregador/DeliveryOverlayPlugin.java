@@ -23,6 +23,10 @@ public class DeliveryOverlayPlugin extends Plugin {
     public static DeliveryOverlayPlugin instance;
     public static String latestDetails = "";
     public static String latestDeliveryId = "";
+    public static String latestStore = "";
+    public static String latestPickup = "";
+    public static String latestDropoff = "";
+    public static String latestFee = "";
 
     private BroadcastReceiver callReceiver = new BroadcastReceiver() {
         @Override
