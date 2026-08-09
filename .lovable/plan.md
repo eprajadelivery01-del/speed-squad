@@ -1,63 +1,40 @@
-## Contexto atual
+# Voltar o popup pequeno de "Nova Corrida" (com loja e endereços corretos)
 
-O app tem um watermark simples "BONASOFT" sem espaçamento e sem identidade visual em:
-- `src/pages/driver/DriverHomePage.tsx` (linha 695-698)
-- `src/pages/driver/DriverDeliveriesPage.tsx` (linha 153-156)
-- `src/components/GlobalErrorBoundary.tsx` (linha 118)
+## O que muda
 
-O rodapé real (bottom navigation) está em `src/components/driver/DriverLayout.tsx`. O watermark atual aparece acima da navegação, no final do conteúdo de cada página.
+Hoje a chamada de nova corrida abre uma tela nativa **em tela cheia** (fundo escuro, ícone grande, texto solto no meio). Vamos trocar por um **card pequeno flutuante**, igual ao do print: cabeçalho laranja "NOVA CORRIDA" com o X, corpo escuro com os dados e os dois botões RECUSAR / ACEITAR embaixo.
 
-## Objetivo
+Além disso, no print faltam dados: não aparece o nome da loja e a Entrega mostra "—". Isso será corrigido enviando os campos **separados** (loja, coleta, entrega, ganhos) em vez de um texto único que o app precisa adivinhar.
 
-Criar uma identidade visual para **B O N A S O F T** (com espaçamento entre letras) usando o padrão grego (meandro) da imagem de referência, posicionada no rodapé do app. A peça deve transmitir: credibilidade, elegância, autenticidade e organização.
+## Como fica o card
 
-## Decisões de design
+```text
+┌──────────────────────────────┐
+│ 🛵 NOVA CORRIDA           ✕  │  ← faixa laranja
+├──────────────────────────────┤
+│ Loja Avenida                 │  ← nome da loja (destaque)
+│ Ganhos            R$ 8,00    │
+│ 📦 COLETA                    │
+│ Rua X, 100 - Centro          │
+│ 📍 ENTREGA                   │
+│ Ari Kriff 300 - Jardim       │
+├──────────────────────────────┤
+│ [ ✕ RECUSAR ] [ ✓ ACEITAR ]  │
+└──────────────────────────────┘
+```
 
-- **Padrão escolhido:** faixa horizontal reta (primeiro padrão da imagem) — é mais estável para rodapé, não distorce em telas pequenas e passa solidez.
-- **Estilo:** vetorial com gradientes metálicos dourados/bronze inspirados na referência, linhas finas e simétricas.
-- **Tipografia:** fonte serif clássica para o nome, com tracking amplo (letras espaçadas), centralizado sobre o padrão.
-- **Modo escuro/claro:** o componente adapta a cor do padrão e do texto ao tema atual do app (dark/light) usando tokens do projeto.
+Continua acendendo a tela, tocando o som e vibrando, e continua fechando sozinho quando outro entregador aceita.
 
-## Plano de implementação
+## Detalhes técnicos
 
-### 1. Criar componente reutilizável
+1. **Layout** `activity_incoming_call.xml`: refeito como card compacto (largura ~90%, cantos arredondados, header laranja `#F97316`, corpo `#111827`), com IDs próprios: `tvStoreName`, `tvEarnings`, `tvPickup`, `tvDropoff`, `btnClose`, `btnAccept`, `btnReject`.
+2. **`IncomingCallActivity`**: passa a usar tema de diálogo (`android:theme="@style/Theme.AppCompat.Dialog"` + `windowIsFloating`, fundo translúcido) no `AndroidManifest.xml`, para o card aparecer pequeno sobre a tela atual em vez de ocupar tudo. Preenche os novos campos a partir de extras separados (`storeName`, `pickup`, `dropoff`, `fee`), com fallback: se só vier o `details` antigo, faz o parse das linhas `Loja:/Coleta:/Entrega:/Ganhos:`. Campo vazio nunca vira "—": cai para "Loja Parceira", "Retirada na Loja", "Endereço do cliente".
+3. **`MyFirebaseMessagingService`**: repassa os novos extras (`storeName`, `pickup`, `dropoff`, `fee`) do payload FCM para a Activity, o `OverlayService` e as estáticas do plugin, mantendo `details` para compatibilidade.
+4. **`OverlayService`**: encaminha os mesmos extras no `SHOW_POPUP`.
+5. **Edge function `send-push`**: além do `formattedDetails` atual, envia os campos separados `storeName`, `pickup`, `dropoff`, `fee` no `data` do FCM (a busca de loja/endereços já existe na função, hoje ela só concatena tudo em um texto).
+6. **`DeliveryOverlayPlugin` + `src/plugins/DeliveryOverlay.ts`**: `testIncomingCall`/`updateIncomingCall` aceitam os campos opcionais novos; `useDriverNotifications.ts` passa loja, coleta, entrega e ganhos que já busca do Supabase.
+7. A tela React `IncomingOrderScreen.tsx` (usada com o app aberto) não muda.
 
-Criar `src/components/shared/BonasoftFooter.tsx`:
-- Renderiza um SVG do padrão meandro grego horizontal.
-- Sobrepõe o texto "B O N A S O F T" centralizado.
-- Aceita prop opcional `variant: "light" | "dark"` ou detecta via tema do projeto.
-- Responde ao modo escuro com cores invertidas (bronze claro sobre fundo escuro, bronze escuro sobre fundo claro).
-- Inclui margem e padding adequados para não colidir com a bottom navigation ou conteúdo.
+## Observação
 
-### 2. Gerar/codificar o padrão grego
-
-Criar `public/bonasoft-greek-pattern.svg`:
-- SVG do padrão meandro horizontal reto com ornamento central (palmetta) simplificado.
-- Cores em gradientes dourados/bronze, sem textura 3D para manter leveza e escalabilidade.
-- Repetível horizontalmente e centralizado.
-
-### 3. Aplicar o rodapé nas páginas do driver
-
-Substituir os blocos manuais em:
-- `src/pages/driver/DriverHomePage.tsx`
-- `src/pages/driver/DriverDeliveriesPage.tsx`
-
-Também adicionar `<BonasoftFooter />` automaticamente em `src/components/driver/DriverLayout.tsx`, posicionado entre o `<main>` e a `<nav>` de bottom navigation, garantindo que **todas** as páginas do driver exibam a mesma identidade visual.
-
-### 4. Ajustar GlobalErrorBoundary (se necessário)
-
-Verificar se faz sentido manter ou substituir o "BONASOFT" do `GlobalErrorBoundary.tsx`. Como é tela de erro, pode ser mantido simples ou trocado pela nova marca. Será decidido na implementação conforme harmonia visual.
-
-### 5. Verificação
-
-- Build passa sem erros de TypeScript.
-- Rodapé não cobre botões ou bottom navigation em viewports mobile (384x680 e superiores).
-- Visual coerente nos temas claro e escuro.
-
-## Entregáveis
-
-- `src/components/shared/BonasoftFooter.tsx`
-- `public/bonasoft-greek-pattern.svg`
-- Atualização em `src/components/driver/DriverLayout.tsx`
-- Remoção/substituição dos watermarks manuais em `DriverHomePage.tsx` e `DriverDeliveriesPage.tsx`
-- Possível ajuste em `GlobalErrorBoundary.tsx`
+As mudanças em `android/` só aparecem depois de gerar um novo APK/AAB; a alteração da edge function precisa ser publicada no Supabase.
