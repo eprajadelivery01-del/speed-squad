@@ -192,6 +192,10 @@ public class IncomingCallActivity extends Activity {
         // Carrega os detalhes da corrida
         String details = getIntent().getStringExtra("details");
         currentDeliveryId = getIntent().getStringExtra("deliveryId");
+        String storeName = getIntent().getStringExtra("storeName");
+        String pickup    = getIntent().getStringExtra("pickup");
+        String dropoff   = getIntent().getStringExtra("dropoff");
+        String fee       = getIntent().getStringExtra("fee");
 
         // Prioriza dados do plugin estático (mais recentes, vindos do JS ou FCM nativo)
         if (DeliveryOverlayPlugin.latestDetails != null && !DeliveryOverlayPlugin.latestDetails.isEmpty()) {
@@ -200,8 +204,29 @@ public class IncomingCallActivity extends Activity {
         if (DeliveryOverlayPlugin.latestDeliveryId != null && !DeliveryOverlayPlugin.latestDeliveryId.isEmpty()) {
             currentDeliveryId = DeliveryOverlayPlugin.latestDeliveryId;
         }
+        if (DeliveryOverlayPlugin.latestStore != null && !DeliveryOverlayPlugin.latestStore.isEmpty()) {
+            storeName = DeliveryOverlayPlugin.latestStore;
+        }
+        if (DeliveryOverlayPlugin.latestPickup != null && !DeliveryOverlayPlugin.latestPickup.isEmpty()) {
+            pickup = DeliveryOverlayPlugin.latestPickup;
+        }
+        if (DeliveryOverlayPlugin.latestDropoff != null && !DeliveryOverlayPlugin.latestDropoff.isEmpty()) {
+            dropoff = DeliveryOverlayPlugin.latestDropoff;
+        }
+        if (DeliveryOverlayPlugin.latestFee != null && !DeliveryOverlayPlugin.latestFee.isEmpty()) {
+            fee = DeliveryOverlayPlugin.latestFee;
+        }
 
-        updateDetails(details, currentDeliveryId);
+        updateCall(details, currentDeliveryId, storeName, pickup, dropoff, fee);
+
+        View btnClose = findViewById(R.id.btnClose);
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> {
+                stopRinging();
+                stopStatusCheckLoop();
+                finish();
+            });
+        }
 
         // Inicia verificação automática a cada 1.5s se a corrida continua disponível
         startStatusCheckLoop();
