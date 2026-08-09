@@ -77,6 +77,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String deliveryId = data.get("deliveryId");
         String address    = data.get("address");
         String title      = data.get("title");
+        String storeName  = data.get("storeName");
+        String pickup     = data.get("pickup");
+        String dropoff    = data.get("dropoff");
+        String fee        = data.get("fee");
+        if (storeName == null) storeName = "";
+        if (pickup    == null) pickup    = "";
+        if (dropoff   == null) dropoff   = "";
+        if (fee       == null) fee       = "";
 
         if (address != null && address.contains("Veja no app")) {
             address = address.replace("Veja no app", "Retirada na Loja");
@@ -92,6 +100,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // Salva para a IncomingCallActivity ler quando abrir
         DeliveryOverlayPlugin.latestDetails    = details;
         DeliveryOverlayPlugin.latestDeliveryId = deliveryId != null ? deliveryId : "";
+        DeliveryOverlayPlugin.latestStore      = storeName;
+        DeliveryOverlayPlugin.latestPickup     = pickup;
+        DeliveryOverlayPlugin.latestDropoff    = dropoff;
+        DeliveryOverlayPlugin.latestFee        = fee;
 
         Log.d(TAG, "Popup para deliveryId=" + deliveryId);
 
@@ -101,6 +113,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             svcIntent.setAction(ACTION_SHOW_POPUP);
             svcIntent.putExtra("details",    details);
             svcIntent.putExtra("deliveryId", deliveryId);
+            svcIntent.putExtra("storeName", storeName);
+            svcIntent.putExtra("pickup",     pickup);
+            svcIntent.putExtra("dropoff",    dropoff);
+            svcIntent.putExtra("fee",        fee);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(svcIntent);
             } else {
@@ -116,6 +132,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             Intent actIntent = new Intent(this, IncomingCallActivity.class);
             actIntent.putExtra("details",    details);
             actIntent.putExtra("deliveryId", deliveryId);
+            actIntent.putExtra("storeName", storeName);
+            actIntent.putExtra("pickup",     pickup);
+            actIntent.putExtra("dropoff",    dropoff);
+            actIntent.putExtra("fee",        fee);
             actIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                     | Intent.FLAG_ACTIVITY_CLEAR_TOP
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -132,6 +152,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             Intent fsIntent = new Intent(this, IncomingCallActivity.class);
             fsIntent.putExtra("details",    details);
             fsIntent.putExtra("deliveryId", deliveryId);
+            fsIntent.putExtra("storeName", storeName);
+            fsIntent.putExtra("pickup",     pickup);
+            fsIntent.putExtra("dropoff",    dropoff);
+            fsIntent.putExtra("fee",        fee);
             fsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
             int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
