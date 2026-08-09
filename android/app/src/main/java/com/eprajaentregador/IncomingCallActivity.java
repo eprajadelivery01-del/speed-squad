@@ -53,9 +53,13 @@ public class IncomingCallActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (ACTION_UPDATE_CALL.equals(intent.getAction())) {
-                String details = intent.getStringExtra("details");
-                String deliveryId = intent.getStringExtra("deliveryId");
-                updateDetails(details, deliveryId);
+                updateCall(
+                        intent.getStringExtra("details"),
+                        intent.getStringExtra("deliveryId"),
+                        intent.getStringExtra("storeName"),
+                        intent.getStringExtra("pickup"),
+                        intent.getStringExtra("dropoff"),
+                        intent.getStringExtra("fee"));
             } else if (ACTION_CANCEL_CALL.equals(intent.getAction())) {
                 stopRinging();
                 finish();
