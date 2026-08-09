@@ -23,6 +23,10 @@ public class DeliveryOverlayPlugin extends Plugin {
     public static DeliveryOverlayPlugin instance;
     public static String latestDetails = "";
     public static String latestDeliveryId = "";
+    public static String latestStore = "";
+    public static String latestPickup = "";
+    public static String latestDropoff = "";
+    public static String latestFee = "";
 
     private BroadcastReceiver callReceiver = new BroadcastReceiver() {
         @Override
@@ -111,11 +115,25 @@ public class DeliveryOverlayPlugin extends Plugin {
     public void testIncomingCall(PluginCall call) {
         String details = call.getString("details", "Nova entrega próxima a você!");
         String deliveryId = call.getString("deliveryId", "");
+        String storeName = call.getString("storeName", "");
+        String pickup = call.getString("pickup", "");
+        String dropoff = call.getString("dropoff", "");
+        String fee = call.getString("fee", "");
+
         latestDetails = details;
         latestDeliveryId = deliveryId;
+        latestStore = storeName;
+        latestPickup = pickup;
+        latestDropoff = dropoff;
+        latestFee = fee;
+
         Intent intent = new Intent(getContext(), IncomingCallActivity.class);
         intent.putExtra("details", details);
         intent.putExtra("deliveryId", deliveryId);
+        intent.putExtra("storeName", storeName);
+        intent.putExtra("pickup", pickup);
+        intent.putExtra("dropoff", dropoff);
+        intent.putExtra("fee", fee);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         getContext().startActivity(intent);
         call.resolve();
@@ -123,19 +141,32 @@ public class DeliveryOverlayPlugin extends Plugin {
 
     @PluginMethod
     public void updateIncomingCall(PluginCall call) {
-        String details = call.getString("details", "");
-        String deliveryId = call.getString("deliveryId", "");
+        final String details = call.getString("details", "");
+        final String deliveryId = call.getString("deliveryId", "");
+        final String storeName = call.getString("storeName", "");
+        final String pickup = call.getString("pickup", "");
+        final String dropoff = call.getString("dropoff", "");
+        final String fee = call.getString("fee", "");
+
         latestDetails = details;
         latestDeliveryId = deliveryId;
-        
+        if (!storeName.isEmpty()) latestStore = storeName;
+        if (!pickup.isEmpty()) latestPickup = pickup;
+        if (!dropoff.isEmpty()) latestDropoff = dropoff;
+        if (!fee.isEmpty()) latestFee = fee;
+
         if (IncomingCallActivity.instance != null) {
             IncomingCallActivity.instance.runOnUiThread(() -> {
-                IncomingCallActivity.instance.updateDetails(details, deliveryId);
+                IncomingCallActivity.instance.updateCall(details, deliveryId, storeName, pickup, dropoff, fee);
             });
         } else {
             Intent intent = new Intent(IncomingCallActivity.ACTION_UPDATE_CALL);
             intent.putExtra("details", details);
             intent.putExtra("deliveryId", deliveryId);
+            intent.putExtra("storeName", storeName);
+            intent.putExtra("pickup", pickup);
+            intent.putExtra("dropoff", dropoff);
+            intent.putExtra("fee", fee);
             intent.setPackage(getContext().getPackageName()); // FORÇA EXPLICITO
             getContext().sendBroadcast(intent);
         }

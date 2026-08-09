@@ -15,6 +15,7 @@ import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -53,9 +54,13 @@ public class IncomingCallActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (ACTION_UPDATE_CALL.equals(intent.getAction())) {
-                String details = intent.getStringExtra("details");
-                String deliveryId = intent.getStringExtra("deliveryId");
-                updateDetails(details, deliveryId);
+                updateCall(
+                        intent.getStringExtra("details"),
+                        intent.getStringExtra("deliveryId"),
+                        intent.getStringExtra("storeName"),
+                        intent.getStringExtra("pickup"),
+                        intent.getStringExtra("dropoff"),
+                        intent.getStringExtra("fee"));
             } else if (ACTION_CANCEL_CALL.equals(intent.getAction())) {
                 stopRinging();
                 finish();
@@ -64,18 +69,66 @@ public class IncomingCallActivity extends Activity {
     };
 
     public void updateDetails(String details, String deliveryId) {
+        updateCall(details, deliveryId, null, null, null, null);
+    }
+
+    private String clean(String s) {
+        if (s == null) return "";
+        s = s.trim();
+        if (s.equals("-") || s.equals("—")) return "";
+        return s.replace("Veja no app", "Retirada na Loja");
+    }
+
+    /**
+     * Preenche o card com os campos separados. Se vierem vazios, tenta extrair
+     * do texto "details" (formato: Loja: / Coleta: / Entrega: / Ganhos:).
+     */
+    public void updateCall(String details, String deliveryId,
+                           String storeName, String pickup, String dropoff, String fee) {
         if (deliveryId != null && !deliveryId.isEmpty()) {
             currentDeliveryId = deliveryId;
         }
-        if (details != null && !details.isEmpty()) {
-            if (details.contains("Veja no app")) {
-                details = details.replace("Veja no app", "Retirada na Loja");
-            }
-            TextView tvDetails = findViewById(R.id.tvCallDetails);
-            if (tvDetails != null) {
-                tvDetails.setText(details);
+
+        storeName = clean(storeName);
+        pickup    = clean(pickup);
+        dropoff   = clean(dropoff);
+        fee       = clean(fee);
+        details   = clean(details);
+
+        if (!details.isEmpty()) {
+            String[] lines = details.split("\\n");
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i].trim();
+                String lower = line.toLowerCase();
+                if (lower.contains("coleta:")) {
+                    if (pickup.isEmpty()) pickup = line.substring(line.indexOf(":") + 1).trim();
+                } else if (lower.contains("entrega:")) {
+                    if (dropoff.isEmpty()) dropoff = line.substring(line.indexOf(":") + 1).trim();
+                } else if (lower.contains("ganhos:")) {
+                    if (fee.isEmpty()) fee = line.substring(line.indexOf(":") + 1).trim();
+                } else if (lower.contains("loja:")) {
+                    if (storeName.isEmpty()) storeName = line.substring(line.indexOf(":") + 1).trim();
+                } else if (i == 0 && storeName.isEmpty()
+                        && !lower.contains("nova corrida") && !lower.contains("nova entrega")) {
+                    storeName = line.replaceAll("^[^\\p{L}\\p{N}]+", "").trim();
+                }
             }
         }
+
+        if (storeName.isEmpty()) storeName = "Loja Parceira";
+        if (pickup.isEmpty())    pickup    = "Retirada na Loja";
+        if (dropoff.isEmpty())   dropoff   = "Endereço do cliente";
+        if (!fee.isEmpty() && !fee.toUpperCase().contains("R$")) fee = "R$ " + fee;
+
+        TextView tvStore   = findViewById(R.id.tvStoreName);
+        TextView tvEarn    = findViewById(R.id.tvEarnings);
+        TextView tvPickup  = findViewById(R.id.tvPickup);
+        TextView tvDropoff = findViewById(R.id.tvDropoff);
+
+        if (tvStore   != null) tvStore.setText(storeName);
+        if (tvEarn    != null) tvEarn.setText(fee);
+        if (tvPickup  != null) tvPickup.setText(pickup);
+        if (tvDropoff != null) tvDropoff.setText(dropoff);
     }
 
     @Override
@@ -144,6 +197,10 @@ public class IncomingCallActivity extends Activity {
         // Carrega os detalhes da corrida
         String details = getIntent().getStringExtra("details");
         currentDeliveryId = getIntent().getStringExtra("deliveryId");
+        String storeName = getIntent().getStringExtra("storeName");
+        String pickup    = getIntent().getStringExtra("pickup");
+        String dropoff   = getIntent().getStringExtra("dropoff");
+        String fee       = getIntent().getStringExtra("fee");
 
         // Prioriza dados do plugin estático (mais recentes, vindos do JS ou FCM nativo)
         if (DeliveryOverlayPlugin.latestDetails != null && !DeliveryOverlayPlugin.latestDetails.isEmpty()) {
@@ -152,8 +209,29 @@ public class IncomingCallActivity extends Activity {
         if (DeliveryOverlayPlugin.latestDeliveryId != null && !DeliveryOverlayPlugin.latestDeliveryId.isEmpty()) {
             currentDeliveryId = DeliveryOverlayPlugin.latestDeliveryId;
         }
+        if (DeliveryOverlayPlugin.latestStore != null && !DeliveryOverlayPlugin.latestStore.isEmpty()) {
+            storeName = DeliveryOverlayPlugin.latestStore;
+        }
+        if (DeliveryOverlayPlugin.latestPickup != null && !DeliveryOverlayPlugin.latestPickup.isEmpty()) {
+            pickup = DeliveryOverlayPlugin.latestPickup;
+        }
+        if (DeliveryOverlayPlugin.latestDropoff != null && !DeliveryOverlayPlugin.latestDropoff.isEmpty()) {
+            dropoff = DeliveryOverlayPlugin.latestDropoff;
+        }
+        if (DeliveryOverlayPlugin.latestFee != null && !DeliveryOverlayPlugin.latestFee.isEmpty()) {
+            fee = DeliveryOverlayPlugin.latestFee;
+        }
 
-        updateDetails(details, currentDeliveryId);
+        updateCall(details, currentDeliveryId, storeName, pickup, dropoff, fee);
+
+        View btnClose = findViewById(R.id.btnClose);
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> {
+                stopRinging();
+                stopStatusCheckLoop();
+                finish();
+            });
+        }
 
         // Inicia verificação automática a cada 1.5s se a corrida continua disponível
         startStatusCheckLoop();

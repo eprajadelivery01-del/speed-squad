@@ -48,6 +48,10 @@ public class OverlayService extends Service {
                 Intent popupIntent = new Intent(this, IncomingCallActivity.class);
                 popupIntent.putExtra("details",    details);
                 popupIntent.putExtra("deliveryId", deliveryId);
+                popupIntent.putExtra("storeName", intent.getStringExtra("storeName"));
+                popupIntent.putExtra("pickup",    intent.getStringExtra("pickup"));
+                popupIntent.putExtra("dropoff",   intent.getStringExtra("dropoff"));
+                popupIntent.putExtra("fee",       intent.getStringExtra("fee"));
                 popupIntent.addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK       |
                         Intent.FLAG_ACTIVITY_CLEAR_TOP      |

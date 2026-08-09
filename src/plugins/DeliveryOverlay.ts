@@ -1,12 +1,21 @@
 import { registerPlugin, PluginListenerHandle, Capacitor } from '@capacitor/core';
 
+export interface IncomingCallOptions {
+  details: string;
+  deliveryId: string;
+  storeName?: string;
+  pickup?: string;
+  dropoff?: string;
+  fee?: string;
+}
+
 export interface DeliveryOverlayPlugin {
   requestOverlayPermission(): Promise<void>;
   startOverlay(): Promise<{ success: boolean; reason?: string }>;
   stopOverlay(): Promise<void>;
   dismissIncomingCall(): Promise<void>;
-  testIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
-  updateIncomingCall(options: { details: string; deliveryId: string }): Promise<void>;
+  testIncomingCall(options: IncomingCallOptions): Promise<void>;
+  updateIncomingCall(options: IncomingCallOptions): Promise<void>;
   saveDriverContext(options: { driverId: string; userToken: string }): Promise<void>;
   addListener(
     eventName: 'onCallResponse',

@@ -168,6 +168,10 @@ export function useDriverNotifications() {
           console.log("Push received in background:", notification);
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
+              let fcmStore = notification.data?.storeName || "";
+              let fcmPickup = notification.data?.pickup || "";
+              let fcmDropoff = notification.data?.dropoff || "";
+              let fcmFee = notification.data?.fee || "";
               let immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
               if (immediateDesc.includes("Veja no app")) {
                 immediateDesc = immediateDesc.replace(/Veja no app/g, "Retirada na Loja");
@@ -176,7 +180,11 @@ export function useDriverNotifications() {
               if (Capacitor.isNativePlatform()) {
                 DeliveryOverlay.testIncomingCall({
                   details: immediateDesc,
-                  deliveryId: deliveryId
+                  deliveryId: deliveryId,
+                  storeName: notification.data?.storeName,
+                  pickup: notification.data?.pickup,
+                  dropoff: notification.data?.dropoff,
+                  fee: notification.data?.fee
                 }).catch((e: any) => console.warn("Erro ao acordar tela via FCM (imediato):", e));
               }
 
@@ -203,7 +211,11 @@ export function useDriverNotifications() {
                   const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
                   const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
                  
-                  immediateDesc = `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+                  fcmStore = storeName;
+                  fcmPickup = immediatePickup;
+                  fcmDropoff = immediateDropoff;
+                  fcmFee = `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+                  immediateDesc = `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: ${fcmFee}`;
               } catch (e) {
                  console.warn("Erro validando FCM status:", e);
               }
@@ -211,7 +223,11 @@ export function useDriverNotifications() {
               if (Capacitor.isNativePlatform()) {
                 DeliveryOverlay.updateIncomingCall({
                   details: immediateDesc,
-                  deliveryId: deliveryId
+                  deliveryId: deliveryId,
+                  storeName: fcmStore,
+                  pickup: fcmPickup,
+                  dropoff: fcmDropoff,
+                  fee: fcmFee
                 }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
               }
           }
@@ -269,7 +285,11 @@ export function useDriverNotifications() {
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.testIncomingCall({
           details: immediateDesc,
-          deliveryId: rawDelivery.id
+          deliveryId: rawDelivery.id,
+          storeName,
+          pickup,
+          dropoff,
+          fee: fee > 0 ? `R$ ${fee.toFixed(2).replace('.', ',')}` : ""
         }).catch((e: any) => console.warn("Erro ao acordar tela (imediato):", e));
       }
 
@@ -294,7 +314,11 @@ export function useDriverNotifications() {
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.updateIncomingCall({
           details: description,
-          deliveryId: delivery.id
+          deliveryId: delivery.id,
+          storeName: fullStoreName,
+          pickup: fullPickup,
+          dropoff: fullDropoff,
+          fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`
         }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
       }
 
