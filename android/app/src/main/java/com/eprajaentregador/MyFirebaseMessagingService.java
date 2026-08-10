@@ -145,7 +145,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             Log.w(TAG, "startActivity bloqueado: " + e.getMessage());
         }
 
-        // ── CAMADA 3: Notification com fullScreenIntent (fallback universal)
+        // ── CAMADA 3: Notification heads-up (sem full screen intent - política Google Play)
         try {
             ensureChannel();
 
@@ -161,8 +161,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) piFlags |= PendingIntent.FLAG_IMMUTABLE;
 
-            PendingIntent fullScreenPI = PendingIntent.getActivity(this, 0, fsIntent, piFlags);
-            PendingIntent tapPI        = PendingIntent.getActivity(this, 1, fsIntent, piFlags);
+            PendingIntent tapPI = PendingIntent.getActivity(this, 1, fsIntent, piFlags);
 
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -173,15 +172,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                         .setDefaults(Notification.DEFAULT_ALL);
             }
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
-                    .setContentTitle("Moto Nova corrida disponível!")
+                    .setContentTitle("Nova corrida disponível!")
                     .setContentText(details)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
-                    .setCategory(Notification.CATEGORY_CALL)
+                    .setCategory(Notification.CATEGORY_MESSAGE)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
-                    .setAutoCancel(false)
-                    .setOngoing(true)
-                    .setContentIntent(tapPI)
-                    .setFullScreenIntent(fullScreenPI, true);
+                    .setAutoCancel(true)
+                    .setOngoing(false)
+                    .setContentIntent(tapPI);
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
@@ -189,7 +187,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 if (deliveryId != null && !deliveryId.isEmpty()) {
                     nm.notify(hashId(deliveryId), builder.build());
                 }
-                Log.d(TAG, "Notificação fullScreenIntent disparada.");
+                Log.d(TAG, "Notificação heads-up disparada.");
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro na notificação: " + e.getMessage());
