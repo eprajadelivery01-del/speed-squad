@@ -68,6 +68,13 @@ public class OverlayService extends Service {
         }
 
         // ── OVERLAY WINDOW: cria a bolinha flutuante (ação normal do startOverlay)
+        // ── OVERLAY WINDOW: cria a bolinha flutuante (só se houver permissão)
+        boolean canOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || android.provider.Settings.canDrawOverlays(this);
+        if (!canOverlay) {
+            Log.d(TAG, "Sem permissão de overlay — serviço segue apenas mantendo o app ativo.");
+            return START_STICKY;
+        }
         if (floatingView == null) {
             try {
                 floatingView = LayoutInflater.from(this).inflate(R.layout.floating_bubble, null);
