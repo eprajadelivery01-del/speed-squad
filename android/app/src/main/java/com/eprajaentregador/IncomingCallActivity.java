@@ -239,8 +239,8 @@ public class IncomingCallActivity extends Activity {
 
         // ===== BOTÃO ACEITAR =====
         btnAccept.setOnClickListener(v -> {
-            btnAccept.setEnabled(false);
-            btnAccept.setText("Aceitando...");
+            if (isSubmitting || resultHandled) return;
+            setSubmitting(true, "Aceitando...");
             stopRinging();
             stopStatusCheckLoop();
 
@@ -248,31 +248,27 @@ public class IncomingCallActivity extends Activity {
 
             if (DeliveryOverlayPlugin.instance != null) {
                 Log.d(TAG, "Aceitar via JS plugin. deliveryId=" + deliveryId);
-                Intent mainIntent = new Intent(this, MainActivity.class);
-                mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(mainIntent);
-
+                startResultTimeout();
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
-                }, 800);
-
-                finish();
+                }, 200);
             } else {
                 Log.d(TAG, "Aceitar via HTTP nativo (JS indisponível). deliveryId=" + deliveryId);
                 new Thread(() -> {
-                    boolean success = acceptDeliveryViaNativeHttp(deliveryId);
-                    runOnUiThread(() -> {
-                        Intent mainIntent = new Intent(IncomingCallActivity.this, MainActivity.class);
-                        mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        startActivity(mainIntent);
-                        finish();
-                    });
+                    final boolean success = acceptDeliveryViaNativeHttp(deliveryId);
+                    runOnUiThread(() -> finishWithResult(
+                            success,
+                            success ? "✅ Corrida aceita!" : "❌ Corrida já foi aceita por outro entregador"));
                 }).start();
             }
         });
 
         // ===== BOTÃO REJEITAR =====
         btnReject.setOnClickListener(v -> {
+            if (isSubmitting || resultHandled) return;
+            resultHandled = true;
+            setSubmitting(true, null);
+            btnReject.setText("Recusada");
             stopRinging();
             stopStatusCheckLoop();
             if (DeliveryOverlayPlugin.instance != null) {
@@ -280,10 +276,13 @@ public class IncomingCallActivity extends Activity {
             }
             Intent intent = new Intent(ACTION_CALL_REJECTED);
             intent.putExtra("deliveryId", currentDeliveryId);
+            intent.setPackage(getPackageName());
             sendBroadcast(intent);
-            finish();
+            Toast.makeText(getApplicationContext(), "Corrida recusada", Toast.LENGTH_SHORT).show();
+            new Handler(Looper.getMainLooper()).postDelayed(this::finish, 500);
         });
     }
+
 
     private void startStatusCheckLoop() {
         if (checkHandler == null) {
