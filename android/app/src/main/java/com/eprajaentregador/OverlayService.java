@@ -23,6 +23,7 @@ public class OverlayService extends Service {
     private static final String TAG = "OverlayService";
     private static final String FG_CHANNEL_ID = "overlay_service_channel";
     private static final int    FG_NOTIF_ID   = 1;
+    public  static final String ACTION_KEEP_ALIVE = "com.eprajaentregador.KEEP_ALIVE";
 
     private WindowManager windowManager;
     private View floatingView;
