@@ -145,7 +145,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             Log.w(TAG, "startActivity bloqueado: " + e.getMessage());
         }
 
-        // ── CAMADA 3: Notification com fullScreenIntent (fallback universal)
+        // ── CAMADA 3: Notification heads-up (sem full screen intent - política Google Play)
         try {
             ensureChannel();
 
