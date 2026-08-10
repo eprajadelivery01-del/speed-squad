@@ -194,7 +194,7 @@ serve(async (req) => {
             storeName: companyName,
             pickup: pickupAddr,
             dropoff: dropoffAddr,
-            fee: `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`,
+            fee: feeText,
             title: "",
             body: formattedDetails
           },
