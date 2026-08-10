@@ -118,7 +118,8 @@ public class IncomingCallActivity extends Activity {
         if (storeName.isEmpty()) storeName = "Loja Parceira";
         if (pickup.isEmpty())    pickup    = "Retirada na Loja";
         if (dropoff.isEmpty())   dropoff   = "Endereço do cliente";
-        if (!fee.isEmpty() && !fee.toUpperCase().contains("R$")) fee = "R$ " + fee;
+        if (fee.isEmpty()) fee = "R$ 0,00";
+        else if (!fee.toUpperCase().contains("R$")) fee = "R$ " + fee;
 
         TextView tvStore   = findViewById(R.id.tvStoreName);
         TextView tvEarn    = findViewById(R.id.tvEarnings);
