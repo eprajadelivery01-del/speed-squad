@@ -170,8 +170,8 @@ public class IncomingCallActivity extends Activity {
 
         setContentView(R.layout.activity_incoming_call);
 
-        Button btnAccept = findViewById(R.id.btnAccept);
-        Button btnReject = findViewById(R.id.btnReject);
+        btnAccept = findViewById(R.id.btnAccept);
+        btnReject = findViewById(R.id.btnReject);
 
         // Toca o som de alerta
         try {
