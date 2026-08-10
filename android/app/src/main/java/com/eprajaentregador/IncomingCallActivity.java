@@ -50,6 +50,14 @@ public class IncomingCallActivity extends Activity {
     private Handler checkHandler;
     private Runnable checkRunnable;
 
+    private Button btnAccept;
+    private Button btnReject;
+    private boolean isSubmitting = false;
+    private boolean resultHandled = false;
+    private Handler resultTimeoutHandler;
+    private Runnable resultTimeoutRunnable;
+
+
     private BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
