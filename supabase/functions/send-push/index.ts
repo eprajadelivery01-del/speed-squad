@@ -145,11 +145,22 @@ serve(async (req) => {
       }
     }
 
-    if (!companyName) companyName = "Loja Parceira";
-    if (!pickupAddr) pickupAddr = "Retirada na Loja";
-    if (!dropoffAddr) dropoffAddr = "Endereço do Cliente";
+    // Normalização final: nunca enviar vazio, "-", "—", "null" ou "undefined"
+    const norm = (v: unknown, fallback: string) => {
+      const s = String(v ?? "").trim()
+      if (!s || s === "-" || s === "—" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined") {
+        return fallback
+      }
+      return s
+    }
 
-    const formattedDetails = `🏬 Loja: ${companyName}\n📍 Coleta: ${pickupAddr}\n🏁 Entrega: ${dropoffAddr}\n💰 Ganhos: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+    companyName = norm(companyName, "Loja Parceira")
+    pickupAddr = norm(pickupAddr, "Retirada na Loja")
+    dropoffAddr = norm(dropoffAddr, "Endereço do cliente")
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) deliveryFee = 0
+    const feeText = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`
+
+    const formattedDetails = `🏬 Loja: ${companyName}\n📍 Coleta: ${pickupAddr}\n🏁 Entrega: ${dropoffAddr}\n💰 Ganhos: ${feeText}`
 
     let query = supabaseClient
       .from('delivery_drivers')
