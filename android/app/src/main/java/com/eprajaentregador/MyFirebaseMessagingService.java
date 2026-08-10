@@ -18,7 +18,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MyFirebaseMsgService";
     public static final String ACTION_SHOW_POPUP = "com.eprajaentregador.SHOW_POPUP";
-    private static final String CHANNEL_ID = "delivery-incoming-v4";
+    private static final String CHANNEL_ID = NotificationChannels.INCOMING_CHANNEL_ID;
     private static final int NOTIF_ID = 6666;
 
     private int hashId(String str) {
