@@ -167,15 +167,19 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 builder = new Notification.Builder(this, CHANNEL_ID);
             } else {
+                android.net.Uri sound = android.media.RingtoneManager
+                        .getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
                 builder = new Notification.Builder(this)
                         .setPriority(Notification.PRIORITY_MAX)
-                        .setDefaults(Notification.DEFAULT_ALL);
+                        .setSound(sound)
+                        .setVibrate(new long[]{0, 500, 300, 500, 300, 500})
+                        .setDefaults(Notification.DEFAULT_LIGHTS);
             }
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
                     .setContentTitle("Nova corrida disponível!")
                     .setContentText(details)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
-                    .setCategory(Notification.CATEGORY_MESSAGE)
+                    .setCategory(Notification.CATEGORY_CALL)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
