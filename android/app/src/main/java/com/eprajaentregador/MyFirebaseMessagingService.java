@@ -18,7 +18,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MyFirebaseMsgService";
     public static final String ACTION_SHOW_POPUP = "com.eprajaentregador.SHOW_POPUP";
-    private static final String CHANNEL_ID = "delivery-incoming-v4";
+    private static final String CHANNEL_ID = NotificationChannels.INCOMING_CHANNEL_ID;
     private static final int NOTIF_ID = 6666;
 
     private int hashId(String str) {
@@ -167,15 +167,19 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 builder = new Notification.Builder(this, CHANNEL_ID);
             } else {
+                android.net.Uri sound = android.media.RingtoneManager
+                        .getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
                 builder = new Notification.Builder(this)
                         .setPriority(Notification.PRIORITY_MAX)
-                        .setDefaults(Notification.DEFAULT_ALL);
+                        .setSound(sound)
+                        .setVibrate(new long[]{0, 500, 300, 500, 300, 500})
+                        .setDefaults(Notification.DEFAULT_LIGHTS);
             }
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
                     .setContentTitle("Nova corrida disponível!")
                     .setContentText(details)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
-                    .setCategory(Notification.CATEGORY_MESSAGE)
+                    .setCategory(Notification.CATEGORY_CALL)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
@@ -195,18 +199,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        NotificationManager nm = getSystemService(NotificationManager.class);
-        if (nm == null) return;
-        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-            NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "Corridas (Popup)", NotificationManager.IMPORTANCE_HIGH);
-            ch.enableVibration(true);
-            ch.setShowBadge(true);
-            ch.setBypassDnd(true);
-            ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            nm.createNotificationChannel(ch);
-        }
+        NotificationChannels.ensureIncomingChannel(this);
     }
 
     @Override

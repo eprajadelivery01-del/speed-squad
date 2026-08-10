@@ -33,7 +33,7 @@ sonnerToast.error = function (message: any, options: any) {
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Register Service Worker for PWA
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !/lovable(project)?\.app$/.test(window.location.hostname)) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((err) => {
       console.warn("SW registration failed: ", err);
