@@ -48,11 +48,12 @@
 
     <!-- Corpo rolável: garante que endereços longos apareçam inteiros -->
     <ScrollView
+        android:id="@+id/scrollBody"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxHeight="360dp"
         android:background="#111827"
         android:fillViewport="false"
+        android:overScrollMode="ifContentScrolls"
         android:scrollbars="none">
 
         <LinearLayout
@@ -79,7 +80,8 @@
                     android:textColor="#FFFFFF"
                     android:textStyle="bold"
                     android:textSize="19sp"
-                    android:maxLines="3" />
+                    android:maxLines="3"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/tvEarnings"

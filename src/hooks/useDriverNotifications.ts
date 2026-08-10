@@ -522,20 +522,23 @@ export function useDriverNotifications() {
                 if (error || !data || !(data as any).success) {
                   // Se falhar de verdade (e.g. corrida roubada ou erro de rede)
                   console.warn("safeRpc accept falhou no lock screen:", error || data);
-                  toast({ title: "❌ Erro", description: (data as any)?.message || "Não foi possível confirmar o aceite na tela bloqueada." });
+                  const msg = (data as any)?.message || "Corrida já foi aceita por outro entregador";
+                  DeliveryOverlay.reportCallResult({ success: false, message: msg }).catch(() => {});
+                  toast({ title: "❌ Erro", description: msg });
                   window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
                   declineDeliveryLocally(deliveryId);
                   updateNotificationStatus(deliveryId, "rejected");
                 } else {
                   // EAGER LOCAL ACCEPT movido para ca no sucesso
+                  DeliveryOverlay.reportCallResult({ success: true, message: "✅ Corrida aceita!" }).catch(() => {});
                   window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
                   acceptDeliveryLocally(deliveryId);
                   updateNotificationStatus(deliveryId, "accepted");
                   toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
-                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
                 }
               }).catch(e => {
                  console.warn("Exception no safeRpc lock screen:", e);
+                 DeliveryOverlay.reportCallResult({ success: false, message: "Não foi possível confirmar o aceite" }).catch(() => {});
                  window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
                  declineDeliveryLocally(deliveryId);
                  updateNotificationStatus(deliveryId, "rejected");
