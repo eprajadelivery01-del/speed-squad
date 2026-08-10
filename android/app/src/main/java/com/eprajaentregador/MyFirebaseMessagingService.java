@@ -199,18 +199,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        NotificationManager nm = getSystemService(NotificationManager.class);
-        if (nm == null) return;
-        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-            NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "Corridas (Popup)", NotificationManager.IMPORTANCE_HIGH);
-            ch.enableVibration(true);
-            ch.setShowBadge(true);
-            ch.setBypassDnd(true);
-            ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            nm.createNotificationChannel(ch);
-        }
+        NotificationChannels.ensureIncomingChannel(this);
     }
 
     @Override
