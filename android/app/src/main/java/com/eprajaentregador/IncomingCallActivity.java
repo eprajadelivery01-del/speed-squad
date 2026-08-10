@@ -451,4 +451,143 @@ public class IncomingCallActivity extends Activity {
             wakeLock.release();
         }
     }
+
+    // =====================================================================
+    // Feedback de resultado (vindo do JS via DeliveryOverlayPlugin)
+    // =====================================================================
+
+    /** Chamado pelo JS (plugin.reportCallResult) após confirmar o aceite no Supabase. */
+    public void onCallResult(final boolean success, final String message) {
+        runOnUiThread(() -> finishWithResult(success, message));
+    }
+
+    private void finishWithResult(boolean success, String message) {
+        if (resultHandled) return;
+        resultHandled = true;
+        if (resultTimeoutHandler != null && resultTimeoutRunnable != null) {
+            resultTimeoutHandler.removeCallbacks(resultTimeoutRunnable);
+            resultTimeoutRunnable = null;
+        }
+        stopRinging();
+        stopStatusCheckLoop();
+
+        String text = message != null && !message.trim().isEmpty()
+                ? message
+                : (success ? "✅ Corrida aceita!" : "❌ Corrida já foi aceita por outro entregador");
+        Toast.makeText(getApplicationContext(), text, Toast.LENGTH_LONG).show();
+
+        if (btnAccept != null) btnAccept.setText(success ? "✓ ACEITA" : "✕ INDISPONÍVEL");
+
+        if (success) {
+            Intent mainIntent = new Intent(IncomingCallActivity.this, MainActivity.class);
+            mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(mainIntent);
+        }
+
+        new Handler(Looper.getMainLooper()).postDelayed(this::finish, success ? 400 : 900);
+    }
+
+    private void setSubmitting(boolean submitting, String acceptLabel) {
+        isSubmitting = submitting;
+        if (btnAccept != null) {
+            btnAccept.setEnabled(!submitting);
+            btnAccept.setAlpha(submitting ? 0.7f : 1f);
+            if (acceptLabel != null) btnAccept.setText(acceptLabel);
+        }
+        if (btnReject != null) {
+            btnReject.setEnabled(!submitting);
+            btnReject.setAlpha(submitting ? 0.7f : 1f);
+        }
+        View close = findViewById(R.id.btnClose);
+        if (close != null) close.setEnabled(!submitting);
+    }
+
+    private void startResultTimeout() {
+        if (resultTimeoutHandler == null) {
+            resultTimeoutHandler = new Handler(Looper.getMainLooper());
+        }
+        resultTimeoutRunnable = () -> {
+            if (!resultHandled) {
+                Log.w(TAG, "Timeout aguardando confirmação do aceite. Abrindo o app.");
+                finishWithResult(true, "Abrindo o app para confirmar a corrida...");
+            }
+        };
+        resultTimeoutHandler.postDelayed(resultTimeoutRunnable, 9000);
+    }
+
+    /** Ajusta a altura máxima do corpo do card conforme a tela (evita corte em telas pequenas). */
+    private void applyResponsiveHeight() {
+        View body = findViewById(R.id.scrollBody);
+        if (body == null) return;
+        int screenH = getResources().getDisplayMetrics().heightPixels;
+        int max = (int) (screenH * 0.55f);
+        ViewGroup.LayoutParams lp = body.getLayoutParams();
+        if (lp != null && body instanceof android.widget.ScrollView) {
+            ((android.widget.ScrollView) body).setNestedScrollingEnabled(true);
+        }
+        body.setMinimumHeight(0);
+        if (body instanceof android.widget.ScrollView) {
+            final int maxH = max;
+            body.post(() -> {
+                if (body.getHeight() > maxH) {
+                    ViewGroup.LayoutParams p = body.getLayoutParams();
+                    p.height = maxH;
+                    body.setLayoutParams(p);
+                }
+            });
+        }
+    }
+
+    /** Busca loja/endereços/taxa no Supabase quando o payload do FCM veio incompleto. */
+    private void fetchMissingDetails(final String deliveryId) {
+        if (deliveryId == null || deliveryId.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                URL url = new URL(SUPABASE_URL + "/rest/v1/available_deliveries?id=eq." + deliveryId + "&select=*");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("apikey", SUPABASE_ANON_KEY);
+                conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_ANON_KEY);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                if (conn.getResponseCode() != 200) { conn.disconnect(); return; }
+
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                StringBuilder content = new StringBuilder();
+                String line;
+                while ((line = in.readLine()) != null) content.append(line);
+                in.close();
+                conn.disconnect();
+
+                org.json.JSONArray arr = new org.json.JSONArray(content.toString());
+                if (arr.length() == 0) return;
+                JSONObject row = arr.getJSONObject(0);
+
+                final String store = firstNonEmpty(row, "company_name", "store_name", "trade_name");
+                final String pick = firstNonEmpty(row, "pickup_address", "store_address", "origin_address", "pickup_location");
+                final String drop = firstNonEmpty(row, "delivery_address", "dropoff_address", "customer_address", "address");
+                final String feeRaw = firstNonEmpty(row, "delivery_fee", "driver_fee", "value", "price");
+                String feeTxt = "";
+                if (!feeRaw.isEmpty()) {
+                    try {
+                        feeTxt = "R$ " + String.format(java.util.Locale.US, "%.2f", Double.parseDouble(feeRaw)).replace('.', ',');
+                    } catch (Exception ignored) { }
+                }
+                final String fee = feeTxt;
+
+                runOnUiThread(() -> updateCall("", deliveryId, store, pick, drop, fee));
+            } catch (Exception e) {
+                Log.w(TAG, "Falha ao completar dados da corrida: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private String firstNonEmpty(JSONObject obj, String... keys) {
+        for (String k : keys) {
+            String v = obj.optString(k, "");
+            if (v != null && !v.isEmpty() && !"null".equalsIgnoreCase(v)) return v;
+        }
+        return "";
+    }
 }
+
