@@ -224,6 +224,15 @@ public class IncomingCallActivity extends Activity {
         }
 
         updateCall(details, currentDeliveryId, storeName, pickup, dropoff, fee);
+        applyResponsiveHeight();
+
+        // Se algum dado essencial não veio no payload, completa buscando no Supabase
+        boolean incomplete = clean(storeName).isEmpty() || clean(dropoff).isEmpty()
+                || clean(pickup).isEmpty() || clean(fee).isEmpty();
+        if (incomplete) {
+            fetchMissingDetails(currentDeliveryId);
+        }
+
 
         View btnClose = findViewById(R.id.btnClose);
         if (btnClose != null) {
