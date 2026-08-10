@@ -190,6 +190,20 @@ public class DeliveryOverlayPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Recebe do JS o resultado da confirmação do aceite no Supabase e repassa
+     * para o card nativo, que só fecha depois desse retorno.
+     */
+    @PluginMethod
+    public void reportCallResult(PluginCall call) {
+        final boolean success = Boolean.TRUE.equals(call.getBoolean("success", false));
+        final String message = call.getString("message", "");
+        if (IncomingCallActivity.instance != null) {
+            IncomingCallActivity.instance.onCallResult(success, message);
+        }
+        call.resolve();
+    }
+
     @PluginMethod
     public void dismissIncomingCall(PluginCall call) {
         if (IncomingCallActivity.instance != null) {
