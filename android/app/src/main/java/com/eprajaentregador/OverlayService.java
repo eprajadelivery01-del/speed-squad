@@ -67,7 +67,6 @@ public class OverlayService extends Service {
             return START_STICKY;
         }
 
-        // ── OVERLAY WINDOW: cria a bolinha flutuante (ação normal do startOverlay)
         // ── OVERLAY WINDOW: cria a bolinha flutuante (só se houver permissão)
         boolean canOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
                 || android.provider.Settings.canDrawOverlays(this);
