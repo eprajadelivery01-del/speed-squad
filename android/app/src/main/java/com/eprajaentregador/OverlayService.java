@@ -176,6 +176,24 @@ public class OverlayService extends Service {
     }
 
     @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // O usuário fechou o app da lista de recentes: religa o serviço
+        // para continuar recebendo corridas por FCM.
+        try {
+            Intent restart = new Intent(getApplicationContext(), OverlayService.class);
+            restart.setAction(ACTION_KEEP_ALIVE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getApplicationContext().startForegroundService(restart);
+            } else {
+                getApplicationContext().startService(restart);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Falha ao religar após task removida: " + e.getMessage());
+        }
+        super.onTaskRemoved(rootIntent);
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         if (floatingView != null && windowManager != null) {
