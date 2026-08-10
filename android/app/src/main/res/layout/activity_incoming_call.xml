@@ -48,11 +48,12 @@
 
     <!-- Corpo rolável: garante que endereços longos apareçam inteiros -->
     <ScrollView
+        android:id="@+id/scrollBody"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxHeight="360dp"
         android:background="#111827"
         android:fillViewport="false"
+        android:overScrollMode="ifContentScrolls"
         android:scrollbars="none">
 
         <LinearLayout
