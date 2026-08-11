@@ -33,6 +33,7 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
   ? DeliveryOverlayPluginRaw
   : {
       requestOverlayPermission: async () => {},
+      requestBatteryOptimizationExemption: async () => ({ ignoring: true }),
       startOverlay: async () => ({ success: false, reason: 'not_android' }),
       stopOverlay: async () => {},
       dismissIncomingCall: async () => {},
