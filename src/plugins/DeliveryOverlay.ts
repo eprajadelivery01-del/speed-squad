@@ -11,6 +11,7 @@ export interface IncomingCallOptions {
 
 export interface DeliveryOverlayPlugin {
   requestOverlayPermission(): Promise<void>;
+  requestBatteryOptimizationExemption(): Promise<{ ignoring: boolean; error?: string }>;
   startOverlay(): Promise<{ success: boolean; reason?: string }>;
   stopOverlay(): Promise<void>;
   dismissIncomingCall(): Promise<void>;
@@ -32,6 +33,7 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
   ? DeliveryOverlayPluginRaw
   : {
       requestOverlayPermission: async () => {},
+      requestBatteryOptimizationExemption: async () => ({ ignoring: true }),
       startOverlay: async () => ({ success: false, reason: 'not_android' }),
       stopOverlay: async () => {},
       dismissIncomingCall: async () => {},

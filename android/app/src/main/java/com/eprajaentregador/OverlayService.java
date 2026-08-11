@@ -23,6 +23,7 @@ public class OverlayService extends Service {
     private static final String TAG = "OverlayService";
     private static final String FG_CHANNEL_ID = "overlay_service_channel";
     private static final int    FG_NOTIF_ID   = 1;
+    public  static final String ACTION_KEEP_ALIVE = "com.eprajaentregador.KEEP_ALIVE";
 
     private WindowManager windowManager;
     private View floatingView;
@@ -66,7 +67,13 @@ public class OverlayService extends Service {
             return START_STICKY;
         }
 
-        // ── OVERLAY WINDOW: cria a bolinha flutuante (ação normal do startOverlay)
+        // ── OVERLAY WINDOW: cria a bolinha flutuante (só se houver permissão)
+        boolean canOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || android.provider.Settings.canDrawOverlays(this);
+        if (!canOverlay) {
+            Log.d(TAG, "Sem permissão de overlay — serviço segue apenas mantendo o app ativo.");
+            return START_STICKY;
+        }
         if (floatingView == null) {
             try {
                 floatingView = LayoutInflater.from(this).inflate(R.layout.floating_bubble, null);
@@ -166,6 +173,24 @@ public class OverlayService extends Service {
     public void onCreate() {
         super.onCreate();
         startForegroundNotification();
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // O usuário fechou o app da lista de recentes: religa o serviço
+        // para continuar recebendo corridas por FCM.
+        try {
+            Intent restart = new Intent(getApplicationContext(), OverlayService.class);
+            restart.setAction(ACTION_KEEP_ALIVE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getApplicationContext().startForegroundService(restart);
+            } else {
+                getApplicationContext().startService(restart);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Falha ao religar após task removida: " + e.getMessage());
+        }
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override

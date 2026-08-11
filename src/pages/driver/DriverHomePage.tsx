@@ -66,6 +66,11 @@ export default function DriverHomePage() {
           setTimeout(() => {
              DeliveryOverlay.startOverlay().catch((e: any) => console.warn("Ainda sem permissão:", e));
           }, 1000);
+          // Pede isenção de otimização de bateria: sem isso o Android coloca o
+          // app em "standby" após alguns minutos e as corridas param de chegar.
+          setTimeout(() => {
+            DeliveryOverlay.requestBatteryOptimizationExemption?.().catch(() => {});
+          }, 2500);
         } catch(e) {}
       };
       initOverlay();
