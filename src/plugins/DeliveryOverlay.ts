@@ -11,6 +11,7 @@ export interface IncomingCallOptions {
 
 export interface DeliveryOverlayPlugin {
   requestOverlayPermission(): Promise<void>;
+  requestBatteryOptimizationExemption(): Promise<{ ignoring: boolean; error?: string }>;
   startOverlay(): Promise<{ success: boolean; reason?: string }>;
   stopOverlay(): Promise<void>;
   dismissIncomingCall(): Promise<void>;
