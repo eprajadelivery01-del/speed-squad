@@ -70,7 +70,9 @@ serve(async (req) => {
               deliveryId: record.id
             },
             android: {
-              priority: "high"
+              priority: "high",
+              ttl: "120s",
+              direct_boot_ok: true
             }
           }
         }
