@@ -199,7 +199,9 @@ serve(async (req) => {
             body: formattedDetails
           },
           android: {
-            priority: "high"
+            priority: "high",
+            ttl: "300s",
+            direct_boot_ok: true
           },
           apns: {
             payload: {
