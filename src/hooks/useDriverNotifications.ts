@@ -308,8 +308,9 @@ export function useDriverNotifications() {
       const orderFee = delivery.orders?.delivery_fee ? Number(delivery.orders.delivery_fee) : 0;
       const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0, fee);
 
-      const title = fullStoreName && fullStoreName !== "Loja Parceira" ? `🏬 ${fullStoreName}` : "🏍️ Nova corrida disponível!";
-      const description = `${fullStoreName}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
+      const displayStore = (fullStoreName && fullStoreName !== "Loja Parceira") ? fullStoreName : "É Pra Já Delivery";
+      const title = `🏬 ${displayStore}`;
+      const description = `${displayStore}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.updateIncomingCall({

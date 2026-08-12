@@ -196,17 +196,26 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 builder = new Notification.Builder(this);
             }
 
-            String cardTitle = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
-                    ? "🏬 " + storeName
-                    : "🛵 Nova corrida disponível!";
-            String cardSubtext = (dropoff != null && !dropoff.trim().isEmpty())
-                    ? "🏁 Entrega: " + dropoff
-                    : details;
+            // Garante que "Loja Parceira" nunca é exibido: se storeName for genérico ou vazio, usa o fallback "É Pra Já Delivery" ou o nome extraído
+            String finalStoreName = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
+                    ? storeName.trim()
+                    : "É Pra Já Delivery";
+
+            String cardTitle = "🏬 " + finalStoreName;
+
+            String cardSubtext = (dropoff != null && !dropoff.trim().isEmpty() && !"Endereço do cliente".equalsIgnoreCase(dropoff.trim()))
+                    ? "🏁 Entrega: " + dropoff.trim()
+                    : "📍 Retirada na Loja";
+
+            String formattedBigText = "🏬 Loja: " + finalStoreName
+                    + "\n📍 Coleta: " + (pickup != null && !pickup.trim().isEmpty() ? pickup : "Retirada na Loja")
+                    + "\n🏁 Entrega: " + (dropoff != null && !dropoff.trim().isEmpty() ? dropoff : "Endereço do cliente")
+                    + "\n💰 Ganhos: " + (fee != null && !fee.trim().isEmpty() ? fee : "A calcular");
 
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
                     .setContentTitle(cardTitle)
                     .setContentText(cardSubtext)
-                    .setStyle(new Notification.BigTextStyle().bigText(details))
+                    .setStyle(new Notification.BigTextStyle().bigText(formattedBigText))
                     .setCategory(Notification.CATEGORY_CALL)
                     .setPriority(Notification.PRIORITY_MAX)
                     .setSound(sound)
