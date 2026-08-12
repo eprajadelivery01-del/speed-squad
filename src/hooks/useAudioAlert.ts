@@ -1,9 +1,13 @@
 import { useCallback, useRef, useState, useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 
 // Singleton HTMLAudioElement to guarantee consistent audio context unlocking across renders.
 const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
+
+const canUseBrowserVibration = () =>
+  Capacitor.isNativePlatform() || navigator.userActivation?.hasBeenActive === true;
 
 if (typeof window !== "undefined") {
   globalAudio = new Audio(ALERT_SOUND_URL);
@@ -46,7 +50,7 @@ export function useAudioAlert() {
     playingRef.current = false;
     setIsPlaying(false);
 
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator && canUseBrowserVibration()) {
       navigator.vibrate(0);
     }
   }, []);
@@ -72,7 +76,7 @@ export function useAudioAlert() {
     }
 
     // Trigger vibration API if available
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator && canUseBrowserVibration()) {
       navigator.vibrate([500, 200, 500, 200, 500]);
     }
 
