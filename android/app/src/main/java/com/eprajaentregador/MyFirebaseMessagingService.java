@@ -90,6 +90,28 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             address = address.replace("Veja no app", "Retirada na Loja");
         }
 
+        // Extrai o nome da loja e o endereço de entrega do bloco formatado caso venha como fallback
+        if ((storeName.isEmpty() || "Loja Parceira".equalsIgnoreCase(storeName.trim())) && address != null && address.contains("🏬 Loja:")) {
+            try {
+                int startIdx = address.indexOf("🏬 Loja:") + "🏬 Loja:".length();
+                int endIdx = address.indexOf("\n", startIdx);
+                String parsed = (endIdx != -1 ? address.substring(startIdx, endIdx) : address.substring(startIdx)).trim();
+                if (!parsed.isEmpty() && !"Loja Parceira".equalsIgnoreCase(parsed)) {
+                    storeName = parsed;
+                }
+            } catch (Exception e) {}
+        }
+        if ((dropoff.isEmpty() || "Endereço do cliente".equalsIgnoreCase(dropoff.trim())) && address != null && address.contains("🏁 Entrega:")) {
+            try {
+                int startIdx = address.indexOf("🏁 Entrega:") + "🏁 Entrega:".length();
+                int endIdx = address.indexOf("\n", startIdx);
+                String parsed = (endIdx != -1 ? address.substring(startIdx, endIdx) : address.substring(startIdx)).trim();
+                if (!parsed.isEmpty() && !"Endereço do cliente".equalsIgnoreCase(parsed)) {
+                    dropoff = parsed;
+                }
+            } catch (Exception e) {}
+        }
+
         String details    = (title  != null && !title.isEmpty()   ? title + "\n"  : "")
                           + (address != null && !address.isEmpty() ? address        : "");
         if (details.trim().isEmpty()) details = "Nova corrida disponível!";

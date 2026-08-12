@@ -101,7 +101,7 @@ serve(async (req) => {
     }
 
     // Busca detalhes completos da corrida incluindo empresa, endereços de coleta/entrega e taxa do entregador
-    let companyName = record.company_name || record.store_name || "";
+    let companyName = record.company_name || record.store_name || record.company_title || "";
     let pickupAddr = record.pickup_address || record.origin_address || record.store_address || record.pickup_location || "";
     let dropoffAddr = record.delivery_address || record.dropoff_address || record.address || record.destination_address || record.customer_address || "";
     let deliveryFee = Number(record.delivery_fee) || Number(record.driver_fee) || Number(record.value) || Number(record.price) || Number(record.total_value) || 0;
@@ -134,7 +134,7 @@ serve(async (req) => {
     }
 
     // 2. Se houver company_id, buscar nome fantasia e endereço oficial da loja
-    const companyId = record.company_id;
+    const companyId = record.company_id || record.companyId || record.store_id;
     if (companyId) {
       const { data: comp } = await supabaseClient
         .from('companies')
@@ -142,7 +142,7 @@ serve(async (req) => {
         .eq('id', companyId)
         .maybeSingle();
       if (comp) {
-        if (!companyName) companyName = comp.trade_name || comp.name || "Loja Parceira";
+        companyName = comp.trade_name || comp.name || companyName || "Loja Parceira";
         if (!pickupAddr && comp.address) pickupAddr = comp.address;
       }
     }
@@ -163,6 +163,8 @@ serve(async (req) => {
     const feeText = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`
 
     const formattedDetails = `🏬 Loja: ${companyName}\n📍 Coleta: ${pickupAddr}\n🏁 Entrega: ${dropoffAddr}\n💰 Ganhos: ${feeText}`
+    const pushTitle = companyName && companyName !== "Loja Parceira" ? `🏬 ${companyName}` : "🛵 Nova corrida disponível!";
+    const pushBody = `🏁 Entrega: ${dropoffAddr}`;
 
     let query = supabaseClient
       .from('delivery_drivers')
@@ -197,8 +199,8 @@ serve(async (req) => {
             pickup: pickupAddr,
             dropoff: dropoffAddr,
             fee: feeText,
-            title: "",
-            body: formattedDetails
+            title: pushTitle,
+            body: pushBody
           },
           android: {
             priority: "high",
@@ -209,8 +211,8 @@ serve(async (req) => {
             payload: {
               aps: {
                 alert: {
-                  title: "🛵 Nova corrida disponível!",
-                  body: formattedDetails
+                  title: pushTitle,
+                  body: pushBody
                 },
                 sound: "default",
                 category: "DELIVERY_ACTION"
