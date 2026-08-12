@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
  * 2. Tabela companies (via company_id)
  * 3. Tabela orders (via order_id)
  */
+const storeNameCache = new Map<string, string>();
+
 export async function fetchRealStoreName(delivery: any): Promise<string> {
   if (!delivery) return "É Pra Já Delivery";
 
@@ -16,9 +18,21 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     return directName.trim();
   }
 
-  // 2. Se possuir company_id, busca diretamente na tabela companies
+  // 2. Se houver relação pré-carregada (companies)
+  if (delivery.companies) {
+    const foundRel = delivery.companies.trade_name || delivery.companies.name;
+    if (foundRel && foundRel.trim() !== "" && !foundRel.toLowerCase().includes("loja parceira")) {
+      return foundRel.trim();
+    }
+  }
+
+  // 3. Se possuir company_id, verifica o cache antes de consultar o banco
   const companyId = delivery.company_id || delivery.companyId || delivery.store_id;
   if (companyId) {
+    const cacheKey = `comp:${companyId}`;
+    if (storeNameCache.has(cacheKey)) {
+      return storeNameCache.get(cacheKey)!;
+    }
     try {
       const { data: comp } = await supabase
         .from("companies")
@@ -29,7 +43,9 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
       if (comp) {
         const found = comp.trade_name || comp.name;
         if (found && found.trim() !== "" && !found.toLowerCase().includes("loja parceira")) {
-          return found.trim();
+          const res = found.trim();
+          storeNameCache.set(cacheKey, res);
+          return res;
         }
       }
     } catch (e) {
@@ -37,9 +53,13 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     }
   }
 
-  // 3. Se possuir order_id, busca na tabela orders
+  // 4. Se possuir order_id, verifica o cache antes de consultar o banco
   const orderId = delivery.order_id || delivery.orderId;
   if (orderId) {
+    const cacheKey = `ord:${orderId}`;
+    if (storeNameCache.has(cacheKey)) {
+      return storeNameCache.get(cacheKey)!;
+    }
     try {
       const { data: ord } = await supabase
         .from("orders")
@@ -50,7 +70,9 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
       if (ord) {
         const found = ord.company_name || ord.store_name;
         if (found && found.trim() !== "" && !found.toLowerCase().includes("loja parceira")) {
-          return found.trim();
+          const res = found.trim();
+          storeNameCache.set(cacheKey, res);
+          return res;
         }
         if (ord.company_id) {
           const { data: comp } = await supabase
@@ -62,21 +84,15 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
           if (comp) {
             const foundComp = comp.trade_name || comp.name;
             if (foundComp && foundComp.trim() !== "" && !foundComp.toLowerCase().includes("loja parceira")) {
-              return foundComp.trim();
+              const res = foundComp.trim();
+              storeNameCache.set(cacheKey, res);
+              return res;
             }
           }
         }
       }
     } catch (e) {
       console.warn("[fetchRealStoreName] Erro ao buscar empresa por order_id:", e);
-    }
-  }
-
-  // 4. Se houver relação pré-carregada (companies)
-  if (delivery.companies) {
-    const foundRel = delivery.companies.trade_name || delivery.companies.name;
-    if (foundRel && foundRel.trim() !== "" && !foundRel.toLowerCase().includes("loja parceira")) {
-      return foundRel.trim();
     }
   }
 
