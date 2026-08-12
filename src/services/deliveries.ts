@@ -116,7 +116,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
         query = query.is("driver_id", null);
       }
       if (cityId) {
-        query = query.eq("city_id", cityId);
+        query = query.or(`city_id.eq.${cityId},city_id.is.null`);
       }
       if (dateFrom) query = query.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
