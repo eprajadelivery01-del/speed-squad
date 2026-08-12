@@ -125,7 +125,7 @@ public class IncomingCallActivity extends Activity {
             }
         }
 
-        if (storeName.isEmpty()) storeName = "Loja Parceira";
+        if (storeName.isEmpty() || "Loja Parceira".equalsIgnoreCase(storeName.trim())) storeName = "É Pra Já Delivery";
         if (pickup.isEmpty())    pickup    = "Retirada na Loja";
         if (dropoff.isEmpty())   dropoff   = "Endereço do cliente";
         if (fee.isEmpty()) fee = "R$ 0,00";

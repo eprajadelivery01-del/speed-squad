@@ -276,7 +276,7 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      const storeName = rawDelivery.companies?.name || rawDelivery.company_name || "Loja Parceira";
+      const storeName = rawDelivery.company_name || rawDelivery.store_name || rawDelivery.trade_name || rawDelivery.companies?.trade_name || rawDelivery.companies?.name || "Loja Parceira";
       const pickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || storeName || "Retirada na Loja";
       const dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
       const fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
@@ -295,13 +295,13 @@ export function useDriverNotifications() {
 
       const { data: fullDelivery } = await supabase
         .from("deliveries")
-        .select("*, companies!deliveries_company_id_fkey(name, address), orders(delivery_fee)")
+        .select("*, companies!deliveries_company_id_fkey(name, address, trade_name), orders(delivery_fee)")
         .eq("id", rawDelivery.id)
         .single();
          
       const delivery = fullDelivery || rawDelivery;
       
-      const fullStoreName = delivery.companies?.name || storeName;
+      const fullStoreName = delivery.company_name || delivery.store_name || delivery.trade_name || delivery.companies?.trade_name || delivery.companies?.name || storeName;
       const fullPickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || delivery.companies?.address || fullStoreName || "Retirada na Loja";
       const fullDropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
       
