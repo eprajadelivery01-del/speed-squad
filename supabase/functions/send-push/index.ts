@@ -142,7 +142,7 @@ serve(async (req) => {
         .eq('id', companyId)
         .maybeSingle();
       if (comp) {
-        companyName = comp.trade_name || comp.name || companyName || "Loja Parceira";
+        companyName = comp.trade_name || comp.name || companyName || "É Pra Já Delivery";
         if (!pickupAddr && comp.address) pickupAddr = comp.address;
       }
     }
@@ -156,14 +156,14 @@ serve(async (req) => {
       return s
     }
 
-    companyName = norm(companyName, "Loja Parceira")
+    companyName = norm(companyName, "É Pra Já Delivery")
     pickupAddr = norm(pickupAddr, "Retirada na Loja")
     dropoffAddr = norm(dropoffAddr, "Endereço do cliente")
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) deliveryFee = 0
     const feeText = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`
 
     const formattedDetails = `🏬 Loja: ${companyName}\n📍 Coleta: ${pickupAddr}\n🏁 Entrega: ${dropoffAddr}\n💰 Ganhos: ${feeText}`
-    const pushTitle = companyName && companyName !== "Loja Parceira" ? `🏬 ${companyName}` : "🛵 Nova corrida disponível!";
+    const pushTitle = companyName && companyName !== "Loja Parceira" && companyName !== "É Pra Já Delivery" ? `🏬 ${companyName}` : `🏬 ${companyName}`;
     const pushBody = `🏁 Entrega: ${dropoffAddr}`;
 
     let query = supabaseClient
