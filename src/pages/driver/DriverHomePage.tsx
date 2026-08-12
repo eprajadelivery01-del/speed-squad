@@ -129,7 +129,6 @@ export default function DriverHomePage() {
   const { data: broadcastData, isLoading: loadingBroadcast } = useDeliveries({
     status: ["pending", "broadcasted"],
     driverId: driverId || undefined,
-    cityId: driverRecord?.city_id || undefined,
     enabled: isOnline,
     staleTime: 5000,
     refetchInterval: 5000,
