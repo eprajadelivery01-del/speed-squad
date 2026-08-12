@@ -196,12 +196,23 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 builder = new Notification.Builder(this);
             }
 
-            // Garante que "Loja Parceira" nunca é exibido: se storeName for genérico ou vazio, usa o fallback "É Pra Já Delivery" ou o nome extraído
-            String finalStoreName = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
-                    ? storeName.trim()
-                    : "É Pra Já Delivery";
+        // Override estrito de title e storeName para garantir o Nome da Loja
+        if (title != null && title.contains("Nova corrida") && address != null && address.contains("🏬 Loja:")) {
+            try {
+                int startIdx = address.indexOf("🏬 Loja:") + "🏬 Loja:".length();
+                int endIdx = address.indexOf("\n", startIdx);
+                String parsedStore = (endIdx != -1 ? address.substring(startIdx, endIdx) : address.substring(startIdx)).trim();
+                if (!parsedStore.isEmpty() && !"Loja Parceira".equalsIgnoreCase(parsedStore)) {
+                    storeName = parsedStore;
+                }
+            } catch (Exception e) {}
+        }
 
-            String cardTitle = "🏬 " + finalStoreName;
+        String finalStoreName = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
+                ? storeName.trim()
+                : "É Pra Já Delivery";
+
+        String cardTitle = "🏬 " + finalStoreName;
 
             String cardSubtext = (dropoff != null && !dropoff.trim().isEmpty() && !"Endereço do cliente".equalsIgnoreCase(dropoff.trim()))
                     ? "🏁 Entrega: " + dropoff.trim()

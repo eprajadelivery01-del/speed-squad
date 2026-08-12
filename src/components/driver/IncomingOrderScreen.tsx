@@ -28,7 +28,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
     Number(delivery.total_value) || 0,
     Number(delivery.value) || 0
   );
-  const storeName = delivery.companies?.name || "Loja Parceira";
+  const storeName = delivery.companies?.trade_name || delivery.companies?.name || delivery.company_name || delivery.store_name || "É Pra Já Delivery";
 
   // Calculation for "Cobrar do cliente"
   let chargeAmount = Number(delivery.estimated_value || 0);

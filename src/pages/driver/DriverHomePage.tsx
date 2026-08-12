@@ -618,7 +618,7 @@ export default function DriverHomePage() {
                           )}
                         </div>
 
-                        <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{del.companies?.name || "Loja Parceira"}</h4>
+                        <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{del.companies?.trade_name || del.companies?.name || del.company_name || del.store_name || "É Pra Já Delivery"}</h4>
                         <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
                       </div>
                       

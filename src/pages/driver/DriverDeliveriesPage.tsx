@@ -283,7 +283,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               </span>
             )}
           </div>
-          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{delivery.companies?.name || "Loja Parceira"}</h4>
+          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{delivery.companies?.trade_name || delivery.companies?.name || delivery.company_name || delivery.store_name || "É Pra Já Delivery"}</h4>
           <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
 
