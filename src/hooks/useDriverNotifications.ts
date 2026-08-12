@@ -358,7 +358,7 @@ export function useDriverNotifications() {
                 body: `🏁 Entrega: ${fullDropoff}`,
                 id: hashId(delivery.id),
                 actionTypeId: "DELIVERY_ACTION",
-                channelId: "delivery-incoming-v7",
+                channelId: "delivery-incoming-v8",
                 extra: { type: "delivery", deliveryId: delivery.id },
               },
             ],

@@ -12,7 +12,7 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v7";
+    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v8";
 
     private NotificationChannels() {}
 
