@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { safeRpc } from "@/lib/safeRpc";
+import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
 import type { DeliveryStatus } from "@/types/models";
 
 export interface DeliveryWithRelations {
@@ -128,19 +129,20 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       const { data, error, count } = await query;
       if (error) throw error;
 
-      const normalizedData = (data ?? []).map((delivery: any) => {
-        const storeTitle = delivery.companies?.trade_name || delivery.companies?.name || delivery.store_name || delivery.company_name || "É Pra Já Delivery";
+      const normalizedData = await Promise.all((data ?? []).map(async (delivery: any) => {
+        const storeTitle = await fetchRealStoreName(delivery);
         return {
           ...delivery,
           companies: {
             ...delivery.companies,
             name: storeTitle,
+            trade_name: storeTitle,
           },
           customer_phone: delivery.customer_phone || delivery.orders?.customer_phone || null,
           status: toAppStatus(delivery.status),
           delivered_at: delivery.delivered_at ?? delivery.completed_at ?? null,
         };
-      });
+      }));
 
       return { data: normalizedData as DeliveryWithRelations[], count: count || 0 };
     },
