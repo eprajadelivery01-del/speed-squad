@@ -308,7 +308,7 @@ export function useDriverNotifications() {
       const orderFee = delivery.orders?.delivery_fee ? Number(delivery.orders.delivery_fee) : 0;
       const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0, fee);
 
-      const title = "🏍️ Nova corrida disponível!";
+      const title = fullStoreName && fullStoreName !== "Loja Parceira" ? `🏬 ${fullStoreName}` : "🏍️ Nova corrida disponível!";
       const description = `${fullStoreName}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
       
       if (Capacitor.isNativePlatform()) {
@@ -353,7 +353,7 @@ export function useDriverNotifications() {
             notifications: [
               {
                 title: title,
-                body: description,
+                body: `🏁 Entrega: ${fullDropoff}`,
                 id: hashId(delivery.id),
                 actionTypeId: "DELIVERY_ACTION",
                 channelId: "delivery-incoming-v7",

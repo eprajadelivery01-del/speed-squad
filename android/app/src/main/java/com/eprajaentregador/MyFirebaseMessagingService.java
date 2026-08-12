@@ -174,9 +174,16 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 builder = new Notification.Builder(this);
             }
 
+            String cardTitle = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
+                    ? "🏬 " + storeName
+                    : "🛵 Nova corrida disponível!";
+            String cardSubtext = (dropoff != null && !dropoff.trim().isEmpty())
+                    ? "🏁 Entrega: " + dropoff
+                    : details;
+
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
-                    .setContentTitle("Nova corrida disponível!")
-                    .setContentText(details)
+                    .setContentTitle(cardTitle)
+                    .setContentText(cardSubtext)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setCategory(Notification.CATEGORY_CALL)
                     .setPriority(Notification.PRIORITY_MAX)
