@@ -163,23 +163,26 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             PendingIntent tapPI = PendingIntent.getActivity(this, 1, fsIntent, piFlags);
 
+            android.net.Uri sound = android.media.RingtoneManager
+                    .getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+            if (sound == null) sound = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 builder = new Notification.Builder(this, CHANNEL_ID);
             } else {
-                android.net.Uri sound = android.media.RingtoneManager
-                        .getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
-                builder = new Notification.Builder(this)
-                        .setPriority(Notification.PRIORITY_MAX)
-                        .setSound(sound)
-                        .setVibrate(new long[]{0, 500, 300, 500, 300, 500})
-                        .setDefaults(Notification.DEFAULT_LIGHTS);
+                builder = new Notification.Builder(this);
             }
+
             builder.setSmallIcon(android.R.drawable.sym_call_incoming)
                     .setContentTitle("Nova corrida disponível!")
                     .setContentText(details)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setCategory(Notification.CATEGORY_CALL)
+                    .setPriority(Notification.PRIORITY_MAX)
+                    .setSound(sound)
+                    .setVibrate(new long[]{0, 600, 200, 600, 200, 600})
+                    .setDefaults(Notification.DEFAULT_ALL)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)

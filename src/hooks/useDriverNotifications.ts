@@ -102,12 +102,12 @@ export function useDriverNotifications() {
             }).catch(() => {});
 
             LocalNotifications.listChannels().then((channels) => {
-              const hasChannel = channels.channels.some(c => c.id === 'new-orders-v2');
+              const hasChannel = channels.channels.some(c => c.id === 'delivery-incoming-v7');
               if (!hasChannel) {
                 LocalNotifications.createChannel({
-                  id: "new-orders-v2",
-                  name: "Novas Corridas (Alarme)",
-                  description: "Avisos sonoros de novas corridas",
+                  id: "delivery-incoming-v7",
+                  name: "Novas Corridas É Pra Já",
+                  description: "Alerta sonoro de novas corridas disponíveis para entregadores",
                   importance: 5,
                   visibility: 1,
                   sound: "ring.mp3",
@@ -356,7 +356,7 @@ export function useDriverNotifications() {
                 body: description,
                 id: hashId(delivery.id),
                 actionTypeId: "DELIVERY_ACTION",
-                channelId: "new-orders-v2",
+                channelId: "delivery-incoming-v7",
                 extra: { type: "delivery", deliveryId: delivery.id },
               },
             ],
