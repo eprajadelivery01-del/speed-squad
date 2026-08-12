@@ -18,6 +18,7 @@ import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { declineDeliveryLocally, acceptDeliveryLocally, getAcceptedDeliveries, getDeclinedDeliveries } from "@/hooks/useDriverNotifications";
+import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -548,185 +549,14 @@ export default function DriverHomePage() {
               </div>
             ) : (
               <div className="grid gap-3">
-                {broadcastDeliveries.map((del: any) => {
-                  const hasPago = del.notes?.includes("[PAGO]");
-                  const hasReceber = del.notes?.includes("[RECEBER:");
-                  const paymentBadge = hasPago ? "✅ PAGO" : hasReceber ? del.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
-                  
-                  let cleanNotes = del.notes || "";
-                  if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
-                  if (hasReceber) cleanNotes = cleanNotes.replace(/\[RECEBER:.*?\]/, "").trim();
-                  
-                  const isProducts = cleanNotes.includes("[PRODUTOS]") || cleanNotes.includes("[ITENS:");
-                  if (isProducts) {
-                    cleanNotes = cleanNotes.replace("[PRODUTOS]", "").replace(/\[ITENS:.*?\]/, "").trim();
-                  }
-
-                  let chargeAmount = Number(del.estimated_value || 0);
-                  let chargeMethod = "";
-                  let showCharge = false;
-                  let trocoText = "";
-
-                  if (del.notes) {
-                    const trocoMatch = del.notes.match(/troco\s*(para)?\s*(r\$\s*)?\d+([.,]\d{2})?/i);
-                    if (trocoMatch) {
-                      trocoText = trocoMatch[0];
-                    }
-                  }
-
-                  if (del.orders && Array.isArray(del.orders) && del.orders.length > 0) {
-                    const orderTotal = del.orders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
-                    const orderFee = del.orders.reduce((acc: number, o: any) => acc + Number(o.delivery_fee || 0), 0);
-                    const feeToCharge = orderFee > 0 ? orderFee : Number(del.delivery_fee || del.price || del.value || 0);
-
-                    if (orderTotal > 0) {
-                      chargeAmount = orderTotal + feeToCharge;
-                      const methods = new Set(del.orders.map((o: any) => o.payment_method).filter(Boolean));
-                      if (methods.has('machine')) chargeMethod = "Máquina Móvel";
-                      else if (methods.has('money') || methods.has('cash')) chargeMethod = "Dinheiro";
-                      else if (methods.has('pix')) chargeMethod = "PIX";
-                      else if (methods.has('card')) chargeMethod = "Cartão Online";
-                      
-                      if (chargeMethod === "Máquina Móvel" || chargeMethod === "Dinheiro" || chargeMethod === "PIX") {
-                         showCharge = true;
-                      }
-                    }
-                  } else if (chargeAmount > 0) {
-                    showCharge = true;
-                  }
-
-                  return (
-                  <div key={del.id} className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
-                    {/* Background glow effect */}
-                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/30 transition-colors duration-500" />
-                    
-                    {/* Header: Store and Value */}
-                    <div className="flex justify-between items-start z-10">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg">
-                            Nova Corrida
-                          </span>
-                          {paymentBadge && (
-                            <span className={cn(
-                              "px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg",
-                              hasPago ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                            )}>
-                              {paymentBadge.replace(/[\[\]]/g, "")}
-                            </span>
-                          )}
-                        </div>
-
-                        <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{del.companies?.trade_name || del.companies?.name || del.company_name || del.store_name || "É Pra Já Delivery"}</h4>
-                        <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
-                      </div>
-                      
-                      {((del.delivery_fee != null && del.delivery_fee > 0) || (del.value != null && del.value > 0) || (del.price != null && del.price > 0)) && (
-                        <div className="flex flex-col items-end">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
-                          <div className="text-2xl font-black text-success tracking-tighter">
-                            <span className="text-sm mr-0.5">R$</span>{Number(del.delivery_fee || del.value || del.price || 0).toFixed(2)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Route Timeline */}
-                    <div className="relative flex flex-col gap-4 pl-3 py-1 z-10">
-                      <div className="absolute left-[17px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-foreground/20 rounded-full" />
-                      
-                      {/* Pickup */}
-                      <div className="flex items-start gap-4">
-                        <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(var(--primary),0.2)] mt-1.5 relative z-10" />
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Coleta</span>
-                          <span className="text-sm font-semibold text-foreground mt-0.5">{del.pickup_address || "Retirada na loja"}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Dropoff */}
-                      <div className="flex items-start gap-4">
-                        <div className="w-3 h-3 rounded-full bg-foreground border-2 border-background shadow-[0_0_0_2px_rgba(var(--foreground),0.2)] mt-1.5 relative z-10" />
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Entrega</span>
-                          <span className="text-sm font-semibold text-foreground mt-0.5">{del.dropoff_address || del.address}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Order Details/Products */}
-                    {cleanNotes && (
-                      <div className={cn(
-                        "relative p-3.5 rounded-2xl border z-10 overflow-hidden",
-                        isProducts ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border/50"
-                      )}>
-                        <div className="flex items-start gap-3 relative z-10">
-                          <div className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                            isProducts ? "bg-primary/10 text-primary" : "bg-background text-muted-foreground shadow-sm"
-                          )}>
-                            <Package className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            {isProducts ? (
-                              <>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Conteúdo do Pedido</p>
-                                <p className="text-xs font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                                  {cleanNotes}
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-xs font-medium text-muted-foreground leading-relaxed italic">
-                                "{cleanNotes}"
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Valor a cobrar do cliente */}
-                    {showCharge && (
-                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex flex-col gap-2 z-10">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black uppercase tracking-widest text-amber-500">Cobrar do cliente</span>
-                          <span className="text-lg font-black text-amber-500">
-                            <span className="text-xs mr-0.5">R$</span>{chargeAmount.toFixed(2)}
-                          </span>
-                        </div>
-                        {(chargeMethod || trocoText) && (
-                          <div className="flex justify-between items-center mt-0.5">
-                            {trocoText ? (
-                              <span className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider bg-amber-500/10 px-2 py-1 rounded-md">
-                                {trocoText}
-                              </span>
-                            ) : <span />}
-                            {chargeMethod && (
-                              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[9px] font-black uppercase tracking-widest">
-                                {chargeMethod}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Action Button */}
-                    <button
-                      onClick={() => handleAcceptDelivery(del.id)}
-                      disabled={updatingStatus}
-                      className="relative w-full h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-base text-white shadow-[0_8px_20px_rgba(var(--primary),0.3)] hover:shadow-[0_10px_25px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all z-10 overflow-hidden group/btn"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#ff4713]" />
-                      <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
-                      
-                      <div className="relative flex items-center gap-2">
-                        {updatingStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
-                        ACEITAR CORRIDA
-                      </div>
-                    </button>
-                  </div>
-                )})}
+                {broadcastDeliveries.map((del: any) => (
+                  <BroadcastDeliveryCard
+                    key={del.id}
+                    del={del}
+                    onAcceptDelivery={handleAcceptDelivery}
+                    updatingStatus={updatingStatus}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -762,6 +592,201 @@ export default function DriverHomePage() {
         <p className="text-[11px] font-black uppercase tracking-[0.6em] text-muted-foreground ml-2">BONASOFT</p>
       </div>
     </DriverLayout>
+  );
+}
+
+function BroadcastDeliveryCard({ del, onAcceptDelivery, updatingStatus }: { del: any, onAcceptDelivery: (id: string) => void, updatingStatus: boolean }) {
+  const [realStoreName, setRealStoreName] = useState<string>(
+    del.companies?.trade_name || del.companies?.name || del.company_name || del.store_name || ""
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchRealStoreName(del).then((resolved) => {
+      if (isMounted && resolved) {
+        setRealStoreName(resolved);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [del]);
+
+  const hasPago = del.notes?.includes("[PAGO]");
+  const hasReceber = del.notes?.includes("[RECEBER:");
+  const paymentBadge = hasPago ? "✅ PAGO" : hasReceber ? del.notes.match(/\[RECEBER:.*?\]/)?.[0] : null;
+
+  let cleanNotes = del.notes || "";
+  if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
+  if (hasReceber) cleanNotes = cleanNotes.replace(/\[RECEBER:.*?\]/, "").trim();
+
+  const isProducts = cleanNotes.includes("[PRODUTOS]") || cleanNotes.includes("[ITENS:");
+  if (isProducts) {
+    cleanNotes = cleanNotes.replace("[PRODUTOS]", "").replace(/\[ITENS:.*?\]/, "").trim();
+  }
+
+  let chargeAmount = Number(del.estimated_value || 0);
+  let chargeMethod = "";
+  let showCharge = false;
+  let trocoText = "";
+
+  if (del.notes) {
+    const trocoMatch = del.notes.match(/troco\s*(para)?\s*(r\$\s*)?\d+([.,]\d{2})?/i);
+    if (trocoMatch) {
+      trocoText = trocoMatch[0];
+    }
+  }
+
+  if (del.orders && Array.isArray(del.orders) && del.orders.length > 0) {
+    const orderTotal = del.orders.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
+    const orderFee = del.orders.reduce((acc: number, o: any) => acc + Number(o.delivery_fee || 0), 0);
+    const feeToCharge = orderFee > 0 ? orderFee : Number(del.delivery_fee || del.price || del.value || 0);
+
+    if (orderTotal > 0) {
+      chargeAmount = orderTotal + feeToCharge;
+      const methods = new Set(del.orders.map((o: any) => o.payment_method).filter(Boolean));
+      if (methods.has('machine')) chargeMethod = "Máquina Móvel";
+      else if (methods.has('money') || methods.has('cash')) chargeMethod = "Dinheiro";
+      else if (methods.has('pix')) chargeMethod = "PIX";
+      else if (methods.has('card')) chargeMethod = "Cartão Online";
+      
+      if (chargeMethod === "Máquina Móvel" || chargeMethod === "Dinheiro" || chargeMethod === "PIX") {
+         showCharge = true;
+      }
+    }
+  } else if (chargeAmount > 0) {
+    showCharge = true;
+  }
+
+  return (
+    <div key={del.id} className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
+      {/* Background glow effect */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/30 transition-colors duration-500" />
+      
+      {/* Header: Store and Value */}
+      <div className="flex justify-between items-start z-10">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg">
+              Nova Corrida
+            </span>
+            {paymentBadge && (
+              <span className={cn(
+                "px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg",
+                hasPago ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+              )}>
+                {paymentBadge.replace(/[\[\]]/g, "")}
+              </span>
+            )}
+          </div>
+
+          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "É Pra Já Delivery"}</h4>
+          <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
+        </div>
+        
+        {((del.delivery_fee != null && del.delivery_fee > 0) || (del.value != null && del.value > 0) || (del.price != null && del.price > 0)) && (
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
+            <div className="text-2xl font-black text-success tracking-tighter">
+              <span className="text-sm mr-0.5">R$</span>{Number(del.delivery_fee || del.value || del.price || 0).toFixed(2)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Route Timeline */}
+      <div className="relative flex flex-col gap-4 pl-3 py-1 z-10">
+        <div className="absolute left-[17px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-foreground/20 rounded-full" />
+        
+        {/* Pickup */}
+        <div className="flex items-start gap-4">
+          <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(var(--primary),0.2)] mt-1.5 relative z-10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Coleta</span>
+            <span className="text-sm font-semibold text-foreground mt-0.5">{del.pickup_address || "Retirada na loja"}</span>
+          </div>
+        </div>
+        
+        {/* Dropoff */}
+        <div className="flex items-start gap-4">
+          <div className="w-3 h-3 rounded-full bg-foreground border-2 border-background shadow-[0_0_0_2px_rgba(var(--foreground),0.2)] mt-1.5 relative z-10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Entrega</span>
+            <span className="text-sm font-semibold text-foreground mt-0.5">{del.dropoff_address || del.address}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Order Details/Products */}
+      {cleanNotes && (
+        <div className={cn(
+          "relative p-3.5 rounded-2xl border z-10 overflow-hidden",
+          isProducts ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border/50"
+        )}>
+          <div className="flex items-start gap-3 relative z-10">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+              isProducts ? "bg-primary/10 text-primary" : "bg-background text-muted-foreground shadow-sm"
+            )}>
+              <Package className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              {isProducts ? (
+                <>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Conteúdo do Pedido</p>
+                  <p className="text-xs font-semibold text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                    {cleanNotes}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs font-medium text-muted-foreground leading-relaxed italic">
+                  "{cleanNotes}"
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Valor a cobrar do cliente */}
+      {showCharge && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex flex-col gap-2 z-10">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-widest text-amber-500">Cobrar do cliente</span>
+            <span className="text-lg font-black text-amber-500">
+              <span className="text-xs mr-0.5">R$</span>{chargeAmount.toFixed(2)}
+            </span>
+          </div>
+          {(chargeMethod || trocoText) && (
+            <div className="flex justify-between items-center mt-0.5">
+              {trocoText ? (
+                <span className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider bg-amber-500/10 px-2 py-1 rounded-md">
+                  {trocoText}
+                </span>
+              ) : <span />}
+              {chargeMethod && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[9px] font-black uppercase tracking-widest">
+                  {chargeMethod}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action Button */}
+      <button
+        onClick={() => onAcceptDelivery(del.id)}
+        disabled={updatingStatus}
+        className="relative w-full h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-base text-white shadow-[0_8px_20px_rgba(var(--primary),0.3)] hover:shadow-[0_10px_25px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all z-10 overflow-hidden group/btn"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#ff4713]" />
+        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
+        
+        <div className="relative flex items-center gap-2">
+          {updatingStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
+          ACEITAR CORRIDA
+        </div>
+      </button>
+    </div>
   );
 }
 

@@ -11,6 +11,7 @@ import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
 import { useQueryClient } from "@tanstack/react-query";
+import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
 
 export default function DriverDeliveriesPage() {
   const { user } = useAuth();
@@ -176,6 +177,19 @@ export default function DriverDeliveriesPage() {
 
 function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
   const [showInfo, setShowInfo] = useState(false);
+  const [realStoreName, setRealStoreName] = useState<string>(
+    delivery.companies?.trade_name || delivery.companies?.name || delivery.company_name || delivery.store_name || ""
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchRealStoreName(delivery).then((resolved) => {
+      if (isMounted && resolved) {
+        setRealStoreName(resolved);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [delivery]);
 
   const getButtonText = () => {
     switch (delivery.status) {
@@ -283,7 +297,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               </span>
             )}
           </div>
-          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{delivery.companies?.trade_name || delivery.companies?.name || delivery.company_name || delivery.store_name || "É Pra Já Delivery"}</h4>
+          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "É Pra Já Delivery"}</h4>
           <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
 
