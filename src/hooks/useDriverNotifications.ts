@@ -192,7 +192,7 @@ export function useDriverNotifications() {
               try {
                  const { data } = await supabase
                    .from("deliveries")
-                   .select("*, companies!deliveries_company_id_fkey(name, address, trade_name), orders(delivery_fee)")
+                   .select("*, companies(name, address, trade_name), orders(delivery_fee)")
                    .eq("id", deliveryId)
                    .single();
 
@@ -296,7 +296,7 @@ export function useDriverNotifications() {
 
       const { data: fullDelivery } = await supabase
         .from("deliveries")
-        .select("*, companies!deliveries_company_id_fkey(name, address, trade_name), orders(delivery_fee)")
+        .select("*, companies(name, address, trade_name), orders(delivery_fee)")
         .eq("id", rawDelivery.id)
         .single();
          
