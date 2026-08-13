@@ -74,7 +74,7 @@ export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification, updateNotificationStatus } = useNotifications();
-  const { playAlert, stopAlert } = useAudioAlert();
+  const { playAlert, stopAlert, unlockAudio } = useAudioAlert();
   
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
@@ -269,7 +269,7 @@ export function useDriverNotifications() {
     const notifyNewDelivery = async (rawDelivery: any) => {
       if (!rawDelivery?.id) return;
       if (!isOnlineRef.current) return;
-      
+
       const declined = getDeclinedDeliveries();
       if (declined.has(rawDelivery.id)) return;
 
@@ -277,10 +277,27 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      const storeName = await fetchRealStoreName(rawDelivery);
-      const pickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || storeName || "Retirada na Loja";
-      const dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
-      const fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
+      // ======== 1) SOM PRIMEIRO — nada pode impedir o alerta sonoro ========
+      try {
+        unlockAudio();
+        playAlert(true);
+      } catch (e) {
+        console.warn("[Notify] som falhou:", e);
+      }
+
+      let storeName = "É Pra Já Delivery";
+      let pickup = "Retirada na Loja";
+      let dropoff = "Endereço do cliente";
+      let fee = 0;
+
+      try {
+        storeName = (await fetchRealStoreName(rawDelivery)) || storeName;
+      } catch (e) {
+        console.warn("[Notify] nome da loja falhou:", e);
+      }
+      pickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || storeName || pickup;
+      dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || dropoff;
+      fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
 
       const immediateDesc = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}${fee > 0 ? `\nGanhos: R$ ${fee.toFixed(2).replace('.', ',')}` : ''}`;
       if (Capacitor.isNativePlatform()) {
@@ -294,25 +311,32 @@ export function useDriverNotifications() {
         }).catch((e: any) => console.warn("Erro ao acordar tela (imediato):", e));
       }
 
-      const { data: fullDelivery } = await supabase
-        .from("deliveries")
-        .select("*, companies(name, address), orders(delivery_fee)")
-        .eq("id", rawDelivery.id)
-        .single();
-         
-      const delivery = fullDelivery || rawDelivery;
-      
-      const fullStoreName = await fetchRealStoreName(delivery);
+      let delivery: any = rawDelivery;
+      try {
+        const { data: fullDelivery } = await supabase
+          .from("deliveries")
+          .select("*, companies(name, address), orders(delivery_fee)")
+          .eq("id", rawDelivery.id)
+          .single();
+        if (fullDelivery) delivery = fullDelivery;
+      } catch (e) {
+        console.warn("[Notify] detalhe da corrida falhou, usando payload bruto:", e);
+      }
+
+      let fullStoreName = storeName;
+      try {
+        fullStoreName = (await fetchRealStoreName(delivery)) || storeName;
+      } catch {}
       const fullPickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || delivery.companies?.address || fullStoreName || "Retirada na Loja";
       const fullDropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
-      
+
       const orderFee = delivery.orders?.delivery_fee ? Number(delivery.orders.delivery_fee) : 0;
       const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0, fee);
 
       const displayStore = fullStoreName || "É Pra Já Delivery";
       const title = `🏬 ${displayStore}`;
       const description = `${displayStore}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
-      
+
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.updateIncomingCall({
           details: description,
@@ -324,16 +348,11 @@ export function useDriverNotifications() {
         }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
       }
 
-      try {
-        playAlert(true);
-      } catch (e) {
-        console.warn("[Notify] som falhou:", e);
-      }
-
       // 2) Toast
       try {
         toast({ title, description });
       } catch {}
+
 
       // 3) Central de notificações
       try {
@@ -760,7 +779,7 @@ export function useDriverNotifications() {
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, toast, playAlert, stopAlert, addNotification, updateNotificationStatus]);
+  }, [user, toast, playAlert, stopAlert, unlockAudio, addNotification, updateNotificationStatus]);
 }
 
 
