@@ -42,7 +42,7 @@
         <service
             android:name=".MyFirebaseMessagingService"
             android:exported="false">
-            <intent-filter>
+            <intent-filter android:priority="9999">
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
@@ -74,8 +74,5 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-
-    <!-- Google Play: proibida para este app. Removida de qualquer biblioteca no merge. -->
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 </manifest>
