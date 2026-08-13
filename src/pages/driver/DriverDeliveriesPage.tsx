@@ -178,7 +178,7 @@ export default function DriverDeliveriesPage() {
 function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
   const [showInfo, setShowInfo] = useState(false);
   const [realStoreName, setRealStoreName] = useState<string>(
-    delivery.companies?.trade_name || delivery.companies?.name || delivery.company_name || delivery.store_name || ""
+    delivery.companies?.name || delivery.companies?.trade_name || delivery.company_name || delivery.store_name || ""
   );
 
   useEffect(() => {
