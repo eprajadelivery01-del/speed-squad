@@ -348,22 +348,20 @@ export function useDriverNotifications() {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) OS notification
+      // 4) OS notification na Central do Celular (Tela Bloqueada e Barra de Notificações)
       if (Capacitor.isNativePlatform()) {
-        if (permissionRef.current === "granted") {
-          LocalNotifications.schedule({
-            notifications: [
-              {
-                title: title,
-                body: `🏁 Entrega: ${fullDropoff}`,
-                id: hashId(delivery.id),
-                actionTypeId: "DELIVERY_ACTION",
-                channelId: "delivery-incoming-v8",
-                extra: { type: "delivery", deliveryId: delivery.id },
-              },
-            ],
-          }).catch(() => {});
-        }
+        LocalNotifications.schedule({
+          notifications: [
+            {
+              title: title,
+              body: `🏁 Entrega: ${fullDropoff}`,
+              id: hashId(delivery.id),
+              actionTypeId: "DELIVERY_ACTION",
+              channelId: "delivery-incoming-v8",
+              extra: { type: "delivery", deliveryId: delivery.id },
+            },
+          ],
+        }).catch((e) => console.warn("[LocalNotifications] erro ao agendar na central:", e));
       } else if (permissionRef.current === "granted") {
         try {
           new Notification(title, {
