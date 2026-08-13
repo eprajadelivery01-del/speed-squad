@@ -566,7 +566,7 @@ export function useDriverNotifications() {
             .select("*");
 
           if (initial && !cancelled) {
-            const cutoff = Date.now() - 60_000;
+            const cutoff = Date.now() - 300_000; // 5 minutos de janela em vez de 60s
             initial.forEach((d: any) => {
               const ts = d.created_at ? new Date(d.created_at).getTime() : 0;
               if (ts < cutoff) {
