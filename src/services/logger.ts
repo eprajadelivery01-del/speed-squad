@@ -18,20 +18,39 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
     return;
   }
 
-  // Ignore specific harmless user-facing errors
-  const msg = payload.error_message?.toLowerCase() || "";
-  if (
-    msg.includes("corrida já foi aceita") || 
-    msg.includes("senha") || 
-    msg.includes("inválida") ||
-    msg.includes("credenciais") ||
-    msg.includes("offline") ||
-    msg.includes("não encontrada") ||
-    msg.includes("acesso negado") ||
-    msg.includes("exclusivo para entregadores") ||
-    msg.includes("permissão de sobreposição") ||
-    msg.includes("deliveryoverlay is not defined")
-  ) {
+  // Ignore specific harmless user-facing errors (race conditions and validation toasts)
+  const msgFull = (
+    (payload.error_message || "") + " " + 
+    (payload.stack_trace || "") + " " + 
+    JSON.stringify(payload.additional_info || "")
+  ).toLowerCase();
+
+  const ignoreKeywords = [
+    "ja foi aceita",
+    "já foi aceita",
+    "pertence a outro",
+    "ja pertence",
+    "já pertence",
+    "outro entregador",
+    "corrida aceita",
+    "ops! já foi aceita",
+    "ops! ja foi aceita",
+    "erro na entrega",
+    "senha",
+    "inválida",
+    "invalida",
+    "credenciais",
+    "offline",
+    "não encontrada",
+    "nao encontrada",
+    "acesso negado",
+    "exclusivo para entregadores",
+    "permissão de sobreposição",
+    "permissao de sobreposicao",
+    "deliveryoverlay is not defined"
+  ];
+
+  if (ignoreKeywords.some(kw => msgFull.includes(kw))) {
     return;
   }
   

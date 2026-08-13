@@ -155,11 +155,15 @@ function toast({ ...props }: Toast) {
       "pertence a outro entregador",
       "corrida já foi aceita por outro",
       "corrida ja foi aceita por outro",
+      "ops! já foi aceita",
+      "ops! ja foi aceita",
+      "erro na entrega",
       "invalid login",
       "acesso negado",
       "exclusivo para entregadores",
       "preencha",
-      "obrigatório"
+      "obrigatório",
+      "obrigatorio"
     ];
     
     const shouldIgnore = ignoreList.some(msg => 
