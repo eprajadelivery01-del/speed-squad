@@ -298,7 +298,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               </span>
             )}
           </div>
-          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "É Pra Já Delivery"}</h4>
+          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "Loja Não Identificada"}</h4>
           <p className="text-sm font-medium text-muted-foreground">{delivery.customer_name}</p>
         </div>
 

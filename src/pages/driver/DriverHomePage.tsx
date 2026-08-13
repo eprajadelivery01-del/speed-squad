@@ -679,7 +679,7 @@ function BroadcastDeliveryCard({ del, onAcceptDelivery, updatingStatus }: { del:
             )}
           </div>
 
-          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "É Pra Já Delivery"}</h4>
+          <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "Loja Não Identificada"}</h4>
           <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
         </div>
         
