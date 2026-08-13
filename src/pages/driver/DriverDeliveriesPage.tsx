@@ -235,6 +235,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
   let cleanNotes = delivery.notes || "";
   if (hasPago) cleanNotes = cleanNotes.replace("[PAGO]", "").trim();
   if (hasReceber) cleanNotes = cleanNotes.replace(/\[RECEBER:.*?\]/, "").trim();
+  cleanNotes = cleanNotes.replace(/\[LOJA:.*?\]/i, "").trim();
 
   const isProducts = cleanNotes.includes("[PRODUTOS]") || cleanNotes.includes("[ITENS:");
   if (isProducts) {

@@ -24,7 +24,7 @@ async function fetchCompanyName(companyId: string): Promise<string | null> {
 
   const { data, error } = await supabase
     .from("companies")
-    .select("name")
+    .select("*")
     .eq("id", companyId)
     .maybeSingle();
 
@@ -33,9 +33,15 @@ async function fetchCompanyName(companyId: string): Promise<string | null> {
     return null;
   }
 
-  const name = normalizeStoreName(data?.name);
-  if (name) storeNameCache.set(cacheKey, name);
-  return name;
+  if (data) {
+    const name = normalizeStoreName(data.name || data.trade_name || data.company_name || data.store_name);
+    if (name) {
+      storeNameCache.set(cacheKey, name);
+      return name;
+    }
+  }
+
+  return null;
 }
 
 export async function fetchRealStoreName(delivery: any): Promise<string> {
@@ -47,11 +53,20 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
 
   // 2. Se houver relação pré-carregada (companies)
   if (delivery.companies) {
-    const relatedName = normalizeStoreName(delivery.companies.name);
+    const relatedName = normalizeStoreName(delivery.companies.name || delivery.companies.trade_name || delivery.companies.company_name);
     if (relatedName) return relatedName;
   }
 
-  // 3. Se possuir company_id, verifica o cache antes de consultar o banco
+  // 3. Tenta extrair observações ou notas da entrega caso contenha [LOJA: ...] ou [EMPRESA: ...]
+  if (delivery.notes && typeof delivery.notes === "string") {
+    const match = delivery.notes.match(/\[(LOJA|EMPRESA|STORE):\s*([^\]]+)\]/i);
+    if (match && match[2]) {
+      const parsedName = normalizeStoreName(match[2]);
+      if (parsedName) return parsedName;
+    }
+  }
+
+  // 4. Se possuir company_id, verifica o cache antes de consultar o banco
   const companyId = delivery.company_id || delivery.companyId || delivery.store_id;
   if (companyId) {
     try {
@@ -62,7 +77,7 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     }
   }
 
-  // 4. Se possuir order_id, verifica o cache antes de consultar o banco
+  // 5. Se possuir order_id, verifica a tabela orders
   const orderId = delivery.order_id || delivery.orderId;
   if (orderId) {
     const cacheKey = `ord:${orderId}`;
@@ -72,17 +87,24 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     try {
       const { data: order, error } = await supabase
         .from("orders")
-        .select("company_id")
+        .select("*")
         .eq("id", orderId)
         .maybeSingle();
 
       if (error) {
         console.warn("[fetchRealStoreName] Erro ao buscar pedido por id:", error);
-      } else if (order?.company_id) {
-        const companyName = await fetchCompanyName(order.company_id);
-        if (companyName) {
-          storeNameCache.set(cacheKey, companyName);
-          return companyName;
+      } else if (order) {
+        const orderStoreName = normalizeStoreName(order.company_name || order.store_name || order.trade_name);
+        if (orderStoreName) {
+          storeNameCache.set(cacheKey, orderStoreName);
+          return orderStoreName;
+        }
+        if (order.company_id) {
+          const companyName = await fetchCompanyName(order.company_id);
+          if (companyName) {
+            storeNameCache.set(cacheKey, companyName);
+            return companyName;
+          }
         }
       }
     } catch (e) {
