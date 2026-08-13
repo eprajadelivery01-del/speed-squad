@@ -41,37 +41,55 @@ function normalizeStoreName(value: unknown): string | null {
   return normalized;
 }
 
-async function fetchCompanyName(companyId: string): Promise<string | null> {
+const pendingPromises = new Map<string, Promise<string | null>>();
+
+async function fetchCompanyName(companyId: string, signal?: AbortSignal): Promise<string | null> {
   const cacheKey = `comp:${companyId}`;
   const cached = storeNameCache.get(cacheKey);
   if (cached) return cached;
 
-  try {
-    const { data, error } = await supabase
-      .from("companies")
-      .select("id, name")
-      .eq("id", companyId)
-      .maybeSingle();
-
-    if (!error && data?.name) {
-      const normalized = normalizeStoreName(data.name);
-      if (normalized) {
-        setCacheItem(cacheKey, normalized);
-        return normalized;
-      }
-    }
-  } catch (e) {
-    console.warn("[STORE_NAME_DEBUG]Erro no fetchDirectCompany:", e);
+  if (pendingPromises.has(cacheKey)) {
+    return pendingPromises.get(cacheKey)!;
   }
 
-  return null;
+  const promise = (async () => {
+    try {
+      if (signal?.aborted) return null;
+      let query = supabase
+        .from("companies")
+        .select("id, name")
+        .eq("id", companyId);
+
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (!error && data?.name) {
+        const normalized = normalizeStoreName(data.name);
+        if (normalized) {
+          setCacheItem(cacheKey, normalized);
+          return normalized;
+        }
+      }
+    } catch (e: any) {
+      if (e?.name !== "AbortError") {
+        console.warn("[STORE_NAME_DEBUG] Erro no fetchDirectCompany:", e);
+      }
+    } finally {
+      pendingPromises.delete(cacheKey);
+    }
+    return null;
+  })();
+
+  pendingPromises.set(cacheKey, promise);
+  return promise;
 }
 
-export async function fetchRealStoreName(delivery: any): Promise<string> {
-  if (!delivery) {
-    console.warn("[STORE_NAME_DEBUG] delivery object is null/undefined");
-    return "";
-  }
+export async function fetchRealStoreName(delivery: any, signal?: AbortSignal): Promise<string> {
+  if (!delivery) return "";
+  if (signal?.aborted) return "";
 
   // 1. Tag [LOJA: ...] inserida nas observações
   if (delivery.notes && typeof delivery.notes === "string") {
@@ -96,7 +114,7 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
   // 3. Consulta por ID da empresa se disponivel
   const companyId = delivery.company_id || delivery.companyId || delivery.store_id;
   if (companyId) {
-    const companyName = await fetchCompanyName(companyId);
+    const companyName = await fetchCompanyName(companyId, signal);
     if (companyName) return companyName;
   }
 
@@ -108,21 +126,27 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
       return storeNameCache.get(cacheKey) || "";
     }
     try {
-      const { data: order, error } = await supabase
+      if (signal?.aborted) return "";
+      let query = supabase
         .from("orders")
         .select("company_id")
-        .eq("id", orderId)
-        .maybeSingle();
+        .eq("id", orderId);
+
+      if (signal) query = query.abortSignal(signal);
+
+      const { data: order, error } = await query.maybeSingle();
 
       if (!error && order?.company_id) {
-        const companyName = await fetchCompanyName(order.company_id);
+        const companyName = await fetchCompanyName(order.company_id, signal);
         if (companyName) {
           setCacheItem(cacheKey, companyName);
           return companyName;
         }
       }
-    } catch (e) {
-      console.warn("[STORE_NAME_DEBUG] Erro ao consultar orders por order_id:", e);
+    } catch (e: any) {
+      if (e?.name !== "AbortError") {
+        console.warn("[STORE_NAME_DEBUG] Erro ao consultar orders por order_id:", e);
+      }
     }
   }
 

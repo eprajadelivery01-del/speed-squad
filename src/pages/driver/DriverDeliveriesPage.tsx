@@ -182,13 +182,13 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
   );
 
   useEffect(() => {
-    let isMounted = true;
-    fetchRealStoreName(delivery).then((resolved) => {
-      if (isMounted && resolved) {
+    const controller = new AbortController();
+    fetchRealStoreName(delivery, controller.signal).then((resolved) => {
+      if (!controller.signal.aborted && resolved) {
         setRealStoreName(resolved);
       }
     });
-    return () => { isMounted = false; };
+    return () => { controller.abort(); };
   }, [delivery]);
 
   const getButtonText = () => {
