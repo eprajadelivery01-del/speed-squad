@@ -68,8 +68,10 @@ export function useAudioAlert() {
       globalAudio.loop = loop;
       globalAudio.volume = 1.0;
       globalAudio.play()
-        .catch((e) => {
-          console.warn("[AudioAlert] Falha ao tocar alerta sonoro:", e);
+        .catch((e: any) => {
+          if (e?.name !== "AbortError" && e?.name !== "NotAllowedError") {
+            console.warn("[AudioAlert] Falha ao tocar alerta sonoro:", e);
+          }
           playingRef.current = false;
           setIsPlaying(false);
         });
