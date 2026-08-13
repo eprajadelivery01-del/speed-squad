@@ -12,8 +12,8 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v8";
-    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders";
+    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v9";
+    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v2";
 
     private NotificationChannels() {}
 
@@ -22,21 +22,20 @@ public final class NotificationChannels {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
 
-        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-        if (sound == null) sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Uri customSound = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.ring);
         AudioAttributes attrs = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build();
 
-        // 1) Canal Nativo Marketplace Orders (usado pelo FCM Server)
+        // 1) Canal Nativo Marketplace Orders v2 (usado pelo FCM Server com Som Customizado ring.mp3)
         if (nm.getNotificationChannel(MARKETPLACE_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
-                    MARKETPLACE_CHANNEL_ID, "Novos Pedidos & Corridas", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Notificações sonoras de novas entregas e pedidos em tempo real");
-            ch.setSound(sound, attrs);
+                    MARKETPLACE_CHANNEL_ID, "Novos Pedidos & Corridas v2", NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("Alerta sonoro personalizado de novas entregas e pedidos É Pra Já");
+            ch.setSound(customSound, attrs);
             ch.enableVibration(true);
-            ch.setVibrationPattern(new long[]{0, 600, 200, 600, 200, 600});
+            ch.setVibrationPattern(new long[]{0, 800, 250, 800, 250, 800});
             ch.enableLights(true);
             ch.setShowBadge(true);
             ch.setBypassDnd(true);
@@ -44,14 +43,14 @@ public final class NotificationChannels {
             nm.createNotificationChannel(ch);
         }
 
-        // 2) Canal Nativo Entregas
+        // 2) Canal Nativo Entregas v9
         if (nm.getNotificationChannel(INCOMING_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
-                    INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Alerta sonoro de novas corridas disponíveis para entregadores");
-            ch.setSound(sound, attrs);
+                    INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já v9", NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("Alerta sonoro personalizado de novas corridas disponíveis para entregadores");
+            ch.setSound(customSound, attrs);
             ch.enableVibration(true);
-            ch.setVibrationPattern(new long[]{0, 600, 200, 600, 200, 600});
+            ch.setVibrationPattern(new long[]{0, 800, 250, 800, 250, 800});
             ch.enableLights(true);
             ch.setShowBadge(true);
             ch.setBypassDnd(true);

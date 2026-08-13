@@ -200,9 +200,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             PendingIntent tapPI = PendingIntent.getActivity(this, 1, fsIntent, piFlags);
 
-            android.net.Uri sound = android.media.RingtoneManager
-                    .getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
-            if (sound == null) sound = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+            android.net.Uri sound = android.net.Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.ring);
 
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
