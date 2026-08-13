@@ -86,22 +86,15 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     try {
       const { data: order, error } = await supabase
         .from("orders")
-        .select("company_id, company_name, store_name")
+        .select("company_id")
         .eq("id", orderId)
         .maybeSingle();
 
-      if (!error && order) {
-        const orderStoreName = normalizeStoreName(order.company_name || order.store_name);
-        if (orderStoreName) {
-          storeNameCache.set(cacheKey, orderStoreName);
-          return orderStoreName;
-        }
-        if (order.company_id) {
-          const companyName = await fetchCompanyName(order.company_id);
-          if (companyName) {
-            storeNameCache.set(cacheKey, companyName);
-            return companyName;
-          }
+      if (!error && order?.company_id) {
+        const companyName = await fetchCompanyName(order.company_id);
+        if (companyName) {
+          storeNameCache.set(cacheKey, companyName);
+          return companyName;
         }
       }
     } catch (e) {
