@@ -244,6 +244,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setStyle(new Notification.BigTextStyle().bigText(formattedBigText))
                     .setCategory(Notification.CATEGORY_CALL)
                     .setPriority(Notification.PRIORITY_MAX)
+                    .setFullScreenIntent(tapPI, true)
                     .setSound(sound)
                     .setVibrate(new long[]{0, 600, 200, 600, 200, 600})
                     .setDefaults(Notification.DEFAULT_ALL)
