@@ -132,30 +132,61 @@ export function useDriverNotifications() {
 
     // Register Push Notifications for Firebase Cloud Messaging
     if (Capacitor.isNativePlatform()) {
-      let isRegistered = false;
       let regListener: any = null;
       let errListener: any = null;
       let actListener: any = null;
       
       try {
+        const syncFcmToken = async (tokenVal: string) => {
+          if (!tokenVal) return;
+          console.log("[FCM] Sincronizando token:", tokenVal.slice(0, 15) + "...");
+          localStorage.setItem("driver_fcm_token", tokenVal);
+
+          if (user?.id) {
+            const { error } = await supabase
+              .from("delivery_drivers")
+              .update({ fcm_token: tokenVal } as any)
+              .eq("user_id", user.id);
+            if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (user_id):", error.message);
+          }
+
+          if (driverRecord?.id) {
+            const { error } = await supabase
+              .from("delivery_drivers")
+              .update({ fcm_token: tokenVal } as any)
+              .eq("id", driverRecord.id);
+            if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (id):", error.message);
+          }
+
+          // Salva também no device_tokens via Edge Function send-push (service role)
+          supabase.functions.invoke("send-push", {
+            body: {
+              action: "register_token",
+              token: tokenVal,
+              userId: user?.id || null,
+              platform: "android"
+            }
+          }).catch(e => console.warn("[FCM] Erro register_token edge function:", e));
+        };
+
+        // Escuta novas identificações do FCM
+        regListener = PushNotifications.addListener("registration", (token) => {
+          console.log("FCM Token recebido:", token.value);
+          syncFcmToken(token.value);
+        });
+
+        // Tenta sincronizar token já existente em cache quando o usuário carrega
+        const cachedToken = localStorage.getItem("driver_fcm_token");
+        if (cachedToken && (user?.id || driverRecord?.id)) {
+          syncFcmToken(cachedToken);
+        }
+
+        // Solicita permissões e registra no PushNotifications
         PushNotifications.requestPermissions().then((result) => {
           if (result.receive === "granted") {
             PushNotifications.register().catch(e => console.warn("PushNotifications.register erro (safe):", e));
           }
         }).catch(e => console.warn("PushNotifications.requestPermissions erro:", e));
-
-        regListener = PushNotifications.addListener("registration", (token) => {
-          console.log("FCM Token recebido:", token.value);
-          if (user?.id) {
-            supabase
-              .from("delivery_drivers")
-              .update({ fcm_token: token.value } as any)
-              .eq("user_id", user.id)
-              .then(({ error }) => {
-                if (error) console.error("Erro ao salvar FCM Token:", error);
-              });
-          }
-        });
 
         errListener = PushNotifications.addListener("registrationError", (error: any) => {
           console.error("Erro no PushNotifications.register:", error);

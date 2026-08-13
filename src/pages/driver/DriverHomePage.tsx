@@ -301,9 +301,13 @@ export default function DriverHomePage() {
     const newStatus = !isOnline;
     if (newStatus && !hasConsent) { setShowConsent(true); setLoading(false); return; }
     
-    const { error } = await supabase.from("delivery_drivers").update({
-      is_online: newStatus,
-    }).eq("id", currentDriverRecord.id);
+    const updatePayload: any = { is_online: newStatus };
+    const cachedFcmToken = localStorage.getItem("driver_fcm_token");
+    if (cachedFcmToken) {
+      updatePayload.fcm_token = cachedFcmToken;
+    }
+
+    const { error } = await supabase.from("delivery_drivers").update(updatePayload).eq("id", currentDriverRecord.id);
     
     if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
     
