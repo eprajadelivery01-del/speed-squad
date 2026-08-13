@@ -7,8 +7,14 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,6 +33,11 @@ public class OverlayService extends Service {
 
     private WindowManager windowManager;
     private View floatingView;
+
+    // Keep-alive locks: mantêm CPU e rede ativos enquanto o entregador está Online
+    private PowerManager.WakeLock wakeLock;
+    private WifiManager.WifiLock wifiLock;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -173,6 +184,60 @@ public class OverlayService extends Service {
     public void onCreate() {
         super.onCreate();
         startForegroundNotification();
+
+        // ── WAKE LOCK: mantém a CPU ativa para polling/websocket não morrer
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null) {
+                wakeLock = pm.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK,
+                        "EprjaEntregador::OverlayWakeLock");
+                wakeLock.setReferenceCounted(false);
+                wakeLock.acquire();
+                Log.d(TAG, "WakeLock adquirido — CPU ativa em segundo plano.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao adquirir WakeLock: " + e.getMessage());
+        }
+
+        // ── WIFI LOCK: mantém a conexão Wi-Fi ativa em modo de alto desempenho
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(
+                        WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                        "EprjaEntregador::OverlayWifiLock");
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+                Log.d(TAG, "WifiLock adquirido — Wi-Fi ativo em segundo plano.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao adquirir WifiLock: " + e.getMessage());
+        }
+
+        // ── NETWORK CALLBACK: solicita que o sistema mantenha a rede ativa
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                NetworkRequest request = new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+                networkCallback = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(Network network) {
+                        Log.d(TAG, "Rede disponível — conexão mantida.");
+                    }
+                    @Override
+                    public void onLost(Network network) {
+                        Log.w(TAG, "Rede perdida — aguardando reconexão.");
+                    }
+                };
+                cm.registerNetworkCallback(request, networkCallback);
+                Log.d(TAG, "NetworkCallback registrado.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao registrar NetworkCallback: " + e.getMessage());
+        }
     }
 
     @Override
@@ -196,6 +261,36 @@ public class OverlayService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        // Libera WakeLock
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+                Log.d(TAG, "WakeLock liberado.");
+            }
+        } catch (Exception e) { /* ignore */ }
+
+        // Libera WifiLock
+        try {
+            if (wifiLock != null && wifiLock.isHeld()) {
+                wifiLock.release();
+                Log.d(TAG, "WifiLock liberado.");
+            }
+        } catch (Exception e) { /* ignore */ }
+
+        // Desregistra NetworkCallback
+        try {
+            if (networkCallback != null) {
+                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                if (cm != null) {
+                    cm.unregisterNetworkCallback(networkCallback);
+                }
+                networkCallback = null;
+                Log.d(TAG, "NetworkCallback desregistrado.");
+            }
+        } catch (Exception e) { /* ignore */ }
+
+        // Remove a floating view se existir
         if (floatingView != null && windowManager != null) {
             try {
                 windowManager.removeView(floatingView);

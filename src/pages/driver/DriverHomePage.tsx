@@ -307,8 +307,22 @@ export default function DriverHomePage() {
     
     if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
     
-    if (newStatus) { startTracking(currentDriverRecord.id); toast({ title: "Você está online!" }); }
-    else { stopTracking(); toast({ title: "Você está offline" }); }
+    if (newStatus) {
+      startTracking(currentDriverRecord.id);
+      toast({ title: "Você está online!" });
+      // Inicia foreground service + solicita isenção de bateria para manter em segundo plano
+      if (Capacitor.isNativePlatform()) {
+        DeliveryOverlay.startOverlay().catch(() => {});
+        DeliveryOverlay.requestBatteryOptimizationExemption?.().catch(() => {});
+      }
+    } else {
+      stopTracking();
+      toast({ title: "Você está offline" });
+      // Para o foreground service para economizar bateria
+      if (Capacitor.isNativePlatform()) {
+        DeliveryOverlay.stopOverlay().catch(() => {});
+      }
+    }
     
     setIsOnline(newStatus);
     setLoading(false);
