@@ -8,11 +8,24 @@ interface IncomingOrderScreenProps {
   onReject: (deliveryId: string) => void;
 }
 
+import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
+
 export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOrderScreenProps) {
   const [secondsLeft, setSecondsLeft] = useState(30);
+  const [storeName, setStoreName] = useState<string>(
+    delivery?.companies?.trade_name || delivery?.companies?.name || delivery?.company_name || delivery?.store_name || ""
+  );
 
-  // Timer logic removed because users hate it
-
+  useEffect(() => {
+    if (!delivery) return;
+    const controller = new AbortController();
+    fetchRealStoreName(delivery, controller.signal).then((resolved) => {
+      if (!controller.signal.aborted && resolved) {
+        setStoreName(resolved);
+      }
+    });
+    return () => { controller.abort(); };
+  }, [delivery]);
 
   if (!delivery) return null;
 
@@ -28,7 +41,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
     Number(delivery.total_value) || 0,
     Number(delivery.value) || 0
   );
-  const storeName = delivery.companies?.trade_name || delivery.companies?.name || delivery.company_name || delivery.store_name || "É Pra Já Delivery";
+  const displayStoreName = storeName || "É Pra Já Delivery";
 
   // Calculation for "Cobrar do cliente"
   let chargeAmount = Number(delivery.estimated_value || 0);
@@ -83,7 +96,7 @@ export function IncomingOrderScreen({ delivery, onAccept, onReject }: IncomingOr
         <div className="p-5 flex flex-col gap-5">
           {/* Store Name and Earnings */}
           <div className="flex justify-between items-start">
-            <h4 className="text-2xl font-extrabold text-white tracking-tight">{storeName}</h4>
+            <h4 className="text-2xl font-extrabold text-white tracking-tight">{displayStoreName}</h4>
             <div className="flex flex-col items-end">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Ganhos</span>
               <div className="text-2xl font-black text-[#22c55e] tracking-tighter">
