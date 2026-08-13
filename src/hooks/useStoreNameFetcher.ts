@@ -24,7 +24,7 @@ async function fetchCompanyName(companyId: string): Promise<string | null> {
 
   const { data, error } = await supabase
     .from("companies")
-    .select("name")
+    .select("name, trade_name")
     .eq("id", companyId)
     .maybeSingle();
 
@@ -33,7 +33,7 @@ async function fetchCompanyName(companyId: string): Promise<string | null> {
     return null;
   }
 
-  const name = normalizeStoreName(data?.name);
+  const name = normalizeStoreName(data?.trade_name) || normalizeStoreName(data?.name);
   if (name) storeNameCache.set(cacheKey, name);
   return name;
 }
@@ -47,7 +47,7 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
 
   // 2. Se houver relação pré-carregada (companies)
   if (delivery.companies) {
-    const relatedName = normalizeStoreName(delivery.companies.name);
+    const relatedName = normalizeStoreName(delivery.companies.trade_name) || normalizeStoreName(delivery.companies.name);
     if (relatedName) return relatedName;
   }
 
