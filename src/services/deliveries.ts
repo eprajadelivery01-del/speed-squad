@@ -95,7 +95,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
 
       let query = supabase
         .from(targetTable as any)
-        .select("*, companies(name, phone), orders(total, payment_method)", { count: "exact" })
+        .select("*, orders(total, payment_method)", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -132,8 +132,8 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       const { data, error, count } = await query;
       if (error) throw error;
 
-      const normalizedData = (data ?? []).map((delivery: any) => {
-        const storeTitle = delivery.company_name || delivery.store_name || delivery.companies?.name || "Loja Parceira";
+      const normalizedData = await Promise.all((data ?? []).map(async (delivery: any) => {
+        const storeTitle = await fetchRealStoreName(delivery);
         return {
           ...delivery,
           companies: {
@@ -145,7 +145,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
           status: toAppStatus(delivery.status),
           delivered_at: delivery.delivered_at ?? delivery.completed_at ?? null,
         };
-      });
+      }));
 
       return { data: normalizedData as DeliveryWithRelations[], count: count || 0 };
     },

@@ -102,12 +102,5 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     }
   }
 
-  console.warn("[STORE_NAME_DEBUG]", {
-    delivery_id: delivery.id,
-    order_id: delivery.order_id,
-    company_id: delivery.company_id,
-    resolved_store_name: null
-  });
-
   return "";
 }
