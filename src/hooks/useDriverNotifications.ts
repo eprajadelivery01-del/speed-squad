@@ -103,12 +103,12 @@ export function useDriverNotifications() {
             }).catch(() => {});
 
             LocalNotifications.listChannels().then((channels) => {
-              const hasChannel = channels.channels.some(c => c.id === 'delivery-incoming-v7');
+              const hasChannel = channels.channels.some(c => c.id === 'delivery-incoming-v8');
               if (!hasChannel) {
                 LocalNotifications.createChannel({
-                  id: "delivery-incoming-v7",
+                  id: "delivery-incoming-v8",
                   name: "Novas Corridas É Pra Já",
-                  description: "Alerta sonoro de novas corridas disponíveis para entregadores",
+                  description: "Alerta de alta prioridade para novas corridas",
                   importance: 5,
                   visibility: 1,
                   sound: "ring.mp3",
