@@ -555,8 +555,7 @@ export function useDriverNotifications() {
         );
       }
 
-      // Initial seed: mark all currently-available deliveries as "seen"
-      // older than 60s so we don't spam on app open, but very recent ones still ring.
+      // Initial seed: notify driver of all currently-available deliveries when online
       if (isOnlineRef.current) {
         try {
           const { data: initial } = await supabase
@@ -564,14 +563,8 @@ export function useDriverNotifications() {
             .select("*");
 
           if (initial && !cancelled) {
-            const cutoff = Date.now() - 300_000; // 5 minutos de janela em vez de 60s
             initial.forEach((d: any) => {
-              const ts = d.created_at ? new Date(d.created_at).getTime() : 0;
-              if (ts < cutoff) {
-                seenIdsRef.current.add(d.id);
-              } else {
-                notifyNewDelivery(d);
-              }
+              notifyNewDelivery(d);
             });
           }
         } catch (e) {
