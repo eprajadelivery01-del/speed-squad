@@ -49,8 +49,16 @@ if (typeof window !== "undefined") {
     } catch {}
   };
 
-  window.addEventListener("touchstart", unlockOnUserGesture, { once: true, capture: true });
-  window.addEventListener("click", unlockOnUserGesture, { once: true, capture: true });
+  // Listeners persistentes: o AudioContext pode voltar a ficar suspenso quando o
+  // app vai para segundo plano, então re-destravamos a cada interação do usuário.
+  window.addEventListener("touchstart", unlockOnUserGesture, { capture: true, passive: true });
+  window.addEventListener("pointerdown", unlockOnUserGesture, { capture: true, passive: true });
+  window.addEventListener("click", unlockOnUserGesture, { capture: true });
+  window.addEventListener("keydown", unlockOnUserGesture, { capture: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") unlockOnUserGesture();
+  });
+
 }
 
 export function useAudioAlert() {

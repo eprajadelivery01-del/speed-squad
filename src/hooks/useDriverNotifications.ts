@@ -74,7 +74,7 @@ export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification, updateNotificationStatus } = useNotifications();
-  const { playAlert, stopAlert } = useAudioAlert();
+  const { playAlert, stopAlert, unlockAudio } = useAudioAlert();
   
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
