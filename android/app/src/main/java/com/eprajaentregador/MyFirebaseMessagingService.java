@@ -206,7 +206,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                builder = new Notification.Builder(this, CHANNEL_ID);
+                builder = new Notification.Builder(this, NotificationChannels.MARKETPLACE_CHANNEL_ID);
             } else {
                 builder = new Notification.Builder(this);
             }

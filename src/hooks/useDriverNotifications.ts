@@ -196,7 +196,7 @@ export function useDriverNotifications() {
           console.log("[FCM_NATIVE_CLICK] Push action performed:", action);
           const data = action.notification?.data;
           const deliveryId = data?.deliveryId || data?.delivery_id;
-          const targetRoute = data?.route || (deliveryId ? `/driver/deliveries` : "/driver");
+          const targetRoute = data?.route || (deliveryId ? `/driver?deliveryId=${deliveryId}` : "/driver");
           if (targetRoute && typeof window !== "undefined") {
             console.log("[FCM_NATIVE_CLICK] Navegando para a rota da entrega:", targetRoute);
             window.location.href = targetRoute;
