@@ -75,7 +75,7 @@ export default function DriverDeliveriesPage() {
     if (currentStatus === "pending" || currentStatus === "broadcasted") nextStatus = "accepted";
     else if (currentStatus === "accepted") nextStatus = "collecting";
     else if (currentStatus === "collecting") nextStatus = "in_transit" as any;
-    else if (currentStatus === ("in_transit" as any)) nextStatus = "delivered" as any;
+    else if (currentStatus === ("in_transit" as any) || currentStatus === ("in_route" as any)) nextStatus = "delivered" as any;
 
     if (!nextStatus) {
       toast({
@@ -197,6 +197,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
       case "broadcasted": return "Aceitar Corrida";
       case "accepted": return "Cheguei no Local";
       case "collecting": return "Iniciar Entrega";
+      case "in_route":
       case "in_transit": return "Concluir Entrega";
       case "delivered": return "Concluído";
       case "cancelled": return "Cancelado";
