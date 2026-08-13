@@ -27,16 +27,19 @@ export interface DeliveryWithRelations {
   customer_phone?: string | null;
 }
 
-// DB enum uses: pending, broadcasted, accepted, collecting, in_transit, completed, cancelled
-// Some legacy rows may still contain "completed" or "in_transit" â€” normalize it to the UI formats.
 const APP_TO_DB_STATUS: Record<string, string> = {
   delivered: "completed",
+  in_transit: "in_transit",
+  collecting: "collecting",
+  accepted: "accepted",
 };
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
   completed: "delivered",
   in_route: "in_transit",
   in_transit: "in_transit" as any,
+  collecting: "collecting" as any,
+  accepted: "accepted" as any,
 };
 
 function toDbStatus(status: string) {
@@ -182,9 +185,10 @@ export function useUpdateDeliveryStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, driverId }: { id: string; status: DeliveryStatus; driverId?: string }) => {
+      const dbStatus = toDbStatus(status);
       const { data, error } = await safeRpc("update_delivery_status_safe", {
         p_delivery_id: id,
-        p_status: status,
+        p_status: dbStatus,
         p_driver_id: driverId || null,
       });
 
