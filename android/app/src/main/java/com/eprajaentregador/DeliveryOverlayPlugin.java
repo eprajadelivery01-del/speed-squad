@@ -94,7 +94,8 @@ public class DeliveryOverlayPlugin extends Plugin {
                 String pkg = getContext().getPackageName();
                 boolean ignoring = pm != null && pm.isIgnoringBatteryOptimizations(pkg);
                 ret.put("ignoring", ignoring);
-                if (!ignoring) {
+                Boolean prompt = call.getBoolean("prompt", false);
+                if (!ignoring && Boolean.TRUE.equals(prompt)) {
                     Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                             Uri.parse("package:" + pkg));
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

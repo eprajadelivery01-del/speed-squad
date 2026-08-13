@@ -64,14 +64,10 @@ export default function DriverHomePage() {
       const initOverlay = async () => {
         try {
           await DeliveryOverlay.requestOverlayPermission();
+          // Inicia o Foreground Service nativo para manter o processo ativo
           setTimeout(() => {
-             DeliveryOverlay.startOverlay().catch((e: any) => console.warn("Ainda sem permissão:", e));
+             DeliveryOverlay.startOverlay().catch((e: any) => console.warn("Erro overlay:", e));
           }, 1000);
-          // Pede isenção de otimização de bateria: sem isso o Android coloca o
-          // app em "standby" após alguns minutos e as corridas param de chegar.
-          setTimeout(() => {
-            DeliveryOverlay.requestBatteryOptimizationExemption?.().catch(() => {});
-          }, 2500);
         } catch(e) {}
       };
       initOverlay();
@@ -314,10 +310,9 @@ export default function DriverHomePage() {
     if (newStatus) {
       startTracking(currentDriverRecord.id);
       toast({ title: "Você está online!" });
-      // Inicia foreground service + solicita isenção de bateria para manter em segundo plano
+      // Inicia foreground service para manter o processo ativo em segundo plano
       if (Capacitor.isNativePlatform()) {
         DeliveryOverlay.startOverlay().catch(() => {});
-        DeliveryOverlay.requestBatteryOptimizationExemption?.().catch(() => {});
       }
     } else {
       stopTracking();
