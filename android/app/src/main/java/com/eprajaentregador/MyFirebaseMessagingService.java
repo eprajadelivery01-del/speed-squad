@@ -72,15 +72,30 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        if (!"delivery".equals(type)) return;
+        boolean isDelivery = "delivery".equals(type) || "INSERT".equals(type) || "UPDATE".equals(type) 
+                || "new_delivery".equals(type) || data.containsKey("deliveryId") || data.containsKey("delivery_id");
+        if (!isDelivery) return;
 
         String deliveryId = data.get("deliveryId");
+        if (deliveryId == null || deliveryId.isEmpty()) deliveryId = data.get("delivery_id");
+        if (deliveryId == null || deliveryId.isEmpty()) deliveryId = data.get("id");
+
         String address    = data.get("address");
+        if (address == null || address.isEmpty()) address = data.get("details");
+
         String title      = data.get("title");
         String storeName  = data.get("storeName");
+        if (storeName == null || storeName.isEmpty()) storeName = data.get("store_name");
+        if (storeName == null || storeName.isEmpty()) storeName = data.get("company_name");
+
         String pickup     = data.get("pickup");
+        if (pickup == null || pickup.isEmpty()) pickup = data.get("pickup_address");
+
         String dropoff    = data.get("dropoff");
+        if (dropoff == null || dropoff.isEmpty()) dropoff = data.get("delivery_address");
+
         String fee        = data.get("fee");
+        if (fee == null || fee.isEmpty()) fee = data.get("delivery_fee");
         if (storeName == null) storeName = "";
         if (pickup    == null) pickup    = "";
         if (dropoff   == null) dropoff   = "";
