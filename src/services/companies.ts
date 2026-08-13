@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 export async function fetchCompanies() {
   const { data, error } = await supabase
     .from("companies")
-    .select("*")
+    .select("id, name, phone, address, is_active, region_id, user_id")
     .order("name");
   if (error) throw error;
   return data ?? [];

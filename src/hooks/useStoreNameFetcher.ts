@@ -25,7 +25,7 @@ async function fetchCompanyName(companyId: string): Promise<string | null> {
   try {
     const { data, error } = await supabase
       .from("companies")
-      .select("name")
+      .select("id, name")
       .eq("id", companyId)
       .maybeSingle();
 
