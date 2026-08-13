@@ -7,8 +7,32 @@ import { supabase } from "@/integrations/supabase/client";
  * 2. Tabela companies (via company_id)
  * 3. Relação do pedido (via order_id) somente para descobrir company_id
  */
-const storeNameCache = new Map<string, string>();
-const FALLBACK_STORE_NAME = "É Pra Já Delivery";
+const LOCAL_STORAGE_CACHE_KEY = "epraja_store_name_cache";
+
+function loadLocalStorageCache(): Map<string, string> {
+  const map = new Map<string, string>();
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      Object.entries(parsed).forEach(([k, v]) => {
+        if (typeof v === "string" && v) map.set(k, v);
+      });
+    }
+  } catch (e) {}
+  return map;
+}
+
+const storeNameCache = loadLocalStorageCache();
+
+function setCacheItem(key: string, value: string) {
+  storeNameCache.set(key, value);
+  try {
+    const obj: Record<string, string> = {};
+    storeNameCache.forEach((v, k) => { obj[k] = v; });
+    localStorage.setItem(LOCAL_STORAGE_CACHE_KEY, JSON.stringify(obj));
+  } catch (e) {}
+}
 
 function normalizeStoreName(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -32,7 +56,7 @@ async function fetchCompanyName(companyId: string): Promise<string | null> {
     if (!error && data?.name) {
       const normalized = normalizeStoreName(data.name);
       if (normalized) {
-        storeNameCache.set(cacheKey, normalized);
+        setCacheItem(cacheKey, normalized);
         return normalized;
       }
     }
@@ -93,7 +117,7 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
       if (!error && order?.company_id) {
         const companyName = await fetchCompanyName(order.company_id);
         if (companyName) {
-          storeNameCache.set(cacheKey, companyName);
+          setCacheItem(cacheKey, companyName);
           return companyName;
         }
       }
