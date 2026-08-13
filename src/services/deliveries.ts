@@ -132,8 +132,8 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       const { data, error, count } = await query;
       if (error) throw error;
 
-      const normalizedData = await Promise.all((data ?? []).map(async (delivery: any) => {
-        const storeTitle = await fetchRealStoreName(delivery);
+      const normalizedData = (data ?? []).map((delivery: any) => {
+        const storeTitle = delivery.company_name || delivery.store_name || delivery.companies?.name || "Loja Parceira";
         return {
           ...delivery,
           companies: {
@@ -145,7 +145,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
           status: toAppStatus(delivery.status),
           delivered_at: delivery.delivered_at ?? delivery.completed_at ?? null,
         };
-      }));
+      });
 
       return { data: normalizedData as DeliveryWithRelations[], count: count || 0 };
     },
