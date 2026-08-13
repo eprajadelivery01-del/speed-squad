@@ -112,5 +112,10 @@ export async function fetchRealStoreName(delivery: any): Promise<string> {
     }
   }
 
+  // 6. Fallback final: se houver customer_name mas a loja não foi identificada, tenta usar customer_name ou id da empresa
+  if (delivery.company_id) {
+    return `Loja ${String(delivery.company_id).slice(0, 8)}`;
+  }
+
   return FALLBACK_STORE_NAME;
 }
