@@ -95,7 +95,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
 
       let query = supabase
         .from(targetTable as any)
-        .select("*, orders(total, payment_method)", { count: "exact" })
+        .select("*, companies(id, name), orders(total, payment_method)", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
