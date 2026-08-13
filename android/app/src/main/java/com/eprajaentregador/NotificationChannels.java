@@ -13,6 +13,7 @@ import android.os.Build;
 public final class NotificationChannels {
 
     public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v8";
+    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders";
 
     private NotificationChannels() {}
 
@@ -21,20 +22,34 @@ public final class NotificationChannels {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
 
-        // Se o canal não existe, cria com prioridade máxima e som
+        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        if (sound == null) sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        AudioAttributes attrs = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+
+        // 1) Canal Nativo Marketplace Orders (usado pelo FCM Server)
+        if (nm.getNotificationChannel(MARKETPLACE_CHANNEL_ID) == null) {
+            NotificationChannel ch = new NotificationChannel(
+                    MARKETPLACE_CHANNEL_ID, "Novos Pedidos & Corridas", NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("Notificações sonoras de novas entregas e pedidos em tempo real");
+            ch.setSound(sound, attrs);
+            ch.enableVibration(true);
+            ch.setVibrationPattern(new long[]{0, 600, 200, 600, 200, 600});
+            ch.enableLights(true);
+            ch.setShowBadge(true);
+            ch.setBypassDnd(true);
+            ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            nm.createNotificationChannel(ch);
+        }
+
+        // 2) Canal Nativo Entregas
         if (nm.getNotificationChannel(INCOMING_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já", NotificationManager.IMPORTANCE_HIGH);
             ch.setDescription("Alerta sonoro de novas corridas disponíveis para entregadores");
-
-            Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-            if (sound == null) sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            AudioAttributes attrs = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
             ch.setSound(sound, attrs);
-
             ch.enableVibration(true);
             ch.setVibrationPattern(new long[]{0, 600, 200, 600, 200, 600});
             ch.enableLights(true);

@@ -192,12 +192,19 @@ export function useDriverNotifications() {
           console.error("Erro no PushNotifications.register:", error);
         });
 
-        actListener = PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
-          console.log("Push action performed:", notification);
+        actListener = PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+          console.log("[FCM_NATIVE_CLICK] Push action performed:", action);
+          const data = action.notification?.data;
+          const deliveryId = data?.deliveryId || data?.delivery_id;
+          const targetRoute = data?.route || (deliveryId ? `/driver/deliveries` : "/driver");
+          if (targetRoute && typeof window !== "undefined") {
+            console.log("[FCM_NATIVE_CLICK] Navegando para a rota da entrega:", targetRoute);
+            window.location.href = targetRoute;
+          }
         });
 
         PushNotifications.addListener("pushNotificationReceived", async (notification) => {
-          console.log("Push received in background:", notification);
+          console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
               let fcmStore = notification.data?.storeName || "";
