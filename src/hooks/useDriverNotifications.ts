@@ -150,14 +150,6 @@ export function useDriverNotifications() {
             if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (user_id):", error.message);
           }
 
-          if (driverRecord?.id) {
-            const { error } = await supabase
-              .from("delivery_drivers")
-              .update({ fcm_token: tokenVal } as any)
-              .eq("id", driverRecord.id);
-            if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (id):", error.message);
-          }
-
           // Salva também no device_tokens via Edge Function send-push (service role)
           supabase.functions.invoke("send-push", {
             body: {
@@ -177,7 +169,7 @@ export function useDriverNotifications() {
 
         // Tenta sincronizar token já existente em cache quando o usuário carrega
         const cachedToken = localStorage.getItem("driver_fcm_token");
-        if (cachedToken && (user?.id || driverRecord?.id)) {
+        if (cachedToken && user?.id) {
           syncFcmToken(cachedToken);
         }
 
