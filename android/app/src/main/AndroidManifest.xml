@@ -41,11 +41,17 @@
 
         <service
             android:name=".MyFirebaseMessagingService"
+            android:directBootAware="true"
             android:exported="false">
             <intent-filter android:priority="9999">
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- Remove o serviço padrão do plugin Capacitor PushNotifications para evitar conflito e garantir que o MyFirebaseMessagingService receba 100% dos eventos em background -->
+        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />
 
         <receiver
             android:name=".BootReceiver"
