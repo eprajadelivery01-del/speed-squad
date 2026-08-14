@@ -105,9 +105,16 @@ export function initializeGlobalErrorHandlers(appName: string) {
 
   window.onunhandledrejection = (event) => {
     const reason = event.reason;
+    const msg = reason?.message || String(reason || "");
+
+    // Silencia ReferenceErrors de código em cache desatualizado no dispositivo do entregador.
+    // Exemplo: "driverRecord is not defined", "DeliveryOverlay is not defined", etc.
+    if (msg.includes("is not defined") || msg.includes("Cannot read properties of undefined")) {
+      return;
+    }
 
     reportErrorToTelegram({
-      error_message: `Unhandled Rejection: ${reason?.message || reason}`,
+      error_message: `Unhandled Rejection: ${msg}`,
       stack_trace: reason?.stack || "No stack trace available",
       url: window.location.href,
       additional_info: {
