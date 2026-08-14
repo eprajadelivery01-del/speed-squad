@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 
-// Singleton HTMLAudioElement to guarantee consistent audio context unlocking across renders.
-const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+// Usar o mesmo arquivo de áudio de corrida /ring.mp3 que o nativo Android usa
+const ALERT_SOUND_URL = "/ring.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;

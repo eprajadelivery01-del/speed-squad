@@ -244,7 +244,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setPriority(Notification.PRIORITY_MAX)
                     .setSound(sound)
                     .setVibrate(new long[]{0, 600, 200, 600, 200, 600})
-                    .setDefaults(Notification.DEFAULT_ALL)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
