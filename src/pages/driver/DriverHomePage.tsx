@@ -376,6 +376,13 @@ export default function DriverHomePage() {
 
 
   useEffect(() => {
+    // No app nativo (Android), o popup oficial em tela cheia é a IncomingCallActivity nativa (com wake lock e tela acesa).
+    // O modal Web IncomingOrderScreen só deve ser renderizado se NÃO for plataforma nativa (ex: Web / Preview / PWA).
+    if (Capacitor.isNativePlatform()) {
+      if (activeIncomingOrder) setActiveIncomingOrder(null);
+      return;
+    }
+
     // Encontra a primeira corrida válida que não foi rejeitada nem aceita localmente
     const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id) && !acceptedLocalIds.includes(del.id));
     

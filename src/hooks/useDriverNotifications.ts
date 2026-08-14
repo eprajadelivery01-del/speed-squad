@@ -307,12 +307,15 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // ======== 1) SOM PRIMEIRO — nada pode impedir o alerta sonoro ========
-      try {
-        unlockAudio();
-        playAlert(true);
-      } catch (e) {
-        console.warn("[Notify] som falhou:", e);
+      // ======== 1) SOM: No app nativo (Android), o som de alerta ring é reproduzido pelo MediaPlayer da IncomingCallActivity.
+      // O playAlert() web (WebAudio/HTML5) roda exclusivamente fora do nativo para evitar eco/sons simultâneos.
+      if (!Capacitor.isNativePlatform()) {
+        try {
+          unlockAudio();
+          playAlert(true);
+        } catch (e) {
+          console.warn("[Notify] som falhou:", e);
+        }
       }
 
       let storeName = "É Pra Já Delivery";
