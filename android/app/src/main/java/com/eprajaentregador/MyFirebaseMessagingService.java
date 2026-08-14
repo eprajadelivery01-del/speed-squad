@@ -182,7 +182,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             Log.w(TAG, "startActivity bloqueado: " + e.getMessage());
         }
 
-        // ── CAMADA 3: Notification heads-up (sem full screen intent - política Google Play)
+        // ── CAMADA 3: Notification heads-up & Full Screen Intent (Popup nativo)
         try {
             ensureChannel();
 
@@ -204,7 +204,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                builder = new Notification.Builder(this, NotificationChannels.MARKETPLACE_CHANNEL_ID);
+                builder = new Notification.Builder(this, NotificationChannels.INCOMING_CHANNEL_ID);
             } else {
                 builder = new Notification.Builder(this);
             }
@@ -248,7 +248,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
-                    .setContentIntent(tapPI);
+                    .setContentIntent(tapPI)
+                    .setFullScreenIntent(tapPI, true);
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
