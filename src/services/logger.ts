@@ -47,7 +47,9 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
     "exclusivo para entregadores",
     "permissão de sobreposição",
     "permissao de sobreposicao",
-    "deliveryoverlay is not defined"
+    "deliveryoverlay is not defined",
+    "driverrecord is not defined",
+    "driverrecord"
   ];
 
   if (ignoreKeywords.some(kw => msgFull.includes(kw))) {

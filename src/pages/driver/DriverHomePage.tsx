@@ -327,13 +327,27 @@ export default function DriverHomePage() {
     setLoading(false);
   };
 
-  const handleAcceptDelivery = (deliveryId: string) => {
-    if (!driverRecord) return;
+  const handleAcceptDelivery = async (deliveryId: string) => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     stopAlert();
+
+    // Se driverRecord ainda não carregou, busca agora antes de prosseguir
+    let currentRecord = driverRecord;
+    if (!currentRecord) {
+      if (!user) { isSubmittingRef.current = false; return; }
+      const { data } = await supabase
+        .from("delivery_drivers")
+        .select("id, city_id")
+        .eq("user_id", user.id)
+        .single();
+      if (!data) { isSubmittingRef.current = false; return; }
+      currentRecord = { id: data.id, city_id: data.city_id };
+      setDriverRecord(currentRecord);
+    }
+
     updateStatus(
-      { id: deliveryId, status: "accepted" as any, driverId: driverRecord.id },
+      { id: deliveryId, status: "accepted" as any, driverId: currentRecord.id },
       {
         onSuccess: () => {
           isSubmittingRef.current = false;
