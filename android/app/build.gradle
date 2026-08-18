@@ -74,14 +74,21 @@ tasks.whenTaskAdded { task ->
         task.doLast {
             fixedOutputDir.mkdirs()
 
-            if (task.name == 'assembleDebug') {
+            if (task.name == 'assembleDebug' || task.name == 'assembleRelease') {
+                def apkFolder = task.name == 'assembleDebug' ? "${buildDir}/outputs/apk/debug/" : "${buildDir}/outputs/apk/release/"
                 copy {
-                    from "${buildDir}/outputs/apk/debug/"
+                    from apkFolder
                     into fixedOutputDir
                     include "**/*.apk"
                     rename { "epraja-entregador.apk" }
                 }
-                println "✅ APK ENTREGADOR copiado para: ${fixedOutputDir}/epraja-entregador.apk"
+                copy {
+                    from apkFolder
+                    into fixedOutputDir
+                    include "**/*.apk"
+                    rename { "app-entregador-v${android.defaultConfig.versionCode}-v${android.defaultConfig.versionName}.apk" }
+                }
+                println "✅ APK ENTREGADOR copiado para: ${fixedOutputDir}/epraja-entregador.apk e app-entregador-v${android.defaultConfig.versionCode}-v${android.defaultConfig.versionName}.apk"
             }
 
             if (task.name == 'bundleRelease') {
@@ -91,7 +98,13 @@ tasks.whenTaskAdded { task ->
                     include "**/*.aab"
                     rename { "epraja-entregador.aab" }
                 }
-                println "✅ AAB ENTREGADOR copiado para: ${fixedOutputDir}/epraja-entregador.aab"
+                copy {
+                    from "${buildDir}/outputs/bundle/release/"
+                    into fixedOutputDir
+                    include "**/*.aab"
+                    rename { "app-entregador-v${android.defaultConfig.versionCode}-v${android.defaultConfig.versionName}.aab" }
+                }
+                println "✅ AAB ENTREGADOR copiado para: ${fixedOutputDir}/epraja-entregador.aab e app-entregador-v${android.defaultConfig.versionCode}-v${android.defaultConfig.versionName}.aab"
             }
         }
     }
