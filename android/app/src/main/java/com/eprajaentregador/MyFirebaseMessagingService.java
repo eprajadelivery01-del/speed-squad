@@ -247,8 +247,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
-                    .setContentIntent(tapPI)
-                    .setFullScreenIntent(tapPI, true);
+                    .setContentIntent(tapPI);
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
