@@ -19,33 +19,30 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
   }
 
   // Ignore specific harmless user-facing errors (race conditions and validation toasts)
-  const msgFull = (
+  const norm = (str: string) => (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const msgFull = norm(
     (payload.error_message || "") + " " + 
     (payload.stack_trace || "") + " " + 
     JSON.stringify(payload.additional_info || "")
-  ).toLowerCase();
+  );
 
   const ignoreKeywords = [
     "ja foi aceita",
-    "já foi aceita",
     "pertence a outro",
     "ja pertence",
-    "já pertence",
     "outro entregador",
     "corrida aceita",
-    "ops! já foi aceita",
     "ops! ja foi aceita",
     "erro na entrega",
+    "erro ao atualizar entrega",
+    "erro ao atualizar",
     "senha",
-    "inválida",
     "invalida",
     "credenciais",
     "offline",
-    "não encontrada",
     "nao encontrada",
     "acesso negado",
     "exclusivo para entregadores",
-    "permissão de sobreposição",
     "permissao de sobreposicao",
     "deliveryoverlay is not defined",
     "driverrecord is not defined",

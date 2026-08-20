@@ -141,34 +141,35 @@ function toast({ ...props }: Toast) {
     const title = typeof props.title === "string" ? props.title : "Alerta de Erro";
     const description = typeof props.description === "string" ? props.description : "";
     
-    // Ignorar erros comuns de usabilidade que poluem o Telegram
+    const norm = (str: string) => (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const titleNorm = norm(title);
+    const descNorm = norm(description);
+    
+    // Ignorar erros comuns de usabilidade e condições de corrida de entregas que poluem o Telegram
     const ignoreList = [
       "e-mail ou senha",
       "senha",
-      "esta corrida já foi aceita",
       "esta corrida ja foi aceita",
-      "corrida já aceita",
       "corrida ja aceita",
       "outro entregador",
-      "já pertence a outro",
       "ja pertence a outro",
       "pertence a outro entregador",
-      "corrida já foi aceita por outro",
+      "pertence a outro",
       "corrida ja foi aceita por outro",
-      "ops! já foi aceita",
       "ops! ja foi aceita",
       "erro na entrega",
+      "erro ao atualizar entrega",
+      "erro ao atualizar",
       "invalid login",
       "acesso negado",
       "exclusivo para entregadores",
       "preencha",
-      "obrigatório",
       "obrigatorio"
     ];
     
     const shouldIgnore = ignoreList.some(msg => 
-      title.toLowerCase().includes(msg) || 
-      description.toLowerCase().includes(msg)
+      titleNorm.includes(msg) || 
+      descNorm.includes(msg)
     );
     
     if (!shouldIgnore) {
