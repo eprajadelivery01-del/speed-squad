@@ -575,9 +575,10 @@ export function useDriverNotifications() {
                 if (error || !data || !(data as any).success) {
                   // Se falhar de verdade (e.g. corrida roubada ou erro de rede)
                   console.warn("safeRpc accept falhou no lock screen:", error || data);
-                  const msg = (data as any)?.message || "Corrida já foi aceita por outro entregador";
-                  DeliveryOverlay.reportCallResult({ success: false, message: msg }).catch(() => {});
-                  toast({ title: "❌ Erro", description: msg });
+                  const rawErr = error || (data as any)?.error || (data as any)?.message || "Corrida já foi aceita por outro entregador";
+                  const { title: friendlyTitle, description: friendlyDesc } = translateDeliveryError(rawErr, "accept");
+                  DeliveryOverlay.reportCallResult({ success: false, message: friendlyDesc }).catch(() => {});
+                  toast({ title: friendlyTitle, description: friendlyDesc, variant: "destructive" });
                   window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
                   declineDeliveryLocally(deliveryId);
                   updateNotificationStatus(deliveryId, "rejected");

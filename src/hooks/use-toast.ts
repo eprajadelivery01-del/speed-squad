@@ -164,7 +164,14 @@ function toast({ ...props }: Toast) {
       "acesso negado",
       "exclusivo para entregadores",
       "preencha",
-      "obrigatorio"
+      "obrigatorio",
+      "row level security",
+      "rls",
+      "blocked the action",
+      "update failed",
+      "delivery not found",
+      "corrida nao disponivel",
+      "sem permissao para atualizar"
     ];
     
     const shouldIgnore = ignoreList.some(msg => 

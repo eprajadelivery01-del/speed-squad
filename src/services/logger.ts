@@ -46,7 +46,14 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
     "permissao de sobreposicao",
     "deliveryoverlay is not defined",
     "driverrecord is not defined",
-    "driverrecord"
+    "driverrecord",
+    "row level security",
+    "rls",
+    "blocked the action",
+    "update failed",
+    "delivery not found",
+    "corrida nao disponivel",
+    "sem permissao para atualizar"
   ];
 
   if (ignoreKeywords.some(kw => msgFull.includes(kw))) {
