@@ -79,13 +79,14 @@ serve(async (req) => {
       android: {
         priority: 'high' as const,
         notification: {
-          sound: 'default'
+          sound: 'notification_sound',
+          channelId: 'lojista_orders_v2'
         }
       },
       apns: {
         payload: {
           aps: {
-            sound: 'default',
+            sound: 'notification_sound.caf',
             badge: 1
           }
         }
