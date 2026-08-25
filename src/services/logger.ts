@@ -53,7 +53,17 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
     "update failed",
     "delivery not found",
     "corrida nao disponivel",
-    "sem permissao para atualizar"
+    "sem permissao para atualizar",
+    "failed to fetch",
+    "networkerror",
+    "network error",
+    "network request failed",
+    "load failed",
+    "the operation was aborted",
+    "aborterror",
+    "abort error",
+    "refreshaccesstoken",
+    "callrefreshtoken"
   ];
 
   if (ignoreKeywords.some(kw => msgFull.includes(kw))) {
