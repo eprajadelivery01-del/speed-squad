@@ -627,13 +627,6 @@ export function useDriverNotifications() {
             
             // Notify new runs
             data.forEach((d: any) => notifyNewDelivery(d));
-
-            // Stop ringing for runs that are no longer available (accepted by others)
-            Array.from(activeAlertsRef.current).forEach((id) => {
-              if (!freshIds.has(id)) {
-                stopRingingFor(id);
-              }
-            });
           }
         } catch (e) {
           console.warn("[Notify] polling falhou:", e);

@@ -113,24 +113,34 @@ export function useAudioAlert() {
 
   const startLoop = useCallback(() => {
     if (globalAudio) {
-      globalAudio.currentTime = 0;
-      globalAudio.loop = true;
-      globalAudio.volume = 1.0;
-      const playPromise = globalAudio.play();
-      lastPlayPromise = playPromise;
-      playPromise
-        .then(() => {
-          isUnlocked = true;
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
-        })
-        .catch((e) => {
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
-          console.warn("[AudioAlert] Falha ao tocar alerta sonoro em loop:", e);
-        });
+      if (!globalAudio.paused && globalAudio.currentTime > 0) {
+        console.log("[AudioAlert] Áudio já está tocando em loop, mantendo reprodução contínua.");
+        globalAudio.loop = true;
+        globalAudio.volume = 1.0;
+        return;
+      }
+      try {
+        globalAudio.currentTime = 0;
+        globalAudio.loop = true;
+        globalAudio.volume = 1.0;
+        const playPromise = globalAudio.play();
+        lastPlayPromise = playPromise;
+        playPromise
+          .then(() => {
+            isUnlocked = true;
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
+          })
+          .catch((e) => {
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
+            console.warn("[AudioAlert] Falha ao tocar alerta sonoro em loop:", e);
+          });
+      } catch (e) {
+        console.warn("[AudioAlert] Erro ao iniciar áudio:", e);
+      }
     }
 
     if (!vibrationInterval) {
