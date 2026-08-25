@@ -6,6 +6,8 @@ const ALERT_SOUND_URL = "/ring.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;
+let isAudioUnlocked = false;
+let isUnlocking = false;
 
 const getAudioContext = (): AudioContext | null => {
   if (typeof window === "undefined") return null;
@@ -22,7 +24,7 @@ const getAudioContext = (): AudioContext | null => {
 };
 
 const canUseBrowserVibration = () =>
-  Capacitor.isNativePlatform() || navigator.userActivation?.hasBeenActive === true;
+  Capacitor.isNativePlatform() || isAudioUnlocked;
 
 if (typeof window !== "undefined") {
   try {
@@ -32,9 +34,6 @@ if (typeof window !== "undefined") {
   } catch (e) {
     console.warn("[AudioAlert] Erro ao instanciar HTMLAudioElement:", e);
   }
-
-  let isAudioUnlocked = false;
-  let isUnlocking = false;
 
   const unlockOnUserGesture = () => {
     if (isAudioUnlocked || isUnlocking) return;
