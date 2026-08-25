@@ -1,144 +1,147 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 
-// Mesma URL de áudio oficial utilizada no painel do lojista
+// Singleton instances to be used globally outside React lifecycle
 const ALERT_SOUND_URL = "/notification_sound.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
-let isAudioUnlocked = false;
-let isUnlocking = false;
-let lastPlayPromise: Promise<void> | null = null;
+let isUnlocked = false;
 let vibrationInterval: any = null;
-let pendingPlayOnUnlock = false;
-let pendingLoop = false;
-
-export function isAudioGloballyUnlocked(): boolean {
-  return isAudioUnlocked;
-}
+let activeNotification: Notification | null = null;
+let lastPlayPromise: Promise<void> | null = null;
 
 if (typeof window !== "undefined") {
-  try {
-    globalAudio = new Audio();
-    globalAudio.src = ALERT_SOUND_URL + "?v=" + Date.now();
-    globalAudio.load();
-  } catch (e) {
-    console.warn("[AudioAlert] Erro ao instanciar HTMLAudioElement:", e);
-  }
+  globalAudio = new Audio();
+  globalAudio.src = ALERT_SOUND_URL + "?v=" + Date.now();
+  globalAudio.load();
 
-  const unlockOnUserGesture = () => {
-    if (isAudioUnlocked && !pendingPlayOnUnlock) return;
-    if (isUnlocking) return;
+  let isUnlocking = false;
+  const unlockGlobalAudio = () => {
+    if (isUnlocked || isUnlocking || !globalAudio) return;
     isUnlocking = true;
-    try {
-      if (globalAudio) {
-        if (pendingPlayOnUnlock) {
-          pendingPlayOnUnlock = false;
-          globalAudio.currentTime = 0;
-          globalAudio.loop = pendingLoop;
-          globalAudio.volume = 1.0;
-          const playPromise = globalAudio.play();
-          lastPlayPromise = playPromise;
-          playPromise
-            .then(() => {
-              isAudioUnlocked = true;
-              isUnlocking = false;
-              window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
-              if (lastPlayPromise === playPromise) {
-                lastPlayPromise = null;
-              }
-            })
-            .catch(() => {
-              if (lastPlayPromise === playPromise) {
-                lastPlayPromise = null;
-              }
-              isUnlocking = false;
-            });
-          return;
-        }
-
-        const origVol = globalAudio.volume;
-        globalAudio.volume = 0;
-        const playPromise = globalAudio.play();
-        lastPlayPromise = playPromise;
-        playPromise
-          .then(() => {
-            try {
-              globalAudio?.pause();
-            } catch {}
-            if (globalAudio) globalAudio.volume = origVol;
-            isAudioUnlocked = true;
-            isUnlocking = false;
-            window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
-            if (lastPlayPromise === playPromise) {
-              lastPlayPromise = null;
-            }
-          })
-          .catch(() => {
-            if (lastPlayPromise === playPromise) {
-              lastPlayPromise = null;
-            }
-            isUnlocking = false;
-          });
-      } else {
+    globalAudio.volume = 0;
+    const playPromise = globalAudio.play();
+    lastPlayPromise = playPromise;
+    playPromise
+      .then(() => {
+        isUnlocked = true;
         isUnlocking = false;
-      }
-    } catch {
-      isUnlocking = false;
-    }
+        if (lastPlayPromise === playPromise) {
+          lastPlayPromise = null;
+        }
+        window.removeEventListener("click", unlockGlobalAudio);
+        window.removeEventListener("touchstart", unlockGlobalAudio);
+        window.removeEventListener("keydown", unlockGlobalAudio);
+      })
+      .catch(() => {
+        if (lastPlayPromise === playPromise) {
+          lastPlayPromise = null;
+        }
+        isUnlocking = false;
+      });
   };
 
-  window.addEventListener("touchstart", unlockOnUserGesture, { capture: true, passive: true });
-  window.addEventListener("pointerdown", unlockOnUserGesture, { capture: true, passive: true });
-  window.addEventListener("click", unlockOnUserGesture, { capture: true });
-  window.addEventListener("keydown", unlockOnUserGesture, { capture: true });
+  window.addEventListener("click", unlockGlobalAudio);
+  window.addEventListener("touchstart", unlockGlobalAudio);
+  window.addEventListener("keydown", unlockGlobalAudio);
 }
 
+/**
+ * Dispara vibração física no dispositivo do usuário (Haptics)
+ */
 export function triggerDeviceVibration(pattern: number[] = [500, 200, 500, 200, 800]) {
-  const canVibrate = Capacitor.isNativePlatform() || isAudioUnlocked;
+  const canVibrate = Capacitor.isNativePlatform() || isUnlocked;
   if (canVibrate && typeof navigator !== "undefined" && "vibrate" in navigator) {
     try {
       navigator.vibrate(pattern);
-    } catch {}
+    } catch (e) {
+      console.warn("[Vibration] Vibração não suportada:", e);
+    }
   }
 }
 
-export function useAudioAlert() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const playingRef = useRef(false);
-  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function isAudioGloballyUnlocked(): boolean {
+  return isUnlocked;
+}
 
+export function useAudioAlert() {
   const unlockAudio = useCallback(() => {
-    if (globalAudio && !isAudioUnlocked && !isUnlocking) {
-      isUnlocking = true;
-      const originalVolume = globalAudio.volume;
+    if (globalAudio) {
       globalAudio.volume = 0;
       const playPromise = globalAudio.play();
       lastPlayPromise = playPromise;
       playPromise
         .then(() => {
-          try {
-            globalAudio?.pause();
-          } catch {}
-          if (globalAudio) globalAudio.volume = originalVolume;
-          isAudioUnlocked = true;
-          isUnlocking = false;
-          window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
+          isUnlocked = true;
           if (lastPlayPromise === playPromise) {
             lastPlayPromise = null;
           }
         })
-        .catch(() => {
+        .catch((e) => {
           if (lastPlayPromise === playPromise) {
             lastPlayPromise = null;
           }
-          isUnlocking = false;
+          if (import.meta.env.DEV) console.warn("[AudioAlert] Falha ao destravar áudio:", e);
         });
     }
   }, []);
 
-  const stopAlert = useCallback(() => {
-    pendingPlayOnUnlock = false;
+  const playAlert = useCallback((loop = false) => {
+    console.log("[AudioAlert] Tocando som oficial de notificação...");
+    if (globalAudio) {
+      globalAudio.currentTime = 0;
+      globalAudio.loop = loop;
+      globalAudio.volume = 1.0;
+      const playPromise = globalAudio.play();
+      lastPlayPromise = playPromise;
+      playPromise
+        .then(() => {
+          isUnlocked = true;
+          if (lastPlayPromise === playPromise) {
+            lastPlayPromise = null;
+          }
+        })
+        .catch((e) => {
+          if (lastPlayPromise === playPromise) {
+            lastPlayPromise = null;
+          }
+          console.warn("[AudioAlert] Falha ao tocar alerta sonoro:", e);
+        });
+    }
+    triggerDeviceVibration();
+  }, []);
 
+  const startLoop = useCallback(() => {
+    if (globalAudio) {
+      globalAudio.currentTime = 0;
+      globalAudio.loop = true;
+      globalAudio.volume = 1.0;
+      const playPromise = globalAudio.play();
+      lastPlayPromise = playPromise;
+      playPromise
+        .then(() => {
+          isUnlocked = true;
+          if (lastPlayPromise === playPromise) {
+            lastPlayPromise = null;
+          }
+        })
+        .catch((e) => {
+          if (lastPlayPromise === playPromise) {
+            lastPlayPromise = null;
+          }
+          console.warn("[AudioAlert] Falha ao tocar alerta sonoro em loop:", e);
+        });
+    }
+
+    if (!vibrationInterval) {
+      triggerDeviceVibration();
+      vibrationInterval = setInterval(() => {
+        triggerDeviceVibration();
+      }, 3500);
+    }
+  }, []);
+
+  const stopLoop = useCallback(() => {
     if (globalAudio) {
       const performPause = () => {
         try {
@@ -146,7 +149,7 @@ export function useAudioAlert() {
           globalAudio.currentTime = 0;
           globalAudio.loop = false;
         } catch (e) {
-          console.warn("[AudioAlert] Falha ao pausar:", e);
+          console.warn("[AudioAlert] Falha ao parar áudio:", e);
         }
       };
 
@@ -162,94 +165,11 @@ export function useAudioAlert() {
       clearInterval(vibrationInterval);
       vibrationInterval = null;
     }
-
-    if (timeoutIdRef.current) {
-      clearTimeout(timeoutIdRef.current);
-      timeoutIdRef.current = null;
-    }
-    playingRef.current = false;
-    setIsPlaying(false);
-
-    const canVibrate = Capacitor.isNativePlatform() || isAudioUnlocked;
-    if (canVibrate && typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try {
-        navigator.vibrate(0);
-      } catch {}
-    }
   }, []);
 
-  const playAlert = useCallback((loop = false) => {
-    console.log("[AudioAlert] Tocando som oficial de notificação...");
+  const stopAlert = useCallback(() => {
+    stopLoop();
+  }, [stopLoop]);
 
-    if (playingRef.current && globalAudio && !globalAudio.paused) {
-      console.log("[AudioAlert] Áudio já está tocando, mantendo reprodução completa contínua.");
-      return;
-    }
-
-    if (playingRef.current) {
-      stopAlert();
-    }
-
-    playingRef.current = true;
-    setIsPlaying(true);
-
-    if (globalAudio) {
-      try {
-        globalAudio.currentTime = 0;
-        globalAudio.loop = loop;
-        globalAudio.volume = 1.0;
-        const playPromise = globalAudio.play();
-        lastPlayPromise = playPromise;
-        playPromise
-          .then(() => {
-            isAudioUnlocked = true;
-            pendingPlayOnUnlock = false;
-            window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
-            if (lastPlayPromise === playPromise) {
-              lastPlayPromise = null;
-            }
-          })
-          .catch((e: any) => {
-            if (lastPlayPromise === playPromise) {
-              lastPlayPromise = null;
-            }
-            if (e?.name === "NotAllowedError") {
-              pendingPlayOnUnlock = true;
-              pendingLoop = loop;
-            }
-            console.warn("[AudioAlert] HTML5 Audio bloqueado pelo navegador:", e);
-          });
-      } catch (e) {
-        console.warn("[AudioAlert] HTML5 Audio erro:", e);
-      }
-    }
-
-    // Vibração háptica
-    triggerDeviceVibration([500, 200, 500, 200, 500]);
-    if (loop && !vibrationInterval) {
-      vibrationInterval = setInterval(() => {
-        triggerDeviceVibration([500, 200, 500, 200, 500]);
-      }, 3500);
-    }
-
-    if (loop) {
-      timeoutIdRef.current = setTimeout(() => {
-        stopAlert();
-      }, 30_000);
-    }
-  }, [stopAlert]);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutIdRef.current) {
-        clearTimeout(timeoutIdRef.current);
-      }
-      if (vibrationInterval) {
-        clearInterval(vibrationInterval);
-        vibrationInterval = null;
-      }
-    };
-  }, []);
-
-  return { unlockAudio, playAlert, stopAlert, isPlaying };
+  return { unlockAudio, playAlert, startLoop, stopLoop, stopAlert, isPlaying: false };
 }
