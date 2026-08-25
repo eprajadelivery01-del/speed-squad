@@ -111,7 +111,7 @@ export function useDriverNotifications() {
                   description: "Alerta de alta prioridade para novas corridas",
                   importance: 5,
                   visibility: 1,
-                  sound: "ring.mp3",
+                  sound: "notification_sound.mp3",
                   vibration: true,
                 }).catch(() => {});
               }

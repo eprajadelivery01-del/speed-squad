@@ -22,7 +22,7 @@ public final class NotificationChannels {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
 
-        Uri customSound = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.ring);
+        Uri customSound = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.notification_sound);
         AudioAttributes attrs = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)

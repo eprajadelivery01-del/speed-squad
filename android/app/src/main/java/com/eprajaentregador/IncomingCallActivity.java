@@ -185,7 +185,7 @@ public class IncomingCallActivity extends Activity {
 
         // Toca o som de alerta
         try {
-            mediaPlayer = MediaPlayer.create(this, R.raw.ring);
+            mediaPlayer = MediaPlayer.create(this, R.raw.notification_sound);
             if (mediaPlayer != null) {
                 mediaPlayer.setLooping(true);
                 mediaPlayer.start();

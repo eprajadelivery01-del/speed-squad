@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 
-// Usar o mesmo arquivo de áudio de corrida /ring.mp3 que o nativo Android usa
-const ALERT_SOUND_URL = "/ring.mp3";
+// Usar o mesmo arquivo de áudio de corrida /notification_sound.mp3 que o nativo Android usa
+const ALERT_SOUND_URL = "/notification_sound.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;
