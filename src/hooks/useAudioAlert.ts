@@ -12,6 +12,10 @@ let vibrationInterval: any = null;
 let pendingPlayOnUnlock = false;
 let pendingLoop = false;
 
+export function isAudioGloballyUnlocked(): boolean {
+  return isAudioUnlocked;
+}
+
 if (typeof window !== "undefined") {
   try {
     globalAudio = new Audio();
@@ -38,6 +42,7 @@ if (typeof window !== "undefined") {
             .then(() => {
               isAudioUnlocked = true;
               isUnlocking = false;
+              window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
               if (lastPlayPromise === playPromise) {
                 lastPlayPromise = null;
               }
@@ -63,6 +68,7 @@ if (typeof window !== "undefined") {
             if (globalAudio) globalAudio.volume = origVol;
             isAudioUnlocked = true;
             isUnlocking = false;
+            window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
             if (lastPlayPromise === playPromise) {
               lastPlayPromise = null;
             }
@@ -116,6 +122,7 @@ export function useAudioAlert() {
           if (globalAudio) globalAudio.volume = originalVolume;
           isAudioUnlocked = true;
           isUnlocking = false;
+          window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
           if (lastPlayPromise === playPromise) {
             lastPlayPromise = null;
           }
@@ -197,6 +204,7 @@ export function useAudioAlert() {
           .then(() => {
             isAudioUnlocked = true;
             pendingPlayOnUnlock = false;
+            window.dispatchEvent(new CustomEvent("epraja-audio-unlocked"));
             if (lastPlayPromise === playPromise) {
               lastPlayPromise = null;
             }

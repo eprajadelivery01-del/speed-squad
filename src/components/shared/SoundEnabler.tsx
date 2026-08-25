@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Volume2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAudioAlert } from "@/hooks/useAudioAlert";
-import { Preferences } from "@capacitor/preferences";
+import { useAudioAlert, isAudioGloballyUnlocked } from "@/hooks/useAudioAlert";
+import { Capacitor } from "@capacitor/core";
 
 export function SoundEnabler() {
   const [isVisible, setIsVisible] = useState(false);
@@ -11,37 +11,39 @@ export function SoundEnabler() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkSettings = async () => {
-      let soundEnabledPref = null;
-      try {
-        const { value } = await Preferences.get({ key: 'sound_enabled' });
-        soundEnabledPref = value;
-      } catch (e) {}
-      
-      const soundEnabledLocal = localStorage.getItem("sound_enabled") || localStorage.getItem("epj_sound_enabled");
-      
-      if (!soundEnabledPref && !soundEnabledLocal) {
-        const timer = setTimeout(() => setIsVisible(true), 2000);
-        return () => clearTimeout(timer);
-      }
+    // No app nativo (Android), o áudio funciona direto via MediaPlayer sem restrição de clique
+    if (Capacitor.isNativePlatform()) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Se já estiver destravado na sessão atual, não exibe
+    if (isAudioGloballyUnlocked()) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Mostra banner para o usuário dar 1 toque e destravar o áudio no navegador
+    setIsVisible(true);
+
+    const handleUnlocked = () => {
+      setIsVisible(false);
     };
-    checkSettings();
+
+    window.addEventListener("epraja-audio-unlocked", handleUnlocked);
+    return () => {
+      window.removeEventListener("epraja-audio-unlocked", handleUnlocked);
+    };
   }, []);
 
-  const enableSound = async () => {
+  const enableSound = () => {
     setEnabling(true);
     try {
       unlockAudio();
-      try {
-        await Preferences.set({ key: 'sound_enabled', value: 'true' });
-      } catch (e) {}
-      localStorage.setItem("sound_enabled", "true");
-      localStorage.setItem("epj_sound_enabled", "true");
       setIsVisible(false);
-      toast({ title: "Som ativado!", description: "Você receberá alertas sonoros de novas entregas." });
+      toast({ title: "🔊 Alerta sonoro ativado!", description: "Você receberá o som das novas corridas." });
     } catch (error) {
       console.error("Erro ao ativar som:", error);
-      toast({ title: "Erro ao ativar som", description: "Clique novamente para tentar.", variant: "destructive" });
     } finally {
       setEnabling(false);
     }
@@ -51,21 +53,28 @@ export function SoundEnabler() {
 
   return (
     <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-sm animate-in slide-in-from-bottom-10">
-      <div className="bg-foreground text-background p-4 rounded-3xl shadow-2xl flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shrink-0">
+      <div 
+        onClick={enableSound}
+        className="bg-foreground text-background p-4 rounded-3xl shadow-2xl flex items-center gap-3 cursor-pointer hover:scale-[1.02] transition-transform border border-primary/20"
+      >
+        <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shrink-0 animate-bounce">
           <Volume2 className="h-5 w-5 text-white" />
         </div>
-        <div className="flex-1">
-          <p className="text-xs font-black">Ativar avisos sonoros?</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-black leading-tight">Clique para ativar o som</p>
+          <p className="text-[10px] opacity-70 truncate">Toque para ouvir as corridas recebidas</p>
         </div>
         <button
-          onClick={enableSound}
+          onClick={(e) => { e.stopPropagation(); enableSound(); }}
           disabled={enabling}
-          className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+          className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50 shrink-0"
         >
           {enabling ? "..." : "Ativar"}
         </button>
-        <button onClick={() => setIsVisible(false)} className="p-1 opacity-50">
+        <button 
+          onClick={(e) => { e.stopPropagation(); setIsVisible(false); }} 
+          className="p-1 opacity-50 hover:opacity-100 transition-opacity"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
