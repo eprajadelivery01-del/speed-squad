@@ -86,6 +86,7 @@ export function useDriverNotifications() {
   startLoopRef.current = startLoop;
   const stopAlertRef = useRef(stopAlert);
   stopAlertRef.current = stopAlert;
+  const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
