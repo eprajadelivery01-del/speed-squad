@@ -567,13 +567,7 @@ export default function DriverHomePage() {
         </button>
       </div>
 
-      {/* Floating Chat Button */}
-      <button
-        onClick={() => navigate("/driver/chat")}
-        className="fixed bottom-20 right-5 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-all"
-      >
-        <MessageSquare className="h-6 w-6" />
-      </button>
+
 
       <LocationConsentDialog open={showConsent} onAccept={handleAcceptConsent} />
       {/* ── BONASOFT Watermark ── */}
