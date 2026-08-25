@@ -33,7 +33,7 @@ const tabs = [
   { label: "Entregas", icon: Truck, href: "/driver/deliveries" },
   { label: "Ocorrências", icon: AlertTriangle, href: "/driver/occurrences" },
   { label: "Perfil", icon: User, href: "/driver/profile" },
-  { label: "Suporte", icon: MessageSquare, href: "https://wa.me/5565996112999", external: true },
+  { label: "Suporte", icon: MessageSquare, href: "https://wa.me/556599034795", external: true },
 ];
 
 interface DriverLayoutProps {
