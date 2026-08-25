@@ -174,6 +174,11 @@ export function useAudioAlert() {
   const playAlert = useCallback((loop = false) => {
     console.log("[AudioAlert] Tocando som oficial de notificação...");
 
+    if (playingRef.current && globalAudio && !globalAudio.paused) {
+      console.log("[AudioAlert] Áudio já está tocando, mantendo reprodução completa contínua.");
+      return;
+    }
+
     if (playingRef.current) {
       stopAlert();
     }
