@@ -61,10 +61,10 @@ export default function DriverDeliveriesPage() {
     ["accepted", "collecting", "in_transit"].includes(d.status)
   );
 
-  // Filter "Histórico": completed or cancelled
-  const historyDeliveries = myDeliveries.filter(d =>
-    ["delivered", "cancelled"].includes(d.status)
-  );
+  // Filter "Histórico": completed or cancelled (limitado a 10 entregas)
+  const historyDeliveries = myDeliveries
+    .filter(d => ["delivered", "cancelled"].includes(d.status))
+    .slice(0, 10);
 
   const handleAction = (deliveryId: string, currentStatus: string) => {
     if (!driverId) return;
