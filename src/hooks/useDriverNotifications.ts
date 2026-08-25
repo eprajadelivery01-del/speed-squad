@@ -76,7 +76,16 @@ export function useDriverNotifications() {
   const { addNotification, updateNotificationStatus } = useNotifications();
   const { playAlert, startLoop, stopLoop, stopAlert } = useAudioAlert();
   
-  const permissionRef = useRef<NotificationPermission>("default");
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+  const addNotificationRef = useRef(addNotification);
+  addNotificationRef.current = addNotification;
+  const updateNotificationStatusRef = useRef(updateNotificationStatus);
+  updateNotificationStatusRef.current = updateNotificationStatus;
+  const startLoopRef = useRef(startLoop);
+  startLoopRef.current = startLoop;
+  const stopAlertRef = useRef(stopAlert);
+  stopAlertRef.current = stopAlert;
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -346,10 +355,10 @@ export function useDriverNotifications() {
       let delivery: any = rawDelivery;
       try {
         const { data: fullDelivery } = await supabase
-          .from("deliveries")
+          .from("available_deliveries")
           .select("*, companies(name, address), orders(delivery_fee)")
           .eq("id", rawDelivery.id)
-          .single();
+          .maybeSingle();
         if (fullDelivery) delivery = fullDelivery;
       } catch (e) {
         console.warn("[Notify] detalhe da corrida falhou, usando payload bruto:", e);
@@ -787,7 +796,7 @@ export function useDriverNotifications() {
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, toast, playAlert, startLoop, stopLoop, stopAlert, addNotification, updateNotificationStatus]);
+  }, [user?.id]);
 }
 
 
