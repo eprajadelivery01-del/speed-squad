@@ -163,7 +163,8 @@ export function useAudioAlert() {
     playingRef.current = false;
     setIsPlaying(false);
 
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    const canVibrate = Capacitor.isNativePlatform() || isAudioUnlocked;
+    if (canVibrate && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try {
         navigator.vibrate(0);
       } catch {}
