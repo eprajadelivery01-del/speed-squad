@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 
-// Singleton instances to be used globally outside React lifecycle
+// ═══════════════════════════════════════════════════════════════════
+// Singleton Audio — idêntico ao padrão do Lojista (pronto-agora-hub)
+// Regra #8: Arquivo oficial = /notification_sound.mp3 (432 KB)
+// ═══════════════════════════════════════════════════════════════════
 const ALERT_SOUND_URL = "/notification_sound.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
@@ -9,38 +12,53 @@ let isUnlocked = false;
 let vibrationInterval: any = null;
 let activeNotification: Notification | null = null;
 let lastPlayPromise: Promise<void> | null = null;
+let pendingLoop = false; // Flag: se true, dispara som assim que o usuário clicar
 
 if (typeof window !== "undefined") {
   globalAudio = new Audio();
   globalAudio.src = ALERT_SOUND_URL + "?v=" + Date.now();
   globalAudio.load();
 
+  // ── Unlock automático no primeiro toque/clique ──
   let isUnlocking = false;
   const unlockGlobalAudio = () => {
-    if (isUnlocked || isUnlocking || !globalAudio) return;
+    if (isUnlocking || !globalAudio) return;
+
+    // Se já está desbloqueado mas tem som pendente, dispara o loop agora
+    if (isUnlocked && pendingLoop) {
+      pendingLoop = false;
+      globalAudio.loop = true;
+      globalAudio.volume = 1.0;
+      globalAudio.play().catch(() => {});
+      return;
+    }
+
+    if (isUnlocked) return;
+
     isUnlocking = true;
     globalAudio.volume = 0;
-    const playPromise = globalAudio.play();
-    lastPlayPromise = playPromise;
-    playPromise
-      .then(() => {
+    const p = globalAudio.play();
+    lastPlayPromise = p;
+    p.then(() => {
         isUnlocked = true;
         isUnlocking = false;
-        if (lastPlayPromise === playPromise) {
-          lastPlayPromise = null;
+        if (lastPlayPromise === p) lastPlayPromise = null;
+
+        // Se enquanto esperava o unlock uma corrida chegou, toca agora
+        if (pendingLoop) {
+          pendingLoop = false;
+          globalAudio!.loop = true;
+          globalAudio!.volume = 1.0;
+          globalAudio!.play().catch(() => {});
         }
-        window.removeEventListener("click", unlockGlobalAudio);
-        window.removeEventListener("touchstart", unlockGlobalAudio);
-        window.removeEventListener("keydown", unlockGlobalAudio);
       })
       .catch(() => {
-        if (lastPlayPromise === playPromise) {
-          lastPlayPromise = null;
-        }
+        if (lastPlayPromise === p) lastPlayPromise = null;
         isUnlocking = false;
       });
   };
 
+  // Não remove os listeners — mantém sempre ativos para capturar retry de pendingLoop
   window.addEventListener("click", unlockGlobalAudio);
   window.addEventListener("touchstart", unlockGlobalAudio);
   window.addEventListener("keydown", unlockGlobalAudio);
@@ -68,81 +86,64 @@ export function useAudioAlert() {
   const unlockAudio = useCallback(() => {
     if (globalAudio) {
       globalAudio.volume = 0;
-      const playPromise = globalAudio.play();
-      lastPlayPromise = playPromise;
-      playPromise
-        .then(() => {
+      const p = globalAudio.play();
+      lastPlayPromise = p;
+      p.then(() => {
           isUnlocked = true;
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
+          if (lastPlayPromise === p) lastPlayPromise = null;
         })
         .catch((e) => {
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
+          if (lastPlayPromise === p) lastPlayPromise = null;
           if (import.meta.env.DEV) console.warn("[AudioAlert] Falha ao destravar áudio:", e);
         });
     }
   }, []);
 
-  const playAlert = useCallback((loop = false) => {
-    console.log("[AudioAlert] Tocando som oficial de notificação...");
+  const playAlert = useCallback(() => {
     if (globalAudio) {
       globalAudio.currentTime = 0;
-      globalAudio.loop = loop;
       globalAudio.volume = 1.0;
-      const playPromise = globalAudio.play();
-      lastPlayPromise = playPromise;
-      playPromise
-        .then(() => {
+      const p = globalAudio.play();
+      lastPlayPromise = p;
+      p.then(() => {
           isUnlocked = true;
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
+          if (lastPlayPromise === p) lastPlayPromise = null;
         })
         .catch((e) => {
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
+          if (lastPlayPromise === p) lastPlayPromise = null;
           console.warn("[AudioAlert] Falha ao tocar alerta sonoro:", e);
         });
     }
     triggerDeviceVibration();
   }, []);
 
+  // ── startLoop: Idêntico ao Lojista — sem currentTime=0 reset ──
   const startLoop = useCallback(() => {
+    console.log("[AudioAlert] Tocando som oficial de notificação...");
     if (globalAudio) {
-      if (!globalAudio.paused && globalAudio.currentTime > 0) {
-        console.log("[AudioAlert] Áudio já está tocando em loop, mantendo reprodução contínua.");
-        globalAudio.loop = true;
+      // Se já está tocando em loop, não interrompe
+      if (!globalAudio.paused && globalAudio.loop) {
         globalAudio.volume = 1.0;
         return;
       }
-      try {
-        globalAudio.currentTime = 0;
-        globalAudio.loop = true;
-        globalAudio.volume = 1.0;
-        const playPromise = globalAudio.play();
-        lastPlayPromise = playPromise;
-        playPromise
-          .then(() => {
-            isUnlocked = true;
-            if (lastPlayPromise === playPromise) {
-              lastPlayPromise = null;
-            }
-          })
-          .catch((e) => {
-            if (lastPlayPromise === playPromise) {
-              lastPlayPromise = null;
-            }
-            console.warn("[AudioAlert] Falha ao tocar alerta sonoro em loop:", e);
-          });
-      } catch (e) {
-        console.warn("[AudioAlert] Erro ao iniciar áudio:", e);
-      }
+      globalAudio.loop = true;
+      globalAudio.volume = 1.0;
+      const p = globalAudio.play();
+      lastPlayPromise = p;
+      p.then(() => {
+          isUnlocked = true;
+          pendingLoop = false;
+          if (lastPlayPromise === p) lastPlayPromise = null;
+        })
+        .catch((e) => {
+          if (lastPlayPromise === p) lastPlayPromise = null;
+          // Play bloqueado pelo navegador — marca como pendente para disparar no próximo clique
+          pendingLoop = true;
+          console.warn("[AudioAlert] Som pendente — tocará ao clicar na página.", e.message || e);
+        });
     }
 
+    // Vibração contínua independente do estado do áudio
     if (!vibrationInterval) {
       triggerDeviceVibration();
       vibrationInterval = setInterval(() => {
@@ -152,12 +153,13 @@ export function useAudioAlert() {
   }, []);
 
   const stopLoop = useCallback(() => {
+    pendingLoop = false;
     if (globalAudio) {
       const performPause = () => {
         try {
-          globalAudio.pause();
-          globalAudio.currentTime = 0;
-          globalAudio.loop = false;
+          globalAudio!.pause();
+          globalAudio!.currentTime = 0;
+          globalAudio!.loop = false;
         } catch (e) {
           console.warn("[AudioAlert] Falha ao parar áudio:", e);
         }
