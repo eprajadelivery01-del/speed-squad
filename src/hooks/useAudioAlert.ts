@@ -8,6 +8,7 @@ let globalAudio: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;
 let isAudioUnlocked = false;
 let isUnlocking = false;
+let lastPlayPromise: Promise<void> | null = null;
 
 const getAudioContext = (): AudioContext | null => {
   if (typeof window === "undefined") return null;
@@ -46,7 +47,9 @@ if (typeof window !== "undefined") {
       if (globalAudio) {
         const origVol = globalAudio.volume;
         globalAudio.volume = 0;
-        globalAudio.play()
+        const playPromise = globalAudio.play();
+        lastPlayPromise = playPromise;
+        playPromise
           .then(() => {
             try {
               globalAudio?.pause();
@@ -54,6 +57,9 @@ if (typeof window !== "undefined") {
             if (globalAudio) globalAudio.volume = origVol;
             isAudioUnlocked = true;
             isUnlocking = false;
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
             
             // Remove listeners on successful unlock to prevent subsequent race conditions
             window.removeEventListener("touchstart", unlockOnUserGesture, { capture: true });
@@ -62,6 +68,9 @@ if (typeof window !== "undefined") {
             window.removeEventListener("keydown", unlockOnUserGesture, { capture: true });
           })
           .catch(() => {
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
             isUnlocking = false;
           });
       } else {
@@ -161,11 +170,20 @@ export function useAudioAlert() {
 
   const stopAlert = useCallback(() => {
     if (globalAudio) {
-      try {
-        globalAudio.pause();
-        globalAudio.currentTime = 0;
-      } catch (e) {
-        console.warn("[AudioAlert] Falha ao parar áudio:", e);
+      const performPause = () => {
+        try {
+          globalAudio.pause();
+          globalAudio.currentTime = 0;
+        } catch (e) {
+          console.warn("[AudioAlert] Falha ao parar áudio:", e);
+        }
+      };
+
+      if (lastPlayPromise) {
+        lastPlayPromise.then(performPause).catch(performPause);
+        lastPlayPromise = null;
+      } else {
+        performPause();
       }
     }
     stopSynthBeep();
@@ -204,8 +222,18 @@ export function useAudioAlert() {
         globalAudio.currentTime = 0;
         globalAudio.loop = loop;
         globalAudio.volume = 1.0;
-        globalAudio.play()
+        const playPromise = globalAudio.play();
+        lastPlayPromise = playPromise;
+        playPromise
+          .then(() => {
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
+          })
           .catch((e: any) => {
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
             console.warn("[AudioAlert] HTML5 Audio play travado por política do navegador/rede, mantendo sintetizador WebAudio:", e);
           });
       } catch (e) {
