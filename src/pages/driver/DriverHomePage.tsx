@@ -389,33 +389,13 @@ export default function DriverHomePage() {
 
 
 
-  useEffect(() => {
-    // No app nativo (Android), o popup oficial em tela cheia é a IncomingCallActivity nativa (com wake lock e tela acesa).
-    // O modal Web IncomingOrderScreen só deve ser renderizado se NÃO for plataforma nativa (ex: Web / Preview / PWA).
-    if (Capacitor.isNativePlatform()) {
-      if (activeIncomingOrder) setActiveIncomingOrder(null);
-      return;
-    }
-
-    // Encontra a primeira corrida válida que não foi rejeitada nem aceita localmente
-    const nextOrder = broadcastDeliveries.find((del: any) => !rejectedLocalIds.includes(del.id) && !acceptedLocalIds.includes(del.id));
-    
-    if (nextOrder && !activeIncomingOrder) {
-      setActiveIncomingOrder(nextOrder);
-    } else if (!nextOrder && activeIncomingOrder) {
-      setActiveIncomingOrder(null);
-    }
-  }, [broadcastDeliveries, rejectedLocalIds, acceptedLocalIds, activeIncomingOrder]);
-
-  // Listen for native popup acceptance/rejection
+  // O modal de aceite interno foi totalmente desativado a pedido do usuário.
+  // As corridas aparecem diretamente na lista da tela inicial com os botões de aceitar/recusar.
   useEffect(() => {
     const handleNativeAccept = (e: any) => {
       const id = e.detail?.id;
       if (id) {
         setAcceptedLocalIds(prev => [...prev, id]);
-        if (activeIncomingOrder?.id === id) {
-          setActiveIncomingOrder(null);
-        }
         navigate("/driver/deliveries");
       }
     };
@@ -423,9 +403,6 @@ export default function DriverHomePage() {
       const id = e.detail?.id || e.detail?.deliveryId;
       if (id) {
         setRejectedLocalIds(prev => [...prev, id]);
-        if (activeIncomingOrder?.id === id) {
-          setActiveIncomingOrder(null);
-        }
       }
     };
     
@@ -436,31 +413,10 @@ export default function DriverHomePage() {
       window.removeEventListener("delivery-accepted", handleNativeAccept);
       window.removeEventListener("delivery-rejected", handleNativeReject);
     };
-  }, [activeIncomingOrder]);
-
-  const handleRejectLocal = (deliveryId: string) => {
-    stopAlert();
-    declineDeliveryLocally(deliveryId);
-    setRejectedLocalIds(prev => [...prev, deliveryId]);
-    setActiveIncomingOrder(null);
-  };
-
-  const handleAcceptLocal = (deliveryId: string) => {
-    setAcceptedLocalIds(prev => [...prev, deliveryId]);
-    acceptDeliveryLocally(deliveryId);
-    handleAcceptDelivery(deliveryId);
-    setActiveIncomingOrder(null);
-  };
+  }, [navigate]);
 
   return (
     <DriverLayout>
-      {activeIncomingOrder && (
-        <IncomingOrderScreen 
-          delivery={activeIncomingOrder} 
-          onAccept={handleAcceptLocal} 
-          onReject={handleRejectLocal} 
-        />
-      )}
       <div className="flex flex-col gap-5">
           {/* Greeting */}
         <div>
