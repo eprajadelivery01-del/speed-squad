@@ -33,7 +33,12 @@ if (typeof window !== "undefined") {
     console.warn("[AudioAlert] Erro ao instanciar HTMLAudioElement:", e);
   }
 
+  let isAudioUnlocked = false;
+  let isUnlocking = false;
+
   const unlockOnUserGesture = () => {
+    if (isAudioUnlocked || isUnlocking) return;
+    isUnlocking = true;
     try {
       const ctx = getAudioContext();
       if (ctx && ctx.state === "suspended") {
@@ -42,16 +47,32 @@ if (typeof window !== "undefined") {
       if (globalAudio) {
         const origVol = globalAudio.volume;
         globalAudio.volume = 0;
-        globalAudio.play().then(() => {
-          globalAudio?.pause();
-          if (globalAudio) globalAudio.volume = origVol;
-        }).catch(() => {});
+        globalAudio.play()
+          .then(() => {
+            try {
+              globalAudio?.pause();
+            } catch {}
+            if (globalAudio) globalAudio.volume = origVol;
+            isAudioUnlocked = true;
+            isUnlocking = false;
+            
+            // Remove listeners on successful unlock to prevent subsequent race conditions
+            window.removeEventListener("touchstart", unlockOnUserGesture, { capture: true });
+            window.removeEventListener("pointerdown", unlockOnUserGesture, { capture: true });
+            window.removeEventListener("click", unlockOnUserGesture, { capture: true });
+            window.removeEventListener("keydown", unlockOnUserGesture, { capture: true });
+          })
+          .catch(() => {
+            isUnlocking = false;
+          });
+      } else {
+        isUnlocking = false;
       }
-    } catch {}
+    } catch {
+      isUnlocking = false;
+    }
   };
 
-  // Listeners persistentes: o AudioContext pode voltar a ficar suspenso quando o
-  // app vai para segundo plano, então re-destravamos a cada interação do usuário.
   window.addEventListener("touchstart", unlockOnUserGesture, { capture: true, passive: true });
   window.addEventListener("pointerdown", unlockOnUserGesture, { capture: true, passive: true });
   window.addEventListener("click", unlockOnUserGesture, { capture: true });
