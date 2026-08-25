@@ -381,13 +381,8 @@ export function useDriverNotifications() {
         }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
       }
 
-      // 2) Toast
-      try {
-        toast({ title, description });
-      } catch {}
-
-
-      // 3) Central de notificações
+      // 2) Toast desativado para não poluir a tela do entregador
+      // 3) Central de notificações do app
       try {
         addNotification({
           type: "delivery",
@@ -400,22 +395,8 @@ export function useDriverNotifications() {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) OS notification na Central do Celular (Tela Bloqueada e Barra de Notificações)
-      if (Capacitor.isNativePlatform()) {
-        LocalNotifications.schedule({
-          notifications: [
-            {
-              title: title,
-              body: `🏁 Entrega: ${fullDropoff}`,
-              id: hashId(delivery.id),
-              actionTypeId: "DELIVERY_ACTION",
-              channelId: "delivery-incoming-v9",
-              sound: "ring.mp3",
-              extra: { type: "delivery", deliveryId: delivery.id },
-            },
-          ],
-        }).catch((e) => console.warn("[LocalNotifications] erro ao agendar na central:", e));
-      } else if (permissionRef.current === "granted") {
+      // 4) A notificação principal já é enviada via FCM (evita duplicidade de notificações na central do celular)
+      if (!Capacitor.isNativePlatform() && permissionRef.current === "granted") {
         try {
           new Notification(title, {
             body: description,
