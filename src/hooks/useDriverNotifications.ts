@@ -74,7 +74,7 @@ export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification, updateNotificationStatus } = useNotifications();
-  const { playAlert, stopAlert, unlockAudio } = useAudioAlert();
+  const { playAlert, startLoop, stopLoop, stopAlert } = useAudioAlert();
   
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
@@ -311,8 +311,7 @@ export function useDriverNotifications() {
       // O playAlert() web (WebAudio/HTML5) roda exclusivamente fora do nativo para evitar eco/sons simultâneos.
       if (!Capacitor.isNativePlatform()) {
         try {
-          unlockAudio();
-          playAlert(true);
+          startLoop();
         } catch (e) {
           console.warn("[Notify] som falhou:", e);
         }
