@@ -50,8 +50,9 @@ export default function DriverDeliveriesPage() {
   const { data: myData, isLoading: loadingDeliveries } = useDeliveries({
     driverId: driverId || undefined,
     enabled: !!driverId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    pageSize: 15,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
   });
   const rawMyDeliveries = myData?.data ?? [];
   const myDeliveries = useUniqueDeliveries(rawMyDeliveries);
