@@ -26,7 +26,8 @@ const canUseBrowserVibration = () =>
 
 if (typeof window !== "undefined") {
   try {
-    globalAudio = new Audio(ALERT_SOUND_URL);
+    globalAudio = new Audio();
+    globalAudio.src = ALERT_SOUND_URL + "?v=" + Date.now();
     globalAudio.load();
   } catch (e) {
     console.warn("[AudioAlert] Erro ao instanciar HTMLAudioElement:", e);
