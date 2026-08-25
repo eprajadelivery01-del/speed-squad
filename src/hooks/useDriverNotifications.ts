@@ -794,7 +794,7 @@ export function useDriverNotifications() {
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, toast, playAlert, stopAlert, unlockAudio, addNotification, updateNotificationStatus]);
+  }, [user, toast, playAlert, startLoop, stopLoop, stopAlert, addNotification, updateNotificationStatus]);
 }
 
 
