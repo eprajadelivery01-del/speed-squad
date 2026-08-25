@@ -13,7 +13,6 @@ import { LocationConsentDialog } from "@/components/driver/LocationConsentDialog
 import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
-import { IncomingOrderScreen } from "@/components/driver/IncomingOrderScreen";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
