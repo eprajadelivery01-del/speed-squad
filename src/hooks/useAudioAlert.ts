@@ -9,6 +9,8 @@ let isAudioUnlocked = false;
 let isUnlocking = false;
 let lastPlayPromise: Promise<void> | null = null;
 let vibrationInterval: any = null;
+let pendingPlayOnUnlock = false;
+let pendingLoop = false;
 
 if (typeof window !== "undefined") {
   try {
@@ -20,36 +22,60 @@ if (typeof window !== "undefined") {
   }
 
   const unlockOnUserGesture = () => {
-    if (isAudioUnlocked || isUnlocking || !globalAudio) return;
+    if (isAudioUnlocked && !pendingPlayOnUnlock) return;
+    if (isUnlocking) return;
     isUnlocking = true;
     try {
-      const origVol = globalAudio.volume;
-      globalAudio.volume = 0;
-      const playPromise = globalAudio.play();
-      lastPlayPromise = playPromise;
-      playPromise
-        .then(() => {
-          try {
-            globalAudio?.pause();
-          } catch {}
-          if (globalAudio) globalAudio.volume = origVol;
-          isAudioUnlocked = true;
-          isUnlocking = false;
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
-          
-          window.removeEventListener("touchstart", unlockOnUserGesture, { capture: true });
-          window.removeEventListener("pointerdown", unlockOnUserGesture, { capture: true });
-          window.removeEventListener("click", unlockOnUserGesture, { capture: true });
-          window.removeEventListener("keydown", unlockOnUserGesture, { capture: true });
-        })
-        .catch(() => {
-          if (lastPlayPromise === playPromise) {
-            lastPlayPromise = null;
-          }
-          isUnlocking = false;
-        });
+      if (globalAudio) {
+        if (pendingPlayOnUnlock) {
+          pendingPlayOnUnlock = false;
+          globalAudio.currentTime = 0;
+          globalAudio.loop = pendingLoop;
+          globalAudio.volume = 1.0;
+          const playPromise = globalAudio.play();
+          lastPlayPromise = playPromise;
+          playPromise
+            .then(() => {
+              isAudioUnlocked = true;
+              isUnlocking = false;
+              if (lastPlayPromise === playPromise) {
+                lastPlayPromise = null;
+              }
+            })
+            .catch(() => {
+              if (lastPlayPromise === playPromise) {
+                lastPlayPromise = null;
+              }
+              isUnlocking = false;
+            });
+          return;
+        }
+
+        const origVol = globalAudio.volume;
+        globalAudio.volume = 0;
+        const playPromise = globalAudio.play();
+        lastPlayPromise = playPromise;
+        playPromise
+          .then(() => {
+            try {
+              globalAudio?.pause();
+            } catch {}
+            if (globalAudio) globalAudio.volume = origVol;
+            isAudioUnlocked = true;
+            isUnlocking = false;
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
+          })
+          .catch(() => {
+            if (lastPlayPromise === playPromise) {
+              lastPlayPromise = null;
+            }
+            isUnlocking = false;
+          });
+      } else {
+        isUnlocking = false;
+      }
     } catch {
       isUnlocking = false;
     }
@@ -104,6 +130,8 @@ export function useAudioAlert() {
   }, []);
 
   const stopAlert = useCallback(() => {
+    pendingPlayOnUnlock = false;
+
     if (globalAudio) {
       const performPause = () => {
         try {
@@ -161,6 +189,8 @@ export function useAudioAlert() {
         lastPlayPromise = playPromise;
         playPromise
           .then(() => {
+            isAudioUnlocked = true;
+            pendingPlayOnUnlock = false;
             if (lastPlayPromise === playPromise) {
               lastPlayPromise = null;
             }
@@ -168,6 +198,10 @@ export function useAudioAlert() {
           .catch((e: any) => {
             if (lastPlayPromise === playPromise) {
               lastPlayPromise = null;
+            }
+            if (e?.name === "NotAllowedError") {
+              pendingPlayOnUnlock = true;
+              pendingLoop = loop;
             }
             console.warn("[AudioAlert] HTML5 Audio bloqueado pelo navegador:", e);
           });
