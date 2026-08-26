@@ -154,9 +154,10 @@ export function useDriverNotifications() {
         DeliveryOverlay.getPendingFcmToken().then(({ token }) => {
           if (token) syncFcmToken(token);
         }).catch(() => {});
-        DeliveryOverlay.addListener("onFcmTokenRefresh", ({ token }) => {
+        const refreshPromise = DeliveryOverlay.addListener("onFcmTokenRefresh", ({ token }) => {
           if (token) syncFcmToken(token);
-        }).then((listener) => {
+        });
+        Promise.resolve(refreshPromise).then((listener) => {
           refreshListener = listener;
         }).catch(() => {});
 

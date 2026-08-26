@@ -215,7 +215,7 @@ serve(async (req) => {
                   body: pushBody
                 },
                 sound: "default",
-                category: "DELIVERY_ACTION"
+                category: "DELIVERY_INFO"
               }
             }
           }
