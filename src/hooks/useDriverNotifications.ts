@@ -6,7 +6,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { safeRpc } from "@/lib/safeRpc";
 import { translateDeliveryError } from "@/lib/errorMessages";
-import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
@@ -29,6 +29,8 @@ const pickAddress = (d: any): string =>
   d?.dropoff_address ||
   d?.address ||
   "Confira na tela inicial.";
+
+const announcedDeliveryIds = new Set<string>();
 
 export const getDeclinedDeliveries = (): Set<string> => {
   try {
@@ -89,7 +91,7 @@ export function useDriverNotifications() {
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
-  const seenIdsRef = useRef<Set<string>>(new Set());
+  const seenIdsRef = useRef<Set<string>>(announcedDeliveryIds);
   const isOnlineRef = useRef<boolean>(false);
   const activeAlertsRef = useRef<Set<string>>(new Set());
 
@@ -103,21 +105,18 @@ export function useDriverNotifications() {
             LocalNotifications.registerActionTypes({
               types: [
                 {
-                  id: "DELIVERY_ACTION",
-                  actions: [
-                    { id: "accept", title: "✅ Aceitar" },
-                    { id: "reject", title: "❌ Rejeitar", destructive: true },
-                  ],
+                  id: "DELIVERY_INFO",
+                  actions: [],
                 },
               ],
             }).catch(() => {});
 
             LocalNotifications.listChannels().then((channels) => {
-              const hasChannel = channels.channels.some(c => c.id === 'delivery-incoming-v9');
+              const hasChannel = channels.channels.some(c => c.id === 'delivery-incoming-v10');
               if (!hasChannel) {
                 LocalNotifications.createChannel({
-                  id: "delivery-incoming-v9",
-                  name: "Novas Corridas É Pra Já v9",
+                  id: "delivery-incoming-v10",
+                  name: "Novas Corridas É Pra Já",
                   description: "Alerta de alta prioridade para novas corridas",
                   importance: 5,
                   visibility: 1,
@@ -209,30 +208,6 @@ export function useDriverNotifications() {
           console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
-              let fcmStore = notification.data?.storeName || "";
-              let fcmPickup = notification.data?.pickup || "";
-              let fcmDropoff = notification.data?.dropoff || "";
-              let fcmFee = notification.data?.fee || "";
-              let immediateDesc = notification.data?.details || notification.data?.address || "Nova Entrega Disponível!";
-              if (immediateDesc.includes("Veja no app")) {
-                immediateDesc = immediateDesc.replace(/Veja no app/g, "Retirada na Loja");
-              }
-
-              const isAppVisible = document.visibilityState === "visible";
-
-              if (Capacitor.isNativePlatform()) {
-                if (!isAppVisible) {
-                  DeliveryOverlay.testIncomingCall({
-                    details: immediateDesc,
-                    deliveryId: deliveryId,
-                    storeName: notification.data?.storeName,
-                    pickup: notification.data?.pickup,
-                    dropoff: notification.data?.dropoff,
-                    fee: notification.data?.fee
-                  }).catch((e: any) => console.warn("Erro ao acordar tela via FCM (imediato):", e));
-                }
-              }
-
               try {
                  const { data } = await supabase
                    .from("deliveries")
@@ -242,9 +217,6 @@ export function useDriverNotifications() {
 
                  if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
                      console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
-                     if (Capacitor.isNativePlatform()) {
-                         DeliveryOverlay.dismissIncomingCall().catch(console.warn);
-                     }
                      return;
                  }
                  
@@ -256,26 +228,16 @@ export function useDriverNotifications() {
                   const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
                   const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
                  
-                  fcmStore = storeName;
-                  fcmPickup = immediatePickup;
-                  fcmDropoff = immediateDropoff;
-                  fcmFee = `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
-                  immediateDesc = `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: ${fcmFee}`;
+                   const fcmFee = `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+                   addNotificationRef.current({
+                     type: "delivery",
+                     title: "Nova corrida disponível",
+                     description: `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: ${fcmFee}`,
+                     deliveryId,
+                     deliveryStatus: "pending",
+                   });
               } catch (e) {
                  console.warn("Erro validando FCM status:", e);
-              }
-
-              if (Capacitor.isNativePlatform()) {
-                if (!isAppVisible) {
-                  DeliveryOverlay.updateIncomingCall({
-                    details: immediateDesc,
-                    deliveryId: deliveryId,
-                    storeName: fcmStore,
-                    pickup: fcmPickup,
-                    dropoff: fcmDropoff,
-                    fee: fcmFee
-                  }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
-                }
               }
           }
         });
@@ -296,7 +258,7 @@ export function useDriverNotifications() {
 
     let cancelled = false;
     let actionListener: PluginListenerHandle | null = null;
-    let overlayListener: PluginListenerHandle | null = null;
+    let appStateListener: PluginListenerHandle | null = null;
 
     const handleDeclineEvent = (e: any) => {
       const { deliveryId } = e.detail || {};
@@ -323,8 +285,7 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // ======== 1) SOM: No app nativo (Android), o som de alerta ring é reproduzido pelo MediaPlayer da IncomingCallActivity.
-      // O playAlert() web (WebAudio/HTML5) roda exclusivamente fora do nativo para evitar eco/sons simultâneos.
+      // No Android o FCM nativo produz um único som. No navegador/PWA usamos WebAudio.
       if (!Capacitor.isNativePlatform()) {
         try {
           startLoop();
@@ -347,21 +308,7 @@ export function useDriverNotifications() {
       dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || dropoff;
       fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
 
-      const immediateDesc = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}${fee > 0 ? `\nGanhos: R$ ${fee.toFixed(2).replace('.', ',')}` : ''}`;
       const isAppVisible = document.visibilityState === "visible";
-
-      if (Capacitor.isNativePlatform()) {
-        if (!isAppVisible) {
-          DeliveryOverlay.testIncomingCall({
-            details: immediateDesc,
-            deliveryId: rawDelivery.id,
-            storeName,
-            pickup,
-            dropoff,
-            fee: fee > 0 ? `R$ ${fee.toFixed(2).replace('.', ',')}` : ""
-          }).catch((e: any) => console.warn("Erro ao acordar tela (imediato):", e));
-        }
-      }
 
       let delivery: any = rawDelivery;
       try {
@@ -388,33 +335,6 @@ export function useDriverNotifications() {
       const displayStore = fullStoreName || "É Pra Já Delivery";
       const title = `🏬 ${displayStore}`;
       const description = `${displayStore}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
-
-      if (Capacitor.isNativePlatform()) {
-        if (!isAppVisible) {
-          DeliveryOverlay.updateIncomingCall({
-            details: description,
-            deliveryId: delivery.id,
-            storeName: fullStoreName,
-            pickup: fullPickup,
-            dropoff: fullDropoff,
-            fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`
-          }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
-        }
-
-        if (permissionRef.current === "granted" && !isAppVisible) {
-          LocalNotifications.schedule({
-            notifications: [
-              {
-                title: "ÉpraJá - Nova corrida!",
-                body: description,
-                id: hashId(delivery.id),
-                actionTypeId: "DELIVERY_ACTION",
-                extra: { type: "delivery", deliveryId: delivery.id },
-              }
-            ]
-          }).catch(() => {});
-        }
-      }
 
       // 2) Toast desativado para não poluir a tela do entregador
       // 3) Central de notificações do app
@@ -502,130 +422,7 @@ export function useDriverNotifications() {
         .subscribe();
       channelsRef.current.push(driverChannel);
 
-      // 3. Native action listener
-      if (Capacitor.isNativePlatform()) {
-        actionListener = await LocalNotifications.addListener(
-          "localNotificationActionPerformed",
-          async (action) => {
-            if (action.notification.extra?.type === "delivery") {
-              const deliveryId = action.notification.extra.deliveryId;
-              
-              if (action.actionId === "accept") {
-                stopAlert();
-                activeAlertsRef.current.delete(deliveryId);
-                
-                // Attempt safe RPC first
-                try {
-                  const { data, error } = await safeRpc("update_delivery_status_safe", {
-                    p_delivery_id: deliveryId,
-                    p_status: "accepted",
-                    p_driver_id: driverId,
-                  });
-                  if (!error && data) {
-                    if ((data as any).success) {
-                      window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-                      acceptDeliveryLocally(deliveryId);
-                      toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
-                      updateNotificationStatus(deliveryId, "accepted");
-                      return;
-                    } else {
-                      toast({ title: "Ops! Já foi aceita.", description: (data as any).message || "Outro entregador aceitou antes de você.", variant: "destructive" });
-                      window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-                      declineDeliveryLocally(deliveryId);
-                      updateNotificationStatus(deliveryId, "rejected");
-                      return;
-                    }
-                  }
-                } catch {}
-
-                // REST fallback
-                const { error, data } = await supabase
-                  .from("deliveries")
-                  .update({ status: "accepted", driver_id: driverId })
-                  .eq("id", deliveryId)
-                  .in("status", ["pending", "broadcasted"])
-                  .is("driver_id", null)
-                  .select("id");
-                
-                if (error) {
-                  const { title, description } = translateDeliveryError(error, "accept");
-                  toast({ title, description, variant: "destructive" });
-                } else if (!data || data.length === 0) {
-                  toast({ title: "Ops! Já foi aceita.", description: "Outro entregador aceitou antes de você.", variant: "destructive" });
-                  window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-                  declineDeliveryLocally(deliveryId);
-                  updateNotificationStatus(deliveryId, "rejected");
-                } else {
-                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-                  acceptDeliveryLocally(deliveryId);
-                  toast({ title: "✅ Corrida aceita!", description: "Aceita via notificação." });
-                  updateNotificationStatus(deliveryId, "accepted");
-                }
-              } else if (action.actionId === "reject") {
-                window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-                declineDeliveryLocally(deliveryId);
-                updateNotificationStatus(deliveryId, "rejected");
-              }
-            }
-          }
-        );
-
-        // Listener para os botões do Popup Nativo (Tela Bloqueada)
-        overlayListener = await DeliveryOverlay.addListener(
-          "onCallResponse",
-          async (response: any) => {
-            const deliveryId = response.deliveryId;
-            
-            if (response.status === "accepted") {
-              stopAlert();
-              activeAlertsRef.current.delete(deliveryId);
-              
-              // NÃO fazemos aceitação eager local antes de saber se a API retornou sucesso ou erro.
-              
-              // Executa a requisição no background de forma não bloqueante (Fire and Forget)
-              safeRpc("update_delivery_status_safe", {
-                p_delivery_id: deliveryId,
-                p_status: "accepted",
-                p_driver_id: driverId,
-              }).then(({ data, error }) => {
-                if (error || !data || !(data as any).success) {
-                  // Se falhar de verdade (e.g. corrida roubada ou erro de rede)
-                  console.warn("safeRpc accept falhou no lock screen:", error || data);
-                  const rawErr = error || (data as any)?.error || (data as any)?.message || "Corrida já foi aceita por outro entregador";
-                  const { title: friendlyTitle, description: friendlyDesc } = translateDeliveryError(rawErr, "accept");
-                  DeliveryOverlay.reportCallResult({ success: false, message: friendlyDesc }).catch(() => {});
-                  toast({ title: friendlyTitle, description: friendlyDesc, variant: "destructive" });
-                  window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-                  declineDeliveryLocally(deliveryId);
-                  updateNotificationStatus(deliveryId, "rejected");
-                } else {
-                  // EAGER LOCAL ACCEPT movido para ca no sucesso
-                  DeliveryOverlay.reportCallResult({ success: true, message: "✅ Corrida aceita!" }).catch(() => {});
-                  window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-                  acceptDeliveryLocally(deliveryId);
-                  updateNotificationStatus(deliveryId, "accepted");
-                  toast({ title: "✅ Corrida aceita!", description: "Aceita via popup nativo." });
-                }
-              }).catch(e => {
-                 console.warn("Exception no safeRpc lock screen:", e);
-                 DeliveryOverlay.reportCallResult({ success: false, message: "Não foi possível confirmar o aceite" }).catch(() => {});
-                 window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-                 declineDeliveryLocally(deliveryId);
-                 updateNotificationStatus(deliveryId, "rejected");
-              });
-              
-            } else if (response.status === "rejected") {
-              window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
-              declineDeliveryLocally(deliveryId);
-              updateNotificationStatus(deliveryId, "rejected");
-              stopAlert();
-              activeAlertsRef.current.delete(deliveryId);
-            }
-          }
-        );
-      }
-
-      // Initial seed: notify driver of all currently-available deliveries when online
+      // Initial seed: marca corridas já existentes sem repetir alertas ao entrar/trocar de tela.
       if (isOnlineRef.current) {
         try {
           const { data: initial } = await supabase
@@ -633,9 +430,7 @@ export function useDriverNotifications() {
             .select("*");
 
           if (initial && !cancelled) {
-            initial.forEach((d: any) => {
-              notifyNewDelivery(d);
-            });
+            initial.forEach((d: any) => seenIdsRef.current.add(d.id));
           }
         } catch (e) {
           console.warn("[Notify] seed inicial falhou:", e);
@@ -672,7 +467,7 @@ export function useDriverNotifications() {
       intervalRef.current = setInterval(pollDeliveries, 8000);
 
       // Listener de retorno ao app para forçar fetch imediato caso o WebSocket tenha morrido no background
-      const appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
+      appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
         if (isActive && isOnlineRef.current) {
           pollDeliveries();
         }
@@ -771,7 +566,7 @@ export function useDriverNotifications() {
               const msg = payload.new as any;
               if (msg.sender_id !== user.id) {
                 try {
-                  playAlert(false);
+                  playAlert();
                 } catch {}
                 toast({ title: "💬 Nova mensagem", description: msg.content });
                 addNotification({
@@ -817,8 +612,7 @@ export function useDriverNotifications() {
       stopAlert();
       window.removeEventListener("delivery-declined", handleDeclineEvent);
       if (actionListener) actionListener.remove();
-      if (overlayListener) overlayListener.remove();
-      App.removeAllListeners();
+      if (appStateListener) appStateListener.remove();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);

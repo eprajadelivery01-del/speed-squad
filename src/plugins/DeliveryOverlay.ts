@@ -20,8 +20,8 @@ export interface DeliveryOverlayPlugin {
   reportCallResult(options: { success: boolean; message?: string }): Promise<void>;
   saveDriverContext(options: { driverId: string; userToken: string }): Promise<void>;
   addListener(
-    eventName: 'onCallResponse',
-    listenerFunc: (response: { status: 'accepted' | 'rejected'; deliveryId: string }) => void
+    eventName: 'onFcmTokenRefresh',
+    listenerFunc: (response: { token: string }) => void
   ): Promise<PluginListenerHandle> & PluginListenerHandle;
 }
 

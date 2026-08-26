@@ -1,9 +1,7 @@
 package com.eprajaentregador;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
@@ -21,54 +19,16 @@ public class DeliveryOverlayPlugin extends Plugin {
     public static final String PREFS_NAME = "eprajadriver";
 
     public static DeliveryOverlayPlugin instance;
-    public static String latestDetails = "";
-    public static String latestDeliveryId = "";
-    public static String latestStore = "";
-    public static String latestPickup = "";
-    public static String latestDropoff = "";
-    public static String latestFee = "";
-
-    private BroadcastReceiver callReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            String deliveryId = intent.getStringExtra("deliveryId");
-            JSObject ret = new JSObject();
-            if (deliveryId != null) {
-                ret.put("deliveryId", deliveryId);
-            }
-            if (IncomingCallActivity.ACTION_CALL_ACCEPTED.equals(action)) {
-                ret.put("status", "accepted");
-                notifyListeners("onCallResponse", ret);
-            } else if (IncomingCallActivity.ACTION_CALL_REJECTED.equals(action)) {
-                ret.put("status", "rejected");
-                notifyListeners("onCallResponse", ret);
-            }
-        }
-    };
-
     @Override
     public void load() {
         super.load();
         instance = this;
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(IncomingCallActivity.ACTION_CALL_ACCEPTED);
-        filter.addAction(IncomingCallActivity.ACTION_CALL_REJECTED);
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getContext().registerReceiver(callReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            getContext().registerReceiver(callReceiver, filter);
-        }
     }
 
-    public void triggerCallResponse(String status, String deliveryId) {
+    public void triggerFcmTokenRefresh(String token) {
         JSObject ret = new JSObject();
-        if (deliveryId != null) {
-            ret.put("deliveryId", deliveryId);
-        }
-        ret.put("status", status);
-        notifyListeners("onCallResponse", ret);
+        ret.put("token", token);
+        notifyListeners("onFcmTokenRefresh", ret);
     }
 
     @PluginMethod
@@ -141,63 +101,13 @@ public class DeliveryOverlayPlugin extends Plugin {
 
     @PluginMethod
     public void testIncomingCall(PluginCall call) {
-        String details = call.getString("details", "Nova entrega próxima a você!");
-        String deliveryId = call.getString("deliveryId", "");
-        String storeName = call.getString("storeName", "");
-        String pickup = call.getString("pickup", "");
-        String dropoff = call.getString("dropoff", "");
-        String fee = call.getString("fee", "");
-
-        latestDetails = details;
-        latestDeliveryId = deliveryId;
-        latestStore = storeName;
-        latestPickup = pickup;
-        latestDropoff = dropoff;
-        latestFee = fee;
-
-        Intent intent = new Intent(getContext(), IncomingCallActivity.class);
-        intent.putExtra("details", details);
-        intent.putExtra("deliveryId", deliveryId);
-        intent.putExtra("storeName", storeName);
-        intent.putExtra("pickup", pickup);
-        intent.putExtra("dropoff", dropoff);
-        intent.putExtra("fee", fee);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        getContext().startActivity(intent);
+        // Mantido apenas por compatibilidade com versões web antigas. O popup
+        // de aceite/recusa foi removido; alertas são notificações informativas.
         call.resolve();
     }
 
     @PluginMethod
     public void updateIncomingCall(PluginCall call) {
-        final String details = call.getString("details", "");
-        final String deliveryId = call.getString("deliveryId", "");
-        final String storeName = call.getString("storeName", "");
-        final String pickup = call.getString("pickup", "");
-        final String dropoff = call.getString("dropoff", "");
-        final String fee = call.getString("fee", "");
-
-        latestDetails = details;
-        latestDeliveryId = deliveryId;
-        if (!storeName.isEmpty()) latestStore = storeName;
-        if (!pickup.isEmpty()) latestPickup = pickup;
-        if (!dropoff.isEmpty()) latestDropoff = dropoff;
-        if (!fee.isEmpty()) latestFee = fee;
-
-        if (IncomingCallActivity.instance != null) {
-            IncomingCallActivity.instance.runOnUiThread(() -> {
-                IncomingCallActivity.instance.updateCall(details, deliveryId, storeName, pickup, dropoff, fee);
-            });
-        } else {
-            Intent intent = new Intent(IncomingCallActivity.ACTION_UPDATE_CALL);
-            intent.putExtra("details", details);
-            intent.putExtra("deliveryId", deliveryId);
-            intent.putExtra("storeName", storeName);
-            intent.putExtra("pickup", pickup);
-            intent.putExtra("dropoff", dropoff);
-            intent.putExtra("fee", fee);
-            intent.setPackage(getContext().getPackageName()); // FORÇA EXPLICITO
-            getContext().sendBroadcast(intent);
-        }
         call.resolve();
     }
 
@@ -224,25 +134,11 @@ public class DeliveryOverlayPlugin extends Plugin {
      */
     @PluginMethod
     public void reportCallResult(PluginCall call) {
-        final boolean success = Boolean.TRUE.equals(call.getBoolean("success", false));
-        final String message = call.getString("message", "");
-        if (IncomingCallActivity.instance != null) {
-            IncomingCallActivity.instance.onCallResult(success, message);
-        }
         call.resolve();
     }
 
     @PluginMethod
     public void dismissIncomingCall(PluginCall call) {
-        if (IncomingCallActivity.instance != null) {
-            IncomingCallActivity.instance.runOnUiThread(() -> {
-                IncomingCallActivity.instance.finish();
-            });
-        } else {
-            Intent intent = new Intent(IncomingCallActivity.ACTION_CANCEL_CALL);
-            intent.setPackage(getContext().getPackageName());
-            getContext().sendBroadcast(intent);
-        }
         call.resolve();
     }
 }

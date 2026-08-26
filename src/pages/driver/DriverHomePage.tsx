@@ -54,8 +54,6 @@ export default function DriverHomePage() {
   });
   const isSubmittingRef = useRef(false);
 
-  const [activeIncomingOrder, setActiveIncomingOrder] = useState<any>(null);
-
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateDeliveryStatus();
 
   useEffect(() => {
@@ -351,7 +349,6 @@ export default function DriverHomePage() {
         onSuccess: () => {
           isSubmittingRef.current = false;
           window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
-          setActiveIncomingOrder(null);
           toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
           navigate("/driver/deliveries");
         },
@@ -386,7 +383,9 @@ export default function DriverHomePage() {
 
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
-  const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
+  const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries).filter(
+    (delivery) => !rejectedLocalIds.includes(delivery.id) && !acceptedLocalIds.includes(delivery.id)
+  );
 
   const [acceptedLocalIds, setAcceptedLocalIds] = useState<string[]>(() => {
     return Array.from(getAcceptedDeliveries());

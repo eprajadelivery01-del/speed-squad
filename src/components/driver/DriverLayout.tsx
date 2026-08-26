@@ -1,16 +1,12 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare, Loader2 } from "lucide-react";
+import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { safeRpc } from "@/lib/safeRpc";
 import { useAllRealtime } from "@/services/realtime";
-import { useDriverNotifications, declineDeliveryLocally } from "@/hooks/useDriverNotifications";
+import { useDriverNotifications } from "@/hooks/useDriverNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { useAudioAlert } from "@/hooks/useAudioAlert";
-import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "../shared/ThemeToggle";
-import { translateDeliveryError } from "@/lib/errorMessages";
 import {
   Sheet,
   SheetContent,
@@ -24,8 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useDeliveries } from "@/services/deliveries";
-import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 
 const tabs = [
@@ -45,129 +40,8 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   useAllRealtime();
   useDriverNotifications();
   const location = useLocation();
-  const { profile, user } = useAuth();
-  const { toast } = useToast();
-  const { stopAlert } = useAudioAlert();
-  const { notifications, unreadCount, markAsRead, clearAll, updateNotificationStatus } = useNotifications();
-  
-  const [driverId, setDriverId] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState<boolean>(false);
-  const [acceptingDeliveryId, setAcceptingDeliveryId] = useState<string | null>(null);
-
-  const handleAcceptDelivery = async (deliveryId: string, notificationId: string) => {
-    if (!driverId) {
-      toast({
-        title: "Erro",
-        description: "Motorista não identificado.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setAcceptingDeliveryId(deliveryId);
-    stopAlert();
-
-    try {
-      // Tenta RPC segura primeiro
-      const { data, error } = await safeRpc("update_delivery_status_safe", {
-        p_delivery_id: deliveryId,
-        p_status: "accepted",
-        p_driver_id: driverId,
-      });
-
-      if (!error && data) {
-        if ((data as any).success) {
-          toast({
-            title: "✅ Corrida aceita!",
-            description: "Vá até o ponto de retirada.",
-          });
-          updateNotificationStatus(deliveryId, "accepted");
-          markAsRead(notificationId);
-          return;
-        } else {
-          toast({
-            title: "❌ Ops! Já foi aceita.",
-            description: (data as any).message || "Outro entregador aceitou antes de você.",
-            variant: "destructive",
-          });
-          updateNotificationStatus(deliveryId, "rejected");
-          return;
-        }
-      }
-
-      // Fallback update direto
-      const { data: updateData, error: updateError } = await supabase
-        .from("deliveries")
-        .update({ status: "accepted", driver_id: driverId })
-        .eq("id", deliveryId)
-        .in("status", ["pending", "broadcasted"])
-        .select("id");
-
-      if (updateError) throw updateError;
-      
-      if (!updateData || updateData.length === 0) {
-        toast({
-          title: "❌ Ops! Já foi aceita.",
-          description: "Outro entregador aceitou antes de você.",
-          variant: "destructive",
-        });
-        updateNotificationStatus(deliveryId, "rejected");
-        return;
-      }
-
-      toast({
-        title: "✅ Corrida aceita!",
-        description: "Vá até o ponto de retirada.",
-      });
-      updateNotificationStatus(deliveryId, "accepted");
-      markAsRead(notificationId);
-    } catch (err: any) {
-      const { title, description } = translateDeliveryError(err, "accept");
-      toast({ title, description, variant: "destructive" });
-      updateNotificationStatus(deliveryId, "expired");
-    } finally {
-      setAcceptingDeliveryId(null);
-    }
-  };
-
-  const handleDeclineDelivery = (deliveryId: string, notificationId: string) => {
-    stopAlert();
-    declineDeliveryLocally(deliveryId);
-    updateNotificationStatus(deliveryId, "rejected");
-    markAsRead(notificationId);
-    toast({
-      title: "Silenciada",
-      description: "Você não receberá mais alertas para esta corrida."
-    });
-  };
-
-  useEffect(() => {
-    if (user) {
-      supabase.from("delivery_drivers").select("id, is_online").eq("user_id", user.id).single().then(({ data }) => {
-        if (data) {
-          setDriverId(data.id);
-          setIsOnline(data.is_online ?? false);
-        }
-      });
-    }
-  }, [user]);
-
-  // For "Início" tab (available broadcasted deliveries)
-  const { data: broadcastData } = useDeliveries({
-    status: ["pending", "broadcasted"],
-    driverId: driverId || undefined,
-    enabled: !!driverId && isOnline,
-  });
-  const broadcastCount = useUniqueDeliveries(broadcastData?.data ?? []).length;
-
-  // For "Entregas" tab (driver's active deliveries)
-  const { data: myData } = useDeliveries({
-    driverId: driverId || undefined,
-    enabled: !!driverId,
-  });
-  const activeDeliveriesCount = useUniqueDeliveries(myData?.data ?? []).filter(d => 
-    ["accepted", "collecting", "in_transit"].includes(d.status)
-  ).length;
+  const { profile } = useAuth();
+  const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
 
   const isActive = (href: string) => {
     if (href === "/driver") return location.pathname === "/driver";
@@ -254,41 +128,6 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-2">{n.description}</p>
                           
-                          {/* Botões de Ação para Novas Corridas */}
-                          {n.type === 'delivery' && n.deliveryId && n.deliveryStatus === 'pending' && (
-                            <div className="mt-3 flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
-                                disabled={acceptingDeliveryId === n.deliveryId}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAcceptDelivery(n.deliveryId!, n.id);
-                                }}
-                              >
-                                {acceptingDeliveryId === n.deliveryId ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Truck className="h-4 w-4 mr-1" /> Aceitar
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full border-destructive text-destructive hover:bg-destructive/10 font-bold"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeclineDelivery(n.deliveryId!, n.id);
-                                }}
-                              >
-                                Recusar
-                              </Button>
-                            </div>
-                          )}
-
                           {/* Status Badge */}
                           {n.type === 'delivery' && n.deliveryStatus && n.deliveryStatus !== 'pending' && (
                             <div className="mt-2">
