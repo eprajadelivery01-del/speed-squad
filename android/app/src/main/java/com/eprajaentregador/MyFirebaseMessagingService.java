@@ -177,6 +177,15 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             details = details.replace("Veja no app", "Retirada na Loja");
         }
 
+        // ── DEDUPLICAÇÃO: ignora qualquer push repetido da mesma corrida.
+        String dedupKey = (deliveryId != null && !deliveryId.isEmpty())
+                ? deliveryId
+                : "details:" + details.hashCode();
+        if (!markAlertedOnce(dedupKey)) {
+            Log.d(TAG, "Push duplicado ignorado para " + dedupKey + " (janela de 2 min).");
+            return;
+        }
+
         // Uma única notificação informativa por corrida. O aceite/recusa acontece
         // exclusivamente no card da tela inicial do app.
         try {
