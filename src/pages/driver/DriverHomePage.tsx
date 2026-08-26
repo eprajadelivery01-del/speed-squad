@@ -65,18 +65,18 @@ export default function DriverHomePage() {
           await DeliveryOverlay.requestOverlayPermission();
           // Inicia o Foreground Service nativo para manter o processo ativo
           setTimeout(() => {
-             DeliveryOverlay.startOverlay().catch((e: any) => console.warn("Erro overlay:", e));
+            DeliveryOverlay.startOverlay().catch((e: any) => console.warn("Erro overlay:", e));
           }, 1000);
-        } catch(e) {}
+        } catch (e) { }
       };
       initOverlay();
 
       const listener = App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
-            DeliveryOverlay.startOverlay().catch(() => {
-              // Se falhar ao iniciar (sem permissão), pede a permissão novamente
-              DeliveryOverlay.requestOverlayPermission().catch((e: any) => console.warn("Erro ao pedir overlay:", e));
-            });
+          DeliveryOverlay.startOverlay().catch(() => {
+            // Se falhar ao iniciar (sem permissão), pede a permissão novamente
+            DeliveryOverlay.requestOverlayPermission().catch((e: any) => console.warn("Erro ao pedir overlay:", e));
+          });
         }
       });
 
@@ -98,7 +98,7 @@ export default function DriverHomePage() {
           setDriverRecord({ id: data.id, city_id: data.city_id });
           setIsOnline(data.is_online ?? false);
           setCommissionRate(data.commission_rate !== null && data.commission_rate !== undefined ? Number(data.commission_rate) : 0.40);
-          
+
           // Fetch completed deliveries count
           supabase
             .from("deliveries")
@@ -132,7 +132,7 @@ export default function DriverHomePage() {
   });
 
   const { selectedCity, setCity } = useCity();
-  
+
 
   const updateLocation = useCallback(async (drivId: string) => {
     if (!navigator.geolocation) return;
@@ -219,7 +219,7 @@ export default function DriverHomePage() {
             updated_at: new Date().toISOString(),
           }).eq("id", drivId);
           if (locError && !locError.message?.includes("Failed to fetch") && !locError.message?.includes("Load failed")) {
-             console.warn("Aviso GPS:", locError.message);
+            console.warn("Aviso GPS:", locError.message);
           }
         },
         (err) => {
@@ -240,13 +240,13 @@ export default function DriverHomePage() {
     localStorage.setItem("nexus_location_consent", "true");
     setHasConsent(true);
     setShowConsent(false);
-    
+
     if (driverRecord && !isOnline) {
       setLoading(true);
       const { error } = await supabase.from("delivery_drivers").update({
         is_online: true,
       }).eq("id", driverRecord.id);
-      
+
       if (!error) {
         startTracking(driverRecord.id);
         toast({ title: "Você está online!" });
@@ -262,9 +262,9 @@ export default function DriverHomePage() {
     unlockAudio(); // Destrava o áudio no clique do usuário
     sessionStorage.setItem("sound_enabled", "true");
     sessionStorage.setItem("epj_sound_enabled", "true");
-    
+
     let currentDriverRecord = driverRecord;
-    
+
     if (!currentDriverRecord) {
       if (!user) return;
       setLoading(true);
@@ -273,7 +273,7 @@ export default function DriverHomePage() {
         .select("id, is_online, commission_rate, city_id")
         .eq("user_id", user.id)
         .single();
-      
+
       if (data) {
         currentDriverRecord = { id: data.id, city_id: data.city_id };
         setDriverRecord(currentDriverRecord);
@@ -286,7 +286,7 @@ export default function DriverHomePage() {
     setLoading(true);
     const newStatus = !isOnline;
     if (newStatus && !hasConsent) { setShowConsent(true); setLoading(false); return; }
-    
+
     const updatePayload: any = { is_online: newStatus };
     const cachedFcmToken = localStorage.getItem("driver_fcm_token");
     if (cachedFcmToken) {
@@ -294,13 +294,13 @@ export default function DriverHomePage() {
     }
 
     const { error } = await supabase.from("delivery_drivers").update(updatePayload).eq("id", currentDriverRecord.id);
-    
+
     if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
-    
+
     if (Capacitor.isNativePlatform()) {
       // Sincroniza o estado online com o nativo: o serviço FCM suprime
       // alertas de corrida enquanto o entregador estiver offline.
-      DeliveryOverlay.setDriverOnlineStatus({ isOnline: newStatus }).catch(() => {});
+      DeliveryOverlay.setDriverOnlineStatus({ isOnline: newStatus }).catch(() => { });
     }
 
     if (newStatus) {
@@ -308,17 +308,17 @@ export default function DriverHomePage() {
       toast({ title: "Você está online!" });
       // Inicia foreground service para manter o processo ativo em segundo plano
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.startOverlay().catch(() => {});
+        DeliveryOverlay.startOverlay().catch(() => { });
       }
     } else {
       stopTracking();
       toast({ title: "Você está offline" });
       // Para o foreground service para economizar bateria
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.stopOverlay().catch(() => {});
+        DeliveryOverlay.stopOverlay().catch(() => { });
       }
     }
-    
+
     setIsOnline(newStatus);
     setLoading(false);
   };
@@ -330,48 +330,25 @@ export default function DriverHomePage() {
 
     // Limpa imediatamente o popup flutuante e o som nativo para não continuar alertando
     if (Capacitor.isNativePlatform()) {
-      DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => {});
-      DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => {});
-      DeliveryOverlay.stopNativeAudio().catch(() => {});
+      DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => { });
+      DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => { });
+      DeliveryOverlay.stopNativeAudio().catch(() => { });
     }
     acceptDeliveryLocally(deliveryId);
     setAcceptedLocalIds(prev => [...prev, deliveryId]);
 
-    // Se driverRecord ainda não carregou, busca no cache ou resolve com retries
+    // Se driverRecord ainda não carregou, busca agora antes de prosseguir
     let currentRecord = driverRecord;
     if (!currentRecord) {
-      const cachedId = localStorage.getItem("driver_id");
-      if (cachedId) {
-        currentRecord = { id: cachedId, city_id: "" };
-        setDriverRecord(currentRecord);
-      } else {
-        for (let i = 0; i < 8; i++) {
-          let u = user;
-          if (!u?.id) {
-            const { data: authData } = await supabase.auth.getUser();
-            u = authData?.user;
-          }
-          if (u?.id) {
-            const { data: dRow } = await supabase
-              .from("delivery_drivers")
-              .select("id, city_id")
-              .eq("user_id", u.id)
-              .maybeSingle();
-            if (dRow?.id) {
-              currentRecord = { id: dRow.id, city_id: dRow.city_id };
-              setDriverRecord(currentRecord);
-              try { localStorage.setItem("driver_id", dRow.id); } catch(e) {}
-              break;
-            }
-          }
-          await new Promise((r) => setTimeout(r, 400));
-        }
-      }
-      if (!currentRecord) {
-        isSubmittingRef.current = false;
-        toast({ title: "Erro de identificação", description: "Não foi possível carregar seu perfil de entregador.", variant: "destructive" });
-        return;
-      }
+      if (!user) { isSubmittingRef.current = false; return; }
+      const { data } = await supabase
+        .from("delivery_drivers")
+        .select("id, city_id")
+        .eq("user_id", user.id)
+        .single();
+      if (!data) { isSubmittingRef.current = false; return; }
+      currentRecord = { id: data.id, city_id: data.city_id };
+      setDriverRecord(currentRecord);
     }
 
     updateStatus(
@@ -387,15 +364,15 @@ export default function DriverHomePage() {
         },
         onError: (error: any) => {
           isSubmittingRef.current = false;
-          
+
           // REVERT LOCAL STATE IF IT WAS EAGERLY ACCEPTED
           setAcceptedLocalIds(prev => prev.filter(id => id !== deliveryId));
           const accepted = getAcceptedDeliveries();
           accepted.delete(deliveryId);
           try {
             localStorage.setItem("accepted_deliveries", JSON.stringify(Array.from(accepted)));
-          } catch(e) {}
-          
+          } catch (e) { }
+
           // Mark as rejected so it doesn't pop up again
           setRejectedLocalIds(prev => [...prev, deliveryId]);
           declineDeliveryLocally(deliveryId);
@@ -453,7 +430,7 @@ export default function DriverHomePage() {
           console.log("[NativeAccept] Pending delivery accepted on startup:", deliveryId);
           handleAcceptDelivery(deliveryId);
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [searchParams, setSearchParams]);
 
@@ -472,7 +449,7 @@ export default function DriverHomePage() {
         setRejectedLocalIds(prev => [...prev, id]);
       }
     };
-    
+
     window.addEventListener("delivery-accepted", handleNativeAccept);
     window.addEventListener("delivery-rejected", handleNativeReject);
     window.addEventListener("delivery-declined", handleNativeReject);
@@ -493,16 +470,16 @@ export default function DriverHomePage() {
         }
       });
     }
-    
+
     return () => {
       window.removeEventListener("delivery-accepted", handleNativeAccept);
       window.removeEventListener("delivery-rejected", handleNativeReject);
       window.removeEventListener("delivery-declined", handleNativeReject);
       if (declinePluginListener) {
-        declinePluginListener.then((l: any) => l.remove()).catch(() => {});
+        declinePluginListener.then((l: any) => l.remove()).catch(() => { });
       }
       if (acceptPluginListener) {
-        acceptPluginListener.then((l: any) => l.remove()).catch(() => {});
+        acceptPluginListener.then((l: any) => l.remove()).catch(() => { });
       }
     };
   }, [navigate]);
@@ -510,7 +487,7 @@ export default function DriverHomePage() {
   return (
     <DriverLayout>
       <div className="flex flex-col gap-5">
-          {/* Greeting */}
+        {/* Greeting */}
         <div>
           <h2 className="text-2xl font-extrabold text-foreground">
             Olá, {firstName || "Entregador"} 👋
@@ -672,16 +649,16 @@ export default function DriverHomePage() {
   );
 }
 
-function BroadcastDeliveryCard({ 
-  del, 
-  onAcceptDelivery, 
+function BroadcastDeliveryCard({
+  del,
+  onAcceptDelivery,
   onDeclineDelivery,
-  updatingStatus 
-}: { 
-  del: any, 
+  updatingStatus
+}: {
+  del: any,
   onAcceptDelivery: (id: string) => void,
   onDeclineDelivery: (id: string) => void,
-  updatingStatus: boolean 
+  updatingStatus: boolean
 }) {
   const [realStoreName, setRealStoreName] = useState<string>(
     del.companies?.trade_name || del.companies?.name || del.company_name || del.store_name || ""
@@ -735,9 +712,9 @@ function BroadcastDeliveryCard({
       else if (methods.has('money') || methods.has('cash')) chargeMethod = "Dinheiro";
       else if (methods.has('pix')) chargeMethod = "PIX";
       else if (methods.has('card')) chargeMethod = "Cartão Online";
-      
+
       if (chargeMethod === "Máquina Móvel" || chargeMethod === "Dinheiro" || chargeMethod === "PIX") {
-         showCharge = true;
+        showCharge = true;
       }
     }
   } else if (chargeAmount > 0) {
@@ -748,7 +725,7 @@ function BroadcastDeliveryCard({
     <div key={del.id} className="relative bg-card/60 backdrop-blur-xl rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/20 dark:border-white/10 flex flex-col gap-5 overflow-hidden group">
       {/* Background glow effect */}
       <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/30 transition-colors duration-500" />
-      
+
       {/* Header: Store and Value */}
       <div className="flex justify-between items-start z-10">
         <div className="flex flex-col gap-1">
@@ -769,7 +746,7 @@ function BroadcastDeliveryCard({
           <h4 className="text-xl font-extrabold text-foreground tracking-tight mt-1">{realStoreName || "Loja Não Identificada"}</h4>
           <p className="text-sm font-medium text-muted-foreground">{del.customer_name}</p>
         </div>
-        
+
         {((del.delivery_fee != null && del.delivery_fee > 0) || (del.value != null && del.value > 0) || (del.price != null && del.price > 0)) && (
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ganhos</span>
@@ -783,7 +760,7 @@ function BroadcastDeliveryCard({
       {/* Route Timeline */}
       <div className="relative flex flex-col gap-4 pl-3 py-1 z-10">
         <div className="absolute left-[17px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-foreground/20 rounded-full" />
-        
+
         {/* Pickup */}
         <div className="flex items-start gap-4">
           <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(var(--primary),0.2)] mt-1.5 relative z-10" />
@@ -792,7 +769,7 @@ function BroadcastDeliveryCard({
             <span className="text-sm font-semibold text-foreground mt-0.5">{del.pickup_address || "Retirada na loja"}</span>
           </div>
         </div>
-        
+
         {/* Dropoff */}
         <div className="flex items-start gap-4">
           <div className="w-3 h-3 rounded-full bg-foreground border-2 border-background shadow-[0_0_0_2px_rgba(var(--foreground),0.2)] mt-1.5 relative z-10" />
@@ -876,7 +853,7 @@ function BroadcastDeliveryCard({
         >
           <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#ff4713]" />
           <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
-          
+
           <div className="relative flex items-center gap-2">
             {updatingStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
             ACEITAR CORRIDA

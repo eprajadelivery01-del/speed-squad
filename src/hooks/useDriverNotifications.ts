@@ -106,7 +106,7 @@ export function useDriverNotifications() {
       let actListener: any = null;
       let receivedListener: any = null;
       let refreshListener: PluginListenerHandle | null = null;
-      
+
       try {
         const syncFcmToken = async (tokenVal: string) => {
           if (!tokenVal) return;
@@ -131,13 +131,13 @@ export function useDriverNotifications() {
 
         DeliveryOverlay.getPendingFcmToken().then(({ token }) => {
           if (token) syncFcmToken(token);
-        }).catch(() => {});
+        }).catch(() => { });
         const refreshPromise = DeliveryOverlay.addListener("onFcmTokenRefresh", ({ token }) => {
           if (token) syncFcmToken(token);
         });
         Promise.resolve(refreshPromise).then((listener) => {
           refreshListener = listener;
-        }).catch(() => {});
+        }).catch(() => { });
 
         // Tenta sincronizar token já existente em cache quando o usuário carrega
         const cachedToken = localStorage.getItem("driver_fcm_token");
@@ -171,45 +171,45 @@ export function useDriverNotifications() {
           console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
-              // Dedup: FCM + realtime + polling podem chegar juntos; só o primeiro anuncia.
-              if (!isOnlineRef.current) return;
-              if (seenIdsRef.current.has(deliveryId) || getDeclinedDeliveries().has(deliveryId)) {
-                  console.log("[FCM_NATIVE_RECEIVED] duplicado/recusado ignorado:", deliveryId);
-                  return;
-              }
-              seenIdsRef.current.add(deliveryId);
-              activeAlertsRef.current.add(deliveryId);
-              try {
-                 const { data } = await supabase
-                   .from("deliveries")
-                   .select("*, companies(name, address), orders(delivery_fee)")
-                   .eq("id", deliveryId)
-                   .single();
+            // Dedup: FCM + realtime + polling podem chegar juntos; só o primeiro anuncia.
+            if (!isOnlineRef.current) return;
+            if (seenIdsRef.current.has(deliveryId) || getDeclinedDeliveries().has(deliveryId)) {
+              console.log("[FCM_NATIVE_RECEIVED] duplicado/recusado ignorado:", deliveryId);
+              return;
+            }
+            seenIdsRef.current.add(deliveryId);
+            activeAlertsRef.current.add(deliveryId);
+            try {
+              const { data } = await supabase
+                .from("deliveries")
+                .select("*, companies(name, address), orders(delivery_fee)")
+                .eq("id", deliveryId)
+                .single();
 
-                 if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
-                     console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
-                     return;
-                 }
-                 
-                  const d = data as any;
-                  const storeName = await fetchRealStoreName(d);
-                  const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.address || storeName || "Local de Coleta";
-                  const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || "Endereço do cliente";
-                  
-                  const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
-                  const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
-                 
-                   const fcmFee = `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
-                   addNotificationRef.current({
-                     type: "delivery",
-                     title: "Nova corrida disponível",
-                     description: `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: ${fcmFee}`,
-                     deliveryId,
-                     deliveryStatus: "pending",
-                   });
-              } catch (e) {
-                 console.warn("Erro validando FCM status:", e);
+              if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
+                console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
+                return;
               }
+
+              const d = data as any;
+              const storeName = await fetchRealStoreName(d);
+              const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.address || storeName || "Local de Coleta";
+              const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || "Endereço do cliente";
+
+              const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
+              const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
+
+              const fcmFee = `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+              addNotificationRef.current({
+                type: "delivery",
+                title: "Nova corrida disponível",
+                description: `${storeName}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}\nGanhos: ${fcmFee}`,
+                deliveryId,
+                deliveryStatus: "pending",
+              });
+            } catch (e) {
+              console.warn("Erro validando FCM status:", e);
+            }
           }
         });
       } catch (e) {
@@ -217,10 +217,10 @@ export function useDriverNotifications() {
       }
 
       return () => {
-        if (regListener) regListener.then((l: any) => l.remove()).catch(() => {});
-        if (errListener) errListener.then((l: any) => l.remove()).catch(() => {});
-        if (actListener) actListener.then((l: any) => l.remove()).catch(() => {});
-        if (receivedListener) receivedListener.then((l: any) => l.remove()).catch(() => {});
+        if (regListener) regListener.then((l: any) => l.remove()).catch(() => { });
+        if (errListener) errListener.then((l: any) => l.remove()).catch(() => { });
+        if (actListener) actListener.then((l: any) => l.remove()).catch(() => { });
+        if (receivedListener) receivedListener.then((l: any) => l.remove()).catch(() => { });
         if (refreshListener) refreshListener.remove();
       };
     }
@@ -240,10 +240,10 @@ export function useDriverNotifications() {
           stopAlert();
         }
         if (Capacitor.isNativePlatform()) {
-          LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
+          LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => { });
           // Remove também a notificação nativa postada pelo FCM na bandeja e no overlay flutuante.
-          DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => {});
-          DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => {});
+          DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => { });
+          DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => { });
         }
       }
     };
@@ -323,7 +323,7 @@ export function useDriverNotifications() {
       let fullStoreName = storeName;
       try {
         fullStoreName = (await fetchRealStoreName(delivery)) || storeName;
-      } catch {}
+      } catch { }
       const fullPickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || delivery.companies?.address || fullStoreName || "Retirada na Loja";
       const fullDropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
 
@@ -357,8 +357,8 @@ export function useDriverNotifications() {
             pickup: fullPickup,
             dropoff: fullDropoff,
             fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`,
-          }).catch(() => {});
-        } catch {}
+          }).catch(() => { });
+        } catch { }
       }
 
       // 5) A notificação web
@@ -369,7 +369,7 @@ export function useDriverNotifications() {
             icon: "/logo.png",
             tag: `delivery-${delivery.id}`,
           });
-        } catch {}
+        } catch { }
       }
     };
 
@@ -379,8 +379,8 @@ export function useDriverNotifications() {
         stopAlert();
       }
       if (Capacitor.isNativePlatform()) {
-        LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
-        DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => {});
+        LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => { });
+        DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => { });
       }
       updateNotificationStatus(deliveryId, "expired");
     };
@@ -398,7 +398,7 @@ export function useDriverNotifications() {
       isOnlineRef.current = driverRow.is_online ?? false;
       // Sincroniza o estado online com o nativo (suprime alertas FCM offline)
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.setDriverOnlineStatus({ isOnline: isOnlineRef.current }).catch(() => {});
+        DeliveryOverlay.setDriverOnlineStatus({ isOnline: isOnlineRef.current }).catch(() => { });
       }
 
       // Persiste driver_id + token no SharedPreferences nativo para que o aceite
@@ -407,7 +407,7 @@ export function useDriverNotifications() {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           const userToken = session?.access_token ?? "";
-          DeliveryOverlay.saveDriverContext({ driverId, userToken }).catch(() => {});
+          DeliveryOverlay.saveDriverContext({ driverId, userToken }).catch(() => { });
         } catch (e) {
           console.warn("[Notify] saveDriverContext falhou:", e);
         }
@@ -429,7 +429,7 @@ export function useDriverNotifications() {
             const wasOnline = isOnlineRef.current;
             isOnlineRef.current = updated.is_online ?? false;
             if (Capacitor.isNativePlatform()) {
-              DeliveryOverlay.setDriverOnlineStatus({ isOnline: isOnlineRef.current }).catch(() => {});
+              DeliveryOverlay.setDriverOnlineStatus({ isOnline: isOnlineRef.current }).catch(() => { });
             }
             if (!isOnlineRef.current && wasOnline) {
               // Silenced when going offline
@@ -458,7 +458,7 @@ export function useDriverNotifications() {
 
       const pollDeliveries = async () => {
         if (cancelled) return;
-        
+
         if (!isOnlineRef.current) {
           if (activeAlertsRef.current.size > 0) {
             activeAlertsRef.current.clear();
@@ -471,7 +471,7 @@ export function useDriverNotifications() {
           const { data } = await supabase
             .from("available_deliveries")
             .select("*");
-          
+
           if (data && !cancelled) {
             // Auto-healing: para alertas de corridas que saíram do pool
             // (aceitas por outro entregador, canceladas), mesmo que o evento
@@ -595,7 +595,7 @@ export function useDriverNotifications() {
               if (msg.sender_id !== user.id) {
                 try {
                   playAlert();
-                } catch {}
+                } catch { }
                 toast({ title: "💬 Nova mensagem", description: msg.content });
                 addNotification({
                   type: "chat",
@@ -615,14 +615,14 @@ export function useDriverNotifications() {
                           extra: null,
                         },
                       ],
-                    }).catch(() => {});
+                    }).catch(() => { });
                   } else {
                     try {
                       new Notification("💬 Nova mensagem", {
                         body: msg.content,
                         icon: "/logo.png",
                       });
-                    } catch {}
+                    } catch { }
                   }
                 }
               }
