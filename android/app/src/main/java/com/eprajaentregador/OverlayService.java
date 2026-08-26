@@ -299,76 +299,28 @@ public class OverlayService extends Service {
     }
 
     private void acquireKeepAliveLocks() {
-        // ── WAKE LOCK: mantém a CPU ativa para polling/websocket não morrer
+        // Reduz consumo de bateria: Não mantém WifiLock permanente nem WakeLock contínuo.
+        // O Android e o FCM já gerenciam sockets em segundo plano com baixíssimo consumo.
+    }
+
+    public void acquireTemporaryWakeLock(long durationMs) {
         try {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
             if (pm != null) {
-                wakeLock = pm.newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK,
-                        "EprjaEntregador::OverlayWakeLock");
-                wakeLock.setReferenceCounted(false);
-                wakeLock.acquire();
-                Log.d(TAG, "WakeLock adquirido — CPU ativa em segundo plano.");
+                if (wakeLock == null) {
+                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "EprjaEntregador::DeliveryWakeLock");
+                    wakeLock.setReferenceCounted(false);
+                }
+                wakeLock.acquire(durationMs);
+                Log.d(TAG, "WakeLock temporário adquirido por " + durationMs + "ms.");
             }
         } catch (Exception e) {
-            Log.w(TAG, "Erro ao adquirir WakeLock: " + e.getMessage());
-        }
-
-        // ── WIFI LOCK: mantém a conexão Wi-Fi ativa em modo de alto desempenho
-        try {
-            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-            if (wm != null) {
-                wifiLock = wm.createWifiLock(
-                        WifiManager.WIFI_MODE_FULL_HIGH_PERF,
-                        "EprjaEntregador::OverlayWifiLock");
-                wifiLock.setReferenceCounted(false);
-                wifiLock.acquire();
-                Log.d(TAG, "WifiLock adquirido — Wi-Fi ativo em segundo plano.");
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Erro ao adquirir WifiLock: " + e.getMessage());
-        }
-
-        // ── NETWORK CALLBACK: solicita que o sistema mantenha a rede ativa
-        try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-            if (cm != null) {
-                NetworkRequest request = new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build();
-                networkCallback = new ConnectivityManager.NetworkCallback() {
-                    @Override
-                    public void onAvailable(Network network) {
-                        Log.d(TAG, "Rede disponível — conexão mantida.");
-                    }
-                    @Override
-                    public void onLost(Network network) {
-                        Log.w(TAG, "Rede perdida — aguardando reconexão.");
-                    }
-                };
-                cm.registerNetworkCallback(request, networkCallback);
-                Log.d(TAG, "NetworkCallback registrado.");
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Erro ao registrar NetworkCallback: " + e.getMessage());
+            Log.w(TAG, "Erro ao adquirir WakeLock temporário: " + e.getMessage());
         }
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // O usuário fechou o app da lista de recentes: religa o serviço
-        // para continuar recebendo corridas por FCM.
-        try {
-            Intent restart = new Intent(getApplicationContext(), OverlayService.class);
-            restart.setAction(ACTION_KEEP_ALIVE);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                getApplicationContext().startForegroundService(restart);
-            } else {
-                getApplicationContext().startService(restart);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Falha ao religar após task removida: " + e.getMessage());
-        }
         super.onTaskRemoved(rootIntent);
     }
 
@@ -381,36 +333,16 @@ public class OverlayService extends Service {
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
-                Log.d(TAG, "WakeLock liberado.");
             }
-        } catch (Exception e) { /* ignore */ }
+            wakeLock = null;
+        } catch (Exception ignored) {}
 
-        // Libera WifiLock
+        // Remove views
         try {
-            if (wifiLock != null && wifiLock.isHeld()) {
-                wifiLock.release();
-                Log.d(TAG, "WifiLock liberado.");
-            }
-        } catch (Exception e) { /* ignore */ }
-
-        // Desregistra NetworkCallback
-        try {
-            if (networkCallback != null) {
-                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-                if (cm != null) {
-                    cm.unregisterNetworkCallback(networkCallback);
-                }
-                networkCallback = null;
-                Log.d(TAG, "NetworkCallback desregistrado.");
-            }
-        } catch (Exception e) { /* ignore */ }
-
-        // Remove a floating view se existir
-        if (floatingView != null && windowManager != null) {
-            try {
+            if (floatingView != null && windowManager != null) {
                 windowManager.removeView(floatingView);
-            } catch (Exception e) { /* ignore */ }
-            floatingView = null;
-        }
+                floatingView = null;
+            }
+        } catch (Exception ignored) {}
     }
 }

@@ -173,39 +173,28 @@ export default function DriverHomePage() {
         await handleCoordsUpdate(pos.coords.latitude, pos.coords.longitude);
       },
       (err) => {
-        console.warn("Geolocation warning (high accuracy failed):", err.message);
-        // Fallback once to low accuracy on failure/timeout
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            await handleCoordsUpdate(pos.coords.latitude, pos.coords.longitude);
-          },
-          (fallbackErr) => {
-            console.warn("Geolocation warning (low accuracy fallback failed):", fallbackErr.message);
-            setIsDetecting(false);
-            isQueryingRef.current = false;
-          },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-        );
+        setIsDetecting(false);
+        isQueryingRef.current = false;
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 }
     );
   }, [selectedCity, setCity]);
 
   const startTracking = useCallback((drivId: string) => {
     updateLocation(drivId);
-    // Increase polling fallback interval to 45 seconds to reduce concurrency and locks
-    intervalRef.current = setInterval(() => updateLocation(drivId), 45000);
+    // Intervalo equilibrado para poupar bateria e não sobrecarregar
+    intervalRef.current = setInterval(() => updateLocation(drivId), 60000);
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
 
-          // Skip DB write if location has not changed significantly (approx. 10 meters)
+          // Skip DB write if location has not changed significantly (approx. 20 meters)
           if (lastCoordsRef.current) {
             const latDiff = Math.abs(lastCoordsRef.current.latitude - lat);
             const lngDiff = Math.abs(lastCoordsRef.current.longitude - lng);
-            if (latDiff < 0.0001 && lngDiff < 0.0001) {
+            if (latDiff < 0.0002 && lngDiff < 0.0002) {
               return;
             }
           }
@@ -221,20 +210,14 @@ export default function DriverHomePage() {
             longitude: lng,
             updated_at: new Date().toISOString(),
           }).eq("id", drivId);
-          if (locError) {
-            // Ignorar erros de rede comuns (perda de sinal ou app em background no iOS)
-            // para não floodar o Telegram do Monitorepraja.
-            if (locError.message?.includes("Load failed") || locError.message?.includes("Failed to fetch")) {
-               console.warn("Aviso GPS: Sinal de internet ruim ou app em background, update ignorado.");
-            } else {
-               console.error("Erro ao atualizar GPS (watch) no BD:", locError);
-            }
+          if (locError && !locError.message?.includes("Failed to fetch") && !locError.message?.includes("Load failed")) {
+             console.warn("Aviso GPS:", locError.message);
           }
         },
         (err) => {
-          console.warn("watchPosition warning:", err.message);
+          console.warn("watchPosition aviso:", err.message);
         },
-        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
+        { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 }
       );
     }
   }, [updateLocation, selectedCity, setCity]);
@@ -565,7 +548,7 @@ export default function DriverHomePage() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-foreground">
-                🔥 Corridas disponíveis
+                Corridas disponíveis
                 {broadcastDeliveries.length > 0 && (
                   <span className="ml-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                     {broadcastDeliveries.length}
