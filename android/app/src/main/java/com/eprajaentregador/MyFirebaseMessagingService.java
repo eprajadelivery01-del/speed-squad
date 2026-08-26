@@ -100,18 +100,24 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // ── CANCELAMENTO: Quando outro entregador aceita a corrida ou ela é cancelada
         if ("cancel_delivery".equals(type)) {
             String deliveryId = data.get("deliveryId");
+            if (deliveryId == null || deliveryId.isEmpty()) deliveryId = data.get("delivery_id");
             Log.d(TAG, "Corrida " + deliveryId + " indisponível. Encerrando notificação.");
-
-            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null && deliveryId != null && !deliveryId.isEmpty()) {
-                nm.cancel(hashId(deliveryId));
-            }
+            cancelDeliveryAlert(this, deliveryId);
             return;
         }
 
-        boolean isDelivery = "delivery".equals(type) || "INSERT".equals(type) || "UPDATE".equals(type) 
+        boolean isDelivery = "delivery".equals(type) || "INSERT".equals(type) || "UPDATE".equals(type)
                 || "new_delivery".equals(type) || data.containsKey("deliveryId") || data.containsKey("delivery_id");
         if (!isDelivery) return;
+
+        // ── GUARDA OFFLINE: entregador offline não deve receber som/alerta de corrida.
+        // Default true para não quebrar instalações que ainda não gravaram a flag.
+        boolean driverOnline = getSharedPreferences(DeliveryOverlayPlugin.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("is_online", true);
+        if (!driverOnline) {
+            Log.d(TAG, "Entregador offline — alerta de corrida suprimido.");
+            return;
+        }
 
         String deliveryId = data.get("deliveryId");
         if (deliveryId == null || deliveryId.isEmpty()) deliveryId = data.get("delivery_id");
