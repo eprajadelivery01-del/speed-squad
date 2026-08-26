@@ -20,7 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useDeliveries } from "@/services/deliveries";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useUniqueDeliveries } from "@/hooks/useUniqueDeliveries";
 
 const tabs = [
@@ -40,8 +41,40 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   useAllRealtime();
   useDriverNotifications();
   const location = useLocation();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
+  const [driverId, setDriverId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("delivery_drivers")
+      .select("id, is_online")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setDriverId(data.id);
+          setIsOnline(data.is_online ?? false);
+        }
+      });
+  }, [user?.id]);
+
+  const { data: broadcastData } = useDeliveries({
+    status: ["pending", "broadcasted"],
+    driverId: driverId || undefined,
+    enabled: Boolean(driverId) && isOnline,
+  });
+  const broadcastCount = useUniqueDeliveries(broadcastData?.data ?? []).length;
+
+  const { data: myData } = useDeliveries({
+    driverId: driverId || undefined,
+    enabled: Boolean(driverId),
+  });
+  const activeDeliveriesCount = useUniqueDeliveries(myData?.data ?? []).filter((delivery) =>
+    ["accepted", "collecting", "in_transit"].includes(delivery.status)
+  ).length;
 
   const isActive = (href: string) => {
     if (href === "/driver") return location.pathname === "/driver";

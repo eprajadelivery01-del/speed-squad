@@ -32,6 +32,15 @@ public class DeliveryOverlayPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getPendingFcmToken(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token = prefs.getString("pending_fcm_token", "");
+        JSObject ret = new JSObject();
+        ret.put("token", token);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void requestOverlayPermission(PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getContext())) {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,

@@ -138,11 +138,11 @@ serve(async (req) => {
     if (companyId) {
       const { data: comp } = await supabaseClient
         .from('companies')
-        .select('name, address, trade_name')
+        .select('name, address')
         .eq('id', companyId)
         .maybeSingle();
       if (comp) {
-        companyName = comp.trade_name || comp.name || companyName || "É Pra Já Delivery";
+        companyName = comp.name || companyName || "É Pra Já Delivery";
         if (!pickupAddr && comp.address) pickupAddr = comp.address;
       }
     }
@@ -239,9 +239,10 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Erro desconhecido ao enviar push"
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
     })

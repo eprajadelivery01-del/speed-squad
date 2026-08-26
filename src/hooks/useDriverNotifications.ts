@@ -4,8 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
-import { safeRpc } from "@/lib/safeRpc";
-import { translateDeliveryError } from "@/lib/errorMessages";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { PushNotifications } from "@capacitor/push-notifications";
@@ -22,13 +20,6 @@ const hashId = (str: string | number) => {
   }
   return Math.abs(hash);
 };
-
-const pickAddress = (d: any): string =>
-  d?.pickup_address ||
-  d?.delivery_address ||
-  d?.dropoff_address ||
-  d?.address ||
-  "Confira na tela inicial.";
 
 const announcedDeliveryIds = new Set<string>();
 
@@ -76,18 +67,9 @@ export function useDriverNotifications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { addNotification, updateNotificationStatus } = useNotifications();
-  const { playAlert, startLoop, stopLoop, stopAlert } = useAudioAlert();
-  
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
+  const { playAlert, startLoop, stopAlert } = useAudioAlert();
   const addNotificationRef = useRef(addNotification);
   addNotificationRef.current = addNotification;
-  const updateNotificationStatusRef = useRef(updateNotificationStatus);
-  updateNotificationStatusRef.current = updateNotificationStatus;
-  const startLoopRef = useRef(startLoop);
-  startLoopRef.current = startLoop;
-  const stopAlertRef = useRef(stopAlert);
-  stopAlertRef.current = stopAlert;
   const permissionRef = useRef<NotificationPermission>("default");
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
@@ -144,6 +126,8 @@ export function useDriverNotifications() {
       let regListener: any = null;
       let errListener: any = null;
       let actListener: any = null;
+      let receivedListener: any = null;
+      let refreshListener: PluginListenerHandle | null = null;
       
       try {
         const syncFcmToken = async (tokenVal: string) => {
@@ -176,6 +160,15 @@ export function useDriverNotifications() {
           syncFcmToken(token.value);
         });
 
+        DeliveryOverlay.getPendingFcmToken().then(({ token }) => {
+          if (token) syncFcmToken(token);
+        }).catch(() => {});
+        DeliveryOverlay.addListener("onFcmTokenRefresh", ({ token }) => {
+          if (token) syncFcmToken(token);
+        }).then((listener) => {
+          refreshListener = listener;
+        }).catch(() => {});
+
         // Tenta sincronizar token já existente em cache quando o usuário carrega
         const cachedToken = localStorage.getItem("driver_fcm_token");
         if (cachedToken && user?.id) {
@@ -204,7 +197,7 @@ export function useDriverNotifications() {
           }
         });
 
-        PushNotifications.addListener("pushNotificationReceived", async (notification) => {
+        receivedListener = PushNotifications.addListener("pushNotificationReceived", async (notification) => {
           console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
@@ -249,6 +242,8 @@ export function useDriverNotifications() {
         if (regListener) regListener.then((l: any) => l.remove()).catch(() => {});
         if (errListener) errListener.then((l: any) => l.remove()).catch(() => {});
         if (actListener) actListener.then((l: any) => l.remove()).catch(() => {});
+        if (receivedListener) receivedListener.then((l: any) => l.remove()).catch(() => {});
+        if (refreshListener) refreshListener.remove();
       };
     }
   }, [user?.id]);
@@ -257,7 +252,6 @@ export function useDriverNotifications() {
     if (!user?.id) return;
 
     let cancelled = false;
-    let actionListener: PluginListenerHandle | null = null;
     let appStateListener: PluginListenerHandle | null = null;
 
     const handleDeclineEvent = (e: any) => {
@@ -307,8 +301,6 @@ export function useDriverNotifications() {
       pickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || storeName || pickup;
       dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || dropoff;
       fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
-
-      const isAppVisible = document.visibilityState === "visible";
 
       let delivery: any = rawDelivery;
       try {
@@ -454,8 +446,6 @@ export function useDriverNotifications() {
             .select("*");
           
           if (data && !cancelled) {
-            const freshIds = new Set(data.map((d: any) => d.id));
-            
             // Notify new runs
             data.forEach((d: any) => notifyNewDelivery(d));
           }
@@ -611,7 +601,6 @@ export function useDriverNotifications() {
       cancelled = true;
       stopAlert();
       window.removeEventListener("delivery-declined", handleDeclineEvent);
-      if (actionListener) actionListener.remove();
       if (appStateListener) appStateListener.remove();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];

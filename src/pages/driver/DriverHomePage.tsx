@@ -383,13 +383,12 @@ export default function DriverHomePage() {
 
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
-  const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries).filter(
-    (delivery) => !rejectedLocalIds.includes(delivery.id) && !acceptedLocalIds.includes(delivery.id)
-  );
-
   const [acceptedLocalIds, setAcceptedLocalIds] = useState<string[]>(() => {
     return Array.from(getAcceptedDeliveries());
   });
+  const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries).filter(
+    (delivery) => !rejectedLocalIds.includes(delivery.id) && !acceptedLocalIds.includes(delivery.id)
+  );
 
 
 
