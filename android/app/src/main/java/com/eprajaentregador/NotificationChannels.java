@@ -12,8 +12,8 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery_alerts_v29_silent";
-    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v29_silent";
+    public static final String INCOMING_CHANNEL_ID = "delivery_alerts_official_v31";
+    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v31";
 
     private NotificationChannels() {}
 
@@ -22,8 +22,10 @@ public final class NotificationChannels {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
 
-        // Limpa TODOS os canais obsoletos para eliminar de vez o som padrão do sistema cacheado pelo Android
+        // Limpa canais obsoletos para forçar o registro correto do som oficial no sistema
         try {
+            nm.deleteNotificationChannel("delivery_alerts_v29_silent");
+            nm.deleteNotificationChannel("marketplace_orders_v29_silent");
             nm.deleteNotificationChannel("fcm_fallback_notification_channel");
             nm.deleteNotificationChannel("delivery-incoming-v25-silent");
             nm.deleteNotificationChannel("marketplace_orders_v25_silent");
@@ -34,20 +36,20 @@ public final class NotificationChannels {
             nm.deleteNotificationChannel("delivery-incoming-v9");
             nm.deleteNotificationChannel("delivery-incoming-v8");
             nm.deleteNotificationChannel("delivery-incoming");
-            nm.deleteNotificationChannel("marketplace_orders_v5");
-            nm.deleteNotificationChannel("marketplace_orders_v4");
-            nm.deleteNotificationChannel("marketplace_orders_v3");
-            nm.deleteNotificationChannel("marketplace_orders_v2");
-            nm.deleteNotificationChannel("overlay_service_channel");
-            nm.deleteNotificationChannel("overlay_service");
         } catch (Exception ignored) {}
 
-        // 1) Canal Nativo Marketplace Orders v29 (Totalmente silencioso para o sistema operacional)
+        Uri soundUri = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.notification_sound);
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .build();
+
+        // 1) Canal Nativo Marketplace Orders v31
         if (nm.getNotificationChannel(MARKETPLACE_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     MARKETPLACE_CHANNEL_ID, "Novos Pedidos & Corridas", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Alerta visual de novas entregas e pedidos É Pra Já");
-            ch.setSound(null, null);
+            ch.setDescription("Alerta sonoro e visual de novas entregas e pedidos É Pra Já");
+            ch.setSound(soundUri, audioAttributes);
             ch.enableVibration(true);
             ch.setVibrationPattern(new long[]{0, 800, 250, 800, 250, 800});
             ch.enableLights(true);
@@ -57,12 +59,12 @@ public final class NotificationChannels {
             nm.createNotificationChannel(ch);
         }
 
-        // 2) Canal Nativo Entregas v29 (Totalmente silencioso no sistema - áudio exclusivo via NativeSoundPlayer)
+        // 2) Canal Nativo Entregas v31 com o som oficial notification_sound.mp3 registrado nativamente
         if (nm.getNotificationChannel(INCOMING_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Alerta visual de novas corridas disponíveis para entregadores");
-            ch.setSound(null, null);
+            ch.setDescription("Alerta sonoro e visual de novas corridas disponíveis para entregadores");
+            ch.setSound(soundUri, audioAttributes);
             ch.enableVibration(true);
             ch.setVibrationPattern(new long[]{0, 800, 250, 800, 250, 800});
             ch.enableLights(true);

@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
@@ -253,6 +254,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     + "\n🏁 Entrega: " + (dropoff != null && !dropoff.trim().isEmpty() ? dropoff : "Endereço do cliente")
                     + "\n💰 Ganhos: " + (fee != null && !fee.trim().isEmpty() ? fee : "A calcular");
 
+            Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_sound);
+
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NotificationChannels.INCOMING_CHANNEL_ID)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(cardTitle)
@@ -263,11 +266,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
-                    .setOnlyAlertOnce(true)
-                    .setNotificationSilent()
-                    .setSilent(true)
-                    .setSound(null)
-                    .setDefaults(0)
+                    .setOnlyAlertOnce(false)
+                    .setSound(soundUri)
                     .setContentIntent(tapPI)
                     .addAction(R.mipmap.ic_launcher, "ACEITAR", acceptPI)
                     .addAction(R.mipmap.ic_launcher, "RECUSAR", declinePI);
@@ -277,9 +277,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 nm.notify(notificationId, builder.build());
                 Log.d(TAG, "Notificação com botões disparada para deliveryId=" + deliveryId);
             }
-
-            // Toca áudio oficial notification_sound.mp3 de forma nativa e direta
-            NativeSoundPlayer.playDeliveryAlert(this);
 
             // Exibe o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
             try {
