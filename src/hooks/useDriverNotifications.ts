@@ -143,15 +143,6 @@ export function useDriverNotifications() {
             if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (user_id):", error.message);
           }
 
-          // Salva também no device_tokens via Edge Function send-push (service role)
-          supabase.functions.invoke("send-push", {
-            body: {
-              action: "register_token",
-              token: tokenVal,
-              userId: user?.id || null,
-              platform: "android"
-            }
-          }).catch(e => console.warn("[FCM] Erro register_token edge function:", e));
         };
 
         // Escuta novas identificações do FCM
@@ -255,7 +246,7 @@ export function useDriverNotifications() {
     let appStateListener: PluginListenerHandle | null = null;
 
     const handleDeclineEvent = (e: any) => {
-      const { deliveryId } = e.detail || {};
+      const deliveryId = e.detail?.deliveryId || e.detail?.id;
       if (deliveryId) {
         activeAlertsRef.current.delete(deliveryId);
         if (activeAlertsRef.current.size === 0) {
@@ -267,6 +258,8 @@ export function useDriverNotifications() {
       }
     };
     window.addEventListener("delivery-declined", handleDeclineEvent);
+    window.addEventListener("delivery-accepted", handleDeclineEvent);
+    window.addEventListener("delivery-rejected", handleDeclineEvent);
 
     const notifyNewDelivery = async (rawDelivery: any) => {
       if (!rawDelivery?.id) return;
@@ -601,6 +594,8 @@ export function useDriverNotifications() {
       cancelled = true;
       stopAlert();
       window.removeEventListener("delivery-declined", handleDeclineEvent);
+      window.removeEventListener("delivery-accepted", handleDeclineEvent);
+      window.removeEventListener("delivery-rejected", handleDeclineEvent);
       if (appStateListener) appStateListener.remove();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];

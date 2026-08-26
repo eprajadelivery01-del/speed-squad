@@ -366,7 +366,6 @@ export default function DriverHomePage() {
           // Mark as rejected so it doesn't pop up again
           setRejectedLocalIds(prev => [...prev, deliveryId]);
           declineDeliveryLocally(deliveryId);
-          window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
 
           const { title, description } = translateDeliveryError(error, "accept");
           toast({ title, description, variant: "destructive" });
@@ -378,7 +377,6 @@ export default function DriverHomePage() {
   const handleDeclineDelivery = (deliveryId: string) => {
     setRejectedLocalIds(prev => [...prev, deliveryId]);
     declineDeliveryLocally(deliveryId);
-    window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
   };
 
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";
@@ -411,10 +409,12 @@ export default function DriverHomePage() {
     
     window.addEventListener("delivery-accepted", handleNativeAccept);
     window.addEventListener("delivery-rejected", handleNativeReject);
+    window.addEventListener("delivery-declined", handleNativeReject);
     
     return () => {
       window.removeEventListener("delivery-accepted", handleNativeAccept);
       window.removeEventListener("delivery-rejected", handleNativeReject);
+      window.removeEventListener("delivery-declined", handleNativeReject);
     };
   }, [navigate]);
 
