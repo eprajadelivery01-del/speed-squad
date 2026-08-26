@@ -164,6 +164,15 @@ public class OverlayService extends Service {
                         }
                     });
                 }
+
+                View initialClose = floatingView.findViewById(R.id.closeButton);
+                if (initialClose != null) {
+                    initialClose.setOnClickListener(v -> hideDeliveryCard(currentDeliveryId));
+                }
+                View initialCardClose = floatingView.findViewById(R.id.cardCloseBtn);
+                if (initialCardClose != null) {
+                    initialCardClose.setOnClickListener(v -> hideDeliveryCard(currentDeliveryId));
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Erro ao criar floating view: " + e.getMessage());
                 floatingView = null;
@@ -194,9 +203,6 @@ public class OverlayService extends Service {
             } catch (Exception e) {
                 Log.w(TAG, "Erro ao acordar tela: " + e.getMessage());
             }
-
-            // Toca o som oficial com volume total e prioridade de chamada
-            NativeSoundPlayer.playDeliveryAlert(this);
 
             this.currentDeliveryId = deliveryId;
             View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
@@ -247,6 +253,14 @@ public class OverlayService extends Service {
 
                 if (btnClose != null) {
                     btnClose.setOnClickListener(v -> {
+                        NativeSoundPlayer.stopSound();
+                        hideDeliveryCard(deliveryId);
+                    });
+                }
+
+                View mainCloseBtn = floatingView.findViewById(R.id.closeButton);
+                if (mainCloseBtn != null) {
+                    mainCloseBtn.setOnClickListener(v -> {
                         NativeSoundPlayer.stopSound();
                         hideDeliveryCard(deliveryId);
                     });

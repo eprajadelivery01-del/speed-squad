@@ -278,9 +278,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 Log.d(TAG, "Notificação com botões disparada para deliveryId=" + deliveryId);
             }
 
-            // Toca o som oficial com volume total e prioridade de toque de chamada
-            NativeSoundPlayer.playDeliveryAlert(this);
-
             // Exibe o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
             try {
                 if (OverlayService.instance != null) {
