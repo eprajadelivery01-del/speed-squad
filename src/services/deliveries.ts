@@ -93,9 +93,13 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       const isAvailableOnly = (status === "pending" || (Array.isArray(status) && status.includes("pending") && status.length === 1)) && !driverId;
       const targetTable = isAvailableOnly ? "available_deliveries" : "deliveries";
 
+      const relationSelect = isAvailableOnly
+        ? "*, companies(id, name)"
+        : "*, companies(id, name), orders(total, payment_method)";
+
       let query = supabase
         .from(targetTable as any)
-        .select("*, companies(id, name), orders(total, payment_method)", { count: "exact" })
+        .select(relationSelect, { count: "exact" })
         .order("created_at", { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
