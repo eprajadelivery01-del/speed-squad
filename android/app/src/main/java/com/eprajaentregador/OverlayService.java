@@ -100,7 +100,7 @@ public class OverlayService extends Service {
 
         if (floatingView != null) return;
 
-        mainHandler.post(() -> {
+        Runnable inflateRunnable = () -> {
             if (floatingView != null) return;
             try {
                 floatingView = LayoutInflater.from(this).inflate(R.layout.floating_bubble, null);
@@ -168,7 +168,13 @@ public class OverlayService extends Service {
                 Log.e(TAG, "Erro ao criar floating view: " + e.getMessage());
                 floatingView = null;
             }
-        });
+        };
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            inflateRunnable.run();
+        } else {
+            mainHandler.post(inflateRunnable);
+        }
     }
 
     public void showDeliveryCard(final String deliveryId, final String storeName, final String pickup, final String dropoff, final String fee) {
