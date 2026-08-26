@@ -218,15 +218,19 @@ export function useDriverNotifications() {
                 immediateDesc = immediateDesc.replace(/Veja no app/g, "Retirada na Loja");
               }
 
+              const isAppVisible = document.visibilityState === "visible";
+
               if (Capacitor.isNativePlatform()) {
-                DeliveryOverlay.testIncomingCall({
-                  details: immediateDesc,
-                  deliveryId: deliveryId,
-                  storeName: notification.data?.storeName,
-                  pickup: notification.data?.pickup,
-                  dropoff: notification.data?.dropoff,
-                  fee: notification.data?.fee
-                }).catch((e: any) => console.warn("Erro ao acordar tela via FCM (imediato):", e));
+                if (!isAppVisible) {
+                  DeliveryOverlay.testIncomingCall({
+                    details: immediateDesc,
+                    deliveryId: deliveryId,
+                    storeName: notification.data?.storeName,
+                    pickup: notification.data?.pickup,
+                    dropoff: notification.data?.dropoff,
+                    fee: notification.data?.fee
+                  }).catch((e: any) => console.warn("Erro ao acordar tela via FCM (imediato):", e));
+                }
               }
 
               try {
@@ -262,14 +266,16 @@ export function useDriverNotifications() {
               }
 
               if (Capacitor.isNativePlatform()) {
-                DeliveryOverlay.updateIncomingCall({
-                  details: immediateDesc,
-                  deliveryId: deliveryId,
-                  storeName: fcmStore,
-                  pickup: fcmPickup,
-                  dropoff: fcmDropoff,
-                  fee: fcmFee
-                }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
+                if (!isAppVisible) {
+                  DeliveryOverlay.updateIncomingCall({
+                    details: immediateDesc,
+                    deliveryId: deliveryId,
+                    storeName: fcmStore,
+                    pickup: fcmPickup,
+                    dropoff: fcmDropoff,
+                    fee: fcmFee
+                  }).catch((e: any) => console.warn("Erro ao atualizar tela via FCM:", e));
+                }
               }
           }
         });
@@ -342,15 +348,19 @@ export function useDriverNotifications() {
       fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
 
       const immediateDesc = `${storeName}\nColeta: ${pickup}\nEntrega: ${dropoff}${fee > 0 ? `\nGanhos: R$ ${fee.toFixed(2).replace('.', ',')}` : ''}`;
+      const isAppVisible = document.visibilityState === "visible";
+
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.testIncomingCall({
-          details: immediateDesc,
-          deliveryId: rawDelivery.id,
-          storeName,
-          pickup,
-          dropoff,
-          fee: fee > 0 ? `R$ ${fee.toFixed(2).replace('.', ',')}` : ""
-        }).catch((e: any) => console.warn("Erro ao acordar tela (imediato):", e));
+        if (!isAppVisible) {
+          DeliveryOverlay.testIncomingCall({
+            details: immediateDesc,
+            deliveryId: rawDelivery.id,
+            storeName,
+            pickup,
+            dropoff,
+            fee: fee > 0 ? `R$ ${fee.toFixed(2).replace('.', ',')}` : ""
+          }).catch((e: any) => console.warn("Erro ao acordar tela (imediato):", e));
+        }
       }
 
       let delivery: any = rawDelivery;
@@ -380,14 +390,30 @@ export function useDriverNotifications() {
       const description = `${displayStore}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
 
       if (Capacitor.isNativePlatform()) {
-        DeliveryOverlay.updateIncomingCall({
-          details: description,
-          deliveryId: delivery.id,
-          storeName: fullStoreName,
-          pickup: fullPickup,
-          dropoff: fullDropoff,
-          fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`
-        }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
+        if (!isAppVisible) {
+          DeliveryOverlay.updateIncomingCall({
+            details: description,
+            deliveryId: delivery.id,
+            storeName: fullStoreName,
+            pickup: fullPickup,
+            dropoff: fullDropoff,
+            fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`
+          }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
+        }
+
+        if (permissionRef.current === "granted") {
+          LocalNotifications.schedule({
+            notifications: [
+              {
+                title: "ÉpraJá - Nova corrida!",
+                body: description,
+                id: hashId(delivery.id),
+                actionTypeId: "DELIVERY_ACTION",
+                extra: { type: "delivery", deliveryId: delivery.id },
+              }
+            ]
+          }).catch(() => {});
+        }
       }
 
       // 2) Toast desativado para não poluir a tela do entregador
@@ -404,7 +430,7 @@ export function useDriverNotifications() {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) A notificação principal já é enviada via FCM (evita duplicidade de notificações na central do celular)
+      // 4) A notificação web
       if (!Capacitor.isNativePlatform() && permissionRef.current === "granted") {
         try {
           new Notification(title, {
