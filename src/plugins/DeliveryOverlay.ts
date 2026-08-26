@@ -20,6 +20,8 @@ export interface DeliveryOverlayPlugin {
   reportCallResult(options: { success: boolean; message?: string }): Promise<void>;
   saveDriverContext(options: { driverId: string; userToken: string }): Promise<void>;
   getPendingFcmToken(): Promise<{ token: string }>;
+  cancelDeliveryNotification(options: { deliveryId: string }): Promise<void>;
+  setDriverOnlineStatus(options: { isOnline: boolean }): Promise<void>;
   addListener(
     eventName: 'onFcmTokenRefresh',
     listenerFunc: (response: { token: string }) => void
@@ -43,6 +45,8 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
       reportCallResult: async () => {},
       saveDriverContext: async () => {},
       getPendingFcmToken: async () => ({ token: "" }),
+      cancelDeliveryNotification: async () => {},
+      setDriverOnlineStatus: async () => {},
       addListener: (eventName: any, listenerFunc: any) => {
         return Promise.resolve({ remove: async () => {} }) as any;
       }
