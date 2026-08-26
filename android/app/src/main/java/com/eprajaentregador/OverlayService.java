@@ -167,11 +167,15 @@ public class OverlayService extends Service {
 
                 View initialClose = floatingView.findViewById(R.id.closeButton);
                 if (initialClose != null) {
-                    initialClose.setOnClickListener(v -> hideDeliveryCard(currentDeliveryId));
+                    initialClose.setOnClickListener(v -> hideOverlayBubble());
                 }
                 View initialCardClose = floatingView.findViewById(R.id.cardCloseBtn);
                 if (initialCardClose != null) {
-                    initialCardClose.setOnClickListener(v -> hideDeliveryCard(currentDeliveryId));
+                    initialCardClose.setOnClickListener(v -> {
+                        NativeSoundPlayer.stopSound();
+                        hideDeliveryCard(currentDeliveryId);
+                        MyFirebaseMessagingService.dismissDeliveryAlert(this, currentDeliveryId);
+                    });
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Erro ao criar floating view: " + e.getMessage());
@@ -184,6 +188,19 @@ public class OverlayService extends Service {
         } else {
             mainHandler.post(inflateRunnable);
         }
+    }
+
+    public void hideOverlayBubble() {
+        NativeSoundPlayer.stopSound();
+        mainHandler.post(() -> {
+            try {
+                if (floatingView != null && windowManager != null) {
+                    windowManager.removeView(floatingView);
+                    floatingView = null;
+                }
+            } catch (Exception ignored) {}
+            stopSelf();
+        });
     }
 
     public void showDeliveryCard(final String deliveryId, final String storeName, final String pickup, final String dropoff, final String fee) {
@@ -255,15 +272,13 @@ public class OverlayService extends Service {
                     btnClose.setOnClickListener(v -> {
                         NativeSoundPlayer.stopSound();
                         hideDeliveryCard(deliveryId);
+                        MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
                     });
                 }
 
                 View mainCloseBtn = floatingView.findViewById(R.id.closeButton);
                 if (mainCloseBtn != null) {
-                    mainCloseBtn.setOnClickListener(v -> {
-                        NativeSoundPlayer.stopSound();
-                        hideDeliveryCard(deliveryId);
-                    });
+                    mainCloseBtn.setOnClickListener(v -> hideOverlayBubble());
                 }
 
                 cardContainer.setVisibility(View.VISIBLE);

@@ -14,20 +14,20 @@
 
         <ImageView
             android:id="@+id/bubbleIcon"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             android:src="@mipmap/ic_launcher_round"
             android:contentDescription="É Pra Já Entregador" />
 
         <ImageView
             android:id="@+id/closeButton"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:layout_gravity="top|end"
-            android:background="#88000000"
-            android:padding="3dp"
+            android:background="@drawable/bg_overlay_card"
+            android:padding="6dp"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:contentDescription="Fechar" />
+            android:contentDescription="Fechar Bolha" />
     </FrameLayout>
 
     <!-- CARD FLUTUANTE DE NOVA CORRIDA (EXPANSÍVEL SOBRE OUTROS APPS) -->
@@ -42,7 +42,7 @@
         android:padding="14dp"
         android:visibility="gone">
 
-        <!-- Top Header com Badge e botão fechar -->
+        <!-- Top Header com Badge e botão fechar com área de toque ampla de 48dp -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -65,10 +65,11 @@
 
             <ImageView
                 android:id="@+id/cardCloseBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:padding="4dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:padding="10dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="Fechar Card" />
         </LinearLayout>
 
         <!-- Nome da Loja -->
