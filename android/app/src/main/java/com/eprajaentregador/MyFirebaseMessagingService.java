@@ -266,14 +266,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setAutoCancel(true)
                     .setOngoing(false)
                     .setOnlyAlertOnce(true)
+                    .setSilent(true)
+                    .setSound(null)
+                    .setDefaults(0)
                     .setContentIntent(tapPI)
                     .addAction(R.mipmap.ic_launcher, "ACEITAR", acceptPI)
                     .addAction(R.mipmap.ic_launcher, "RECUSAR", declinePI);
-
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                builder.setSound(sound);
-                builder.setVibrate(new long[]{0, 600, 200, 600, 200, 600});
-            }
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {

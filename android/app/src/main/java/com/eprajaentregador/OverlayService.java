@@ -33,7 +33,7 @@ import androidx.core.app.NotificationCompat;
 public class OverlayService extends Service {
 
     private static final String TAG = "OverlayService";
-    private static final String FG_CHANNEL_ID = "overlay_service_channel";
+    private static final String FG_CHANNEL_ID = "overlay_service_v25_silent";
     private static final int    FG_NOTIF_ID   = 1;
     public  static final String ACTION_KEEP_ALIVE = "com.eprajaentregador.KEEP_ALIVE";
     public  static final String ACTION_SHOW_DELIVERY = "com.eprajaentregador.SHOW_DELIVERY";
@@ -273,10 +273,19 @@ public class OverlayService extends Service {
     private void startForegroundNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (nm != null && nm.getNotificationChannel(FG_CHANNEL_ID) == null) {
-                NotificationChannel ch = new NotificationChannel(
-                        FG_CHANNEL_ID, "Overlay Service", NotificationManager.IMPORTANCE_LOW);
-                nm.createNotificationChannel(ch);
+            if (nm != null) {
+                try {
+                    nm.deleteNotificationChannel("overlay_service_channel");
+                    nm.deleteNotificationChannel("overlay_service");
+                } catch (Exception ignored) {}
+                if (nm.getNotificationChannel(FG_CHANNEL_ID) == null) {
+                    NotificationChannel ch = new NotificationChannel(
+                            FG_CHANNEL_ID, "Serviço em Segundo Plano", NotificationManager.IMPORTANCE_LOW);
+                    ch.setSound(null, null);
+                    ch.enableVibration(false);
+                    ch.setShowBadge(false);
+                    nm.createNotificationChannel(ch);
+                }
             }
         }
 
@@ -292,6 +301,9 @@ public class OverlayService extends Service {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentIntent(pi)
                 .setOngoing(true)
+                .setSilent(true)
+                .setSound(null)
+                .setDefaults(0)
                 .build();
 
         startForeground(FG_NOTIF_ID, notification);

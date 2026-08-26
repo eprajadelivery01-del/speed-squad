@@ -12,8 +12,8 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v18";
-    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v5";
+    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v25-silent";
+    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v25_silent";
 
     private NotificationChannels() {}
 
@@ -22,21 +22,24 @@ public final class NotificationChannels {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
 
-        // Limpa canais obsoletos para evitar conflitos ou sons silenciosos cacheados
+        // Limpa canais obsoletos para evitar conflitos ou sons padrão cacheados pelo Android
         try {
+            nm.deleteNotificationChannel("delivery-incoming-v18");
             nm.deleteNotificationChannel("delivery-incoming-v15");
             nm.deleteNotificationChannel("delivery-incoming-v12");
             nm.deleteNotificationChannel("delivery-incoming-v10");
             nm.deleteNotificationChannel("delivery-incoming-v9");
             nm.deleteNotificationChannel("delivery-incoming-v8");
             nm.deleteNotificationChannel("delivery-incoming");
+            nm.deleteNotificationChannel("marketplace_orders_v5");
             nm.deleteNotificationChannel("marketplace_orders_v4");
             nm.deleteNotificationChannel("marketplace_orders_v3");
             nm.deleteNotificationChannel("marketplace_orders_v2");
             nm.deleteNotificationChannel("overlay_service_channel");
+            nm.deleteNotificationChannel("overlay_service");
         } catch (Exception ignored) {}
 
-        // 1) Canal Nativo Marketplace Orders v5
+        // 1) Canal Nativo Marketplace Orders v25 (Totalmente silencioso para o sistema operacional)
         if (nm.getNotificationChannel(MARKETPLACE_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     MARKETPLACE_CHANNEL_ID, "Novos Pedidos & Corridas", NotificationManager.IMPORTANCE_HIGH);
@@ -51,7 +54,7 @@ public final class NotificationChannels {
             nm.createNotificationChannel(ch);
         }
 
-        // 2) Canal Nativo Entregas v18 (Áudio reproduzido via NativeSoundPlayer)
+        // 2) Canal Nativo Entregas v25 (Totalmente silencioso no sistema - áudio exclusivo via NativeSoundPlayer)
         if (nm.getNotificationChannel(INCOMING_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já", NotificationManager.IMPORTANCE_HIGH);
