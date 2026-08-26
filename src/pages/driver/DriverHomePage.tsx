@@ -173,28 +173,36 @@ export default function DriverHomePage() {
         await handleCoordsUpdate(pos.coords.latitude, pos.coords.longitude);
       },
       (err) => {
-        setIsDetecting(false);
-        isQueryingRef.current = false;
+        console.warn("Geolocation warning (high accuracy failed):", err.message);
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            await handleCoordsUpdate(pos.coords.latitude, pos.coords.longitude);
+          },
+          (fallbackErr) => {
+            console.warn("Geolocation warning (low accuracy fallback failed):", fallbackErr.message);
+            setIsDetecting(false);
+            isQueryingRef.current = false;
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
     );
   }, [selectedCity, setCity]);
 
   const startTracking = useCallback((drivId: string) => {
     updateLocation(drivId);
-    // Intervalo equilibrado para poupar bateria e não sobrecarregar
-    intervalRef.current = setInterval(() => updateLocation(drivId), 60000);
+    intervalRef.current = setInterval(() => updateLocation(drivId), 30000);
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
 
-          // Skip DB write if location has not changed significantly (approx. 20 meters)
           if (lastCoordsRef.current) {
             const latDiff = Math.abs(lastCoordsRef.current.latitude - lat);
             const lngDiff = Math.abs(lastCoordsRef.current.longitude - lng);
-            if (latDiff < 0.0002 && lngDiff < 0.0002) {
+            if (latDiff < 0.0001 && lngDiff < 0.0001) {
               return;
             }
           }
@@ -217,7 +225,7 @@ export default function DriverHomePage() {
         (err) => {
           console.warn("watchPosition aviso:", err.message);
         },
-        { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 }
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
       );
     }
   }, [updateLocation, selectedCity, setCity]);

@@ -33,7 +33,7 @@ import androidx.core.app.NotificationCompat;
 public class OverlayService extends Service {
 
     private static final String TAG = "OverlayService";
-    private static final String FG_CHANNEL_ID = "overlay_service_silent_v3";
+    private static final String FG_CHANNEL_ID = "overlay_service_channel";
     private static final int    FG_NOTIF_ID   = 1;
     public  static final String ACTION_KEEP_ALIVE = "com.eprajaentregador.KEEP_ALIVE";
     public  static final String ACTION_SHOW_DELIVERY = "com.eprajaentregador.SHOW_DELIVERY";
@@ -164,15 +164,9 @@ public class OverlayService extends Service {
                         }
                     });
                 }
-
-                View closeButton = floatingView.findViewById(R.id.closeButton);
-                if (closeButton != null) {
-                    closeButton.setOnClickListener(v -> stopSelf());
-                }
-
-                Log.d(TAG, "Overlay window criada com sucesso.");
             } catch (Exception e) {
-                Log.e(TAG, "Erro ao criar overlay window: " + e.getMessage());
+                Log.e(TAG, "Erro ao criar floating view: " + e.getMessage());
+                floatingView = null;
             }
         });
     }
@@ -279,22 +273,10 @@ public class OverlayService extends Service {
     private void startForegroundNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (nm != null) {
-                try {
-                    nm.deleteNotificationChannel("overlay_service_channel");
-                    nm.deleteNotificationChannel("overlay_fg_channel");
-                } catch (Exception ignored) {}
-
-                if (nm.getNotificationChannel(FG_CHANNEL_ID) == null) {
-                    NotificationChannel ch = new NotificationChannel(
-                            FG_CHANNEL_ID, "Serviço em Segundo Plano (Silencioso)", NotificationManager.IMPORTANCE_MIN);
-                    ch.setDescription("Mantém o aplicativo ativo em segundo plano");
-                    ch.setSound(null, null);
-                    ch.enableVibration(false);
-                    ch.setShowBadge(false);
-                    ch.enableLights(false);
-                    nm.createNotificationChannel(ch);
-                }
+            if (nm != null && nm.getNotificationChannel(FG_CHANNEL_ID) == null) {
+                NotificationChannel ch = new NotificationChannel(
+                        FG_CHANNEL_ID, "Overlay Service", NotificationManager.IMPORTANCE_LOW);
+                nm.createNotificationChannel(ch);
             }
         }
 
@@ -310,39 +292,82 @@ public class OverlayService extends Service {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentIntent(pi)
                 .setOngoing(true)
-                .setSilent(true)
-                .setSound(null)
-                .setVibrate(null)
-                .setOnlyAlertOnce(true)
-                .setPriority(NotificationCompat.PRIORITY_MIN)
                 .build();
 
         startForeground(FG_NOTIF_ID, notification);
     }
 
     private void acquireKeepAliveLocks() {
-        // Reduz consumo de bateria: Não mantém WifiLock permanente nem WakeLock contínuo.
-        // O Android e o FCM já gerenciam sockets em segundo plano com baixíssimo consumo.
-    }
-
-    public void acquireTemporaryWakeLock(long durationMs) {
+        // ── WAKE LOCK: mantém a CPU ativa para polling/websocket não morrer
         try {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
             if (pm != null) {
-                if (wakeLock == null) {
-                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "EprjaEntregador::DeliveryWakeLock");
-                    wakeLock.setReferenceCounted(false);
-                }
-                wakeLock.acquire(durationMs);
-                Log.d(TAG, "WakeLock temporário adquirido por " + durationMs + "ms.");
+                wakeLock = pm.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK,
+                        "EprjaEntregador::OverlayWakeLock");
+                wakeLock.setReferenceCounted(false);
+                wakeLock.acquire();
+                Log.d(TAG, "WakeLock adquirido — CPU ativa em segundo plano.");
             }
         } catch (Exception e) {
-            Log.w(TAG, "Erro ao adquirir WakeLock temporário: " + e.getMessage());
+            Log.w(TAG, "Erro ao adquirir WakeLock: " + e.getMessage());
+        }
+
+        // ── WIFI LOCK: mantém a conexão Wi-Fi ativa em modo de alto desempenho
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(
+                        WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                        "EprjaEntregador::OverlayWifiLock");
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+                Log.d(TAG, "WifiLock adquirido — Wi-Fi ativo em segundo plano.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao adquirir WifiLock: " + e.getMessage());
+        }
+
+        // ── NETWORK CALLBACK: solicita que o sistema mantenha a rede ativa
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                NetworkRequest request = new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+                networkCallback = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(Network network) {
+                        Log.d(TAG, "Rede disponível — conexão mantida.");
+                    }
+                    @Override
+                    public void onLost(Network network) {
+                        Log.w(TAG, "Rede perdida — aguardando reconexão.");
+                    }
+                };
+                cm.registerNetworkCallback(request, networkCallback);
+                Log.d(TAG, "NetworkCallback registrado.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao registrar NetworkCallback: " + e.getMessage());
         }
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        // O usuário fechou o app da lista de recentes: religa o serviço
+        // para continuar recebendo corridas por FCM.
+        try {
+            Intent restart = new Intent(getApplicationContext(), OverlayService.class);
+            restart.setAction(ACTION_KEEP_ALIVE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getApplicationContext().startForegroundService(restart);
+            } else {
+                getApplicationContext().startService(restart);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Falha ao religar após task removida: " + e.getMessage());
+        }
         super.onTaskRemoved(rootIntent);
     }
 
@@ -355,16 +380,36 @@ public class OverlayService extends Service {
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
+                Log.d(TAG, "WakeLock liberado.");
             }
-            wakeLock = null;
-        } catch (Exception ignored) {}
+        } catch (Exception e) { /* ignore */ }
 
-        // Remove views
+        // Libera WifiLock
         try {
-            if (floatingView != null && windowManager != null) {
-                windowManager.removeView(floatingView);
-                floatingView = null;
+            if (wifiLock != null && wifiLock.isHeld()) {
+                wifiLock.release();
+                Log.d(TAG, "WifiLock liberado.");
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) { /* ignore */ }
+
+        // Desregistra NetworkCallback
+        try {
+            if (networkCallback != null) {
+                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                if (cm != null) {
+                    cm.unregisterNetworkCallback(networkCallback);
+                }
+                networkCallback = null;
+                Log.d(TAG, "NetworkCallback desregistrado.");
+            }
+        } catch (Exception e) { /* ignore */ }
+
+        // Remove a floating view se existir
+        if (floatingView != null && windowManager != null) {
+            try {
+                windowManager.removeView(floatingView);
+            } catch (Exception e) { /* ignore */ }
+            floatingView = null;
+        }
     }
 }

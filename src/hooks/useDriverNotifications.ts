@@ -463,30 +463,12 @@ export function useDriverNotifications() {
         }
       };
 
-      const startPolling = () => {
-        if (!intervalRef.current && !cancelled) {
-          intervalRef.current = setInterval(pollDeliveries, 15000);
-        }
-      };
+      intervalRef.current = setInterval(pollDeliveries, 8000);
 
-      const stopPolling = () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      };
-
-      startPolling();
-
-      // Listener de retorno ao app para forçar fetch imediato e pausar em background
+      // Listener de retorno ao app para forçar fetch imediato caso o WebSocket tenha morrido no background
       appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          if (isOnlineRef.current) {
-            pollDeliveries();
-          }
-          startPolling();
-        } else {
-          stopPolling();
+        if (isActive && isOnlineRef.current) {
+          pollDeliveries();
         }
       });
 
