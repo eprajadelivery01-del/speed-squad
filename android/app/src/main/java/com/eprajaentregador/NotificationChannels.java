@@ -12,7 +12,7 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v9";
+    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v10";
     public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v2";
 
     private NotificationChannels() {}
@@ -43,10 +43,11 @@ public final class NotificationChannels {
             nm.createNotificationChannel(ch);
         }
 
-        // 2) Canal Nativo Entregas v9
+        // 2) Canal Nativo Entregas v10. O novo ID força a aplicação do som
+        // mesmo em aparelhos que salvaram configurações antigas do canal.
         if (nm.getNotificationChannel(INCOMING_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
-                    INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já v9", NotificationManager.IMPORTANCE_HIGH);
+                    INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já", NotificationManager.IMPORTANCE_HIGH);
             ch.setDescription("Alerta sonoro personalizado de novas corridas disponíveis para entregadores");
             ch.setSound(customSound, attrs);
             ch.enableVibration(true);

@@ -49,35 +49,6 @@ public class OverlayService extends Service {
         // Garante que o foreground notification está ativo (obrigatório Android 8+)
         startForegroundNotification();
 
-        // ── POPUP ACTION: disparado pelo FCM para abrir a IncomingCallActivity
-        //    Um foreground service pode chamar startActivity() no Android 10+ sem restrição.
-        if (intent != null && MyFirebaseMessagingService.ACTION_SHOW_POPUP.equals(intent.getAction())) {
-            String details    = intent.getStringExtra("details");
-            String deliveryId = intent.getStringExtra("deliveryId");
-            Log.d(TAG, "SHOW_POPUP recebido — deliveryId=" + deliveryId);
-
-            try {
-                Intent popupIntent = new Intent(this, IncomingCallActivity.class);
-                popupIntent.putExtra("details",    details);
-                popupIntent.putExtra("deliveryId", deliveryId);
-                popupIntent.putExtra("storeName", intent.getStringExtra("storeName"));
-                popupIntent.putExtra("pickup",    intent.getStringExtra("pickup"));
-                popupIntent.putExtra("dropoff",   intent.getStringExtra("dropoff"));
-                popupIntent.putExtra("fee",       intent.getStringExtra("fee"));
-                popupIntent.addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK       |
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP      |
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP     |
-                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                );
-                startActivity(popupIntent);
-                Log.d(TAG, "IncomingCallActivity iniciada pelo OverlayService com sucesso!");
-            } catch (Exception e) {
-                Log.e(TAG, "Falha ao iniciar IncomingCallActivity: " + e.getMessage());
-            }
-            return START_STICKY;
-        }
-
         // ── OVERLAY WINDOW: cria a bolinha flutuante (só se houver permissão)
         boolean canOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
                 || android.provider.Settings.canDrawOverlays(this);
