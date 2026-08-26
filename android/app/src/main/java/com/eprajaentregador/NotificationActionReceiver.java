@@ -16,14 +16,30 @@ public class NotificationActionReceiver extends BroadcastReceiver {
 
         if (deliveryId == null || deliveryId.isEmpty()) return;
 
-        if ("ACTION_DECLINE".equals(action)) {
-            // Para o som imediatamente e remove notificação
-            NativeSoundPlayer.stopSound();
-            MyFirebaseMessagingService.dismissDeliveryAlert(context, deliveryId);
+        // 1. Silencia o som oficial e remove a notificação/card instantaneamente (0ms)
+        NativeSoundPlayer.stopSound();
+        MyFirebaseMessagingService.dismissDeliveryAlert(context, deliveryId);
 
-            // Notify running Capacitor plugin if alive
+        if ("ACTION_DECLINE".equals(action)) {
             if (DeliveryOverlayPlugin.instance != null) {
                 DeliveryOverlayPlugin.instance.triggerDeliveryDeclined(deliveryId);
+            }
+        } else if ("ACTION_ACCEPT".equals(action)) {
+            DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+            if (DeliveryOverlayPlugin.instance != null) {
+                DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+            }
+
+            // Abre o app diretamente para concluir o aceite
+            try {
+                Intent openApp = new Intent(context, MainActivity.class);
+                openApp.putExtra("deliveryId", deliveryId);
+                openApp.putExtra("action", "accept");
+                openApp.putExtra("route", "/driver?deliveryId=" + deliveryId + "&action=accept");
+                openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                context.startActivity(openApp);
+            } catch (Exception e) {
+                Log.e(TAG, "Erro ao abrir MainActivity no aceite: " + e.getMessage());
             }
         }
     }

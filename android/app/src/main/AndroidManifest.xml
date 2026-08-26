@@ -65,6 +65,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="ACTION_DECLINE" />
+                <action android:name="ACTION_ACCEPT" />
             </intent-filter>
         </receiver>
     </application>

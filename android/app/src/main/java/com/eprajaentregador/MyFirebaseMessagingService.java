@@ -212,13 +212,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             int notificationId = hashId(deliveryId == null ? details : deliveryId);
             PendingIntent tapPI = PendingIntent.getActivity(this, notificationId, openIntent, piFlags);
 
-            // Botão 1: ACEITAR na notificação da central
-            Intent acceptIntent = new Intent(this, MainActivity.class);
+            // Botão 1: ACEITAR na notificação da central (BroadcastReceiver para parada instantânea)
+            Intent acceptIntent = new Intent(this, NotificationActionReceiver.class);
+            acceptIntent.setAction("ACTION_ACCEPT");
             acceptIntent.putExtra("deliveryId", deliveryId);
-            acceptIntent.putExtra("action", "accept");
-            acceptIntent.putExtra("route", "/driver?deliveryId=" + deliveryId + "&action=accept");
-            acceptIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-            PendingIntent acceptPI = PendingIntent.getActivity(this, notificationId * 10 + 1, acceptIntent, piFlags);
+            PendingIntent acceptPI = PendingIntent.getBroadcast(this, notificationId * 10 + 1, acceptIntent, piFlags);
 
             // Botão 2: RECUSAR na notificação da central
             Intent declineIntent = new Intent(this, NotificationActionReceiver.class);
