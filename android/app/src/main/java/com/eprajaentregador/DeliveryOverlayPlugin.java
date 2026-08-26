@@ -19,6 +19,8 @@ public class DeliveryOverlayPlugin extends Plugin {
     public static final String PREFS_NAME = "eprajadriver";
 
     public static DeliveryOverlayPlugin instance;
+    private static String pendingAcceptedDeliveryId = null;
+
     @Override
     public void load() {
         super.load();
@@ -35,6 +37,22 @@ public class DeliveryOverlayPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("deliveryId", deliveryId);
         notifyListeners("onDeliveryDeclined", ret);
+    }
+
+    public void triggerDeliveryAccepted(String deliveryId) {
+        if (deliveryId == null || deliveryId.isEmpty()) return;
+        pendingAcceptedDeliveryId = deliveryId;
+        JSObject ret = new JSObject();
+        ret.put("deliveryId", deliveryId);
+        notifyListeners("onDeliveryAccepted", ret);
+    }
+
+    @PluginMethod
+    public void getPendingAcceptedDelivery(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("deliveryId", pendingAcceptedDeliveryId != null ? pendingAcceptedDeliveryId : "");
+        pendingAcceptedDeliveryId = null;
+        call.resolve(ret);
     }
 
     @PluginMethod

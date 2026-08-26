@@ -405,7 +405,6 @@ export default function DriverHomePage() {
 
 
 
-  // O modal de aceite interno foi totalmente desativado a pedido do usuário.
   // Auto-aceite caso o app tenha sido aberto pelo botão "ACEITAR" da notificação nativa
   useEffect(() => {
     const paramDeliveryId = searchParams.get("deliveryId");
@@ -415,12 +414,21 @@ export default function DriverHomePage() {
       setSearchParams({}, { replace: true });
       handleAcceptDelivery(paramDeliveryId);
     }
+
+    if (Capacitor.isNativePlatform()) {
+      DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
+        if (deliveryId) {
+          console.log("[NativeAccept] Pending delivery accepted on startup:", deliveryId);
+          handleAcceptDelivery(deliveryId);
+        }
+      }).catch(() => {});
+    }
   }, [searchParams, setSearchParams]);
 
   // Sincroniza eventos de aceite/recusa do app e do sistema nativo
   useEffect(() => {
     const handleNativeAccept = (e: any) => {
-      const id = e.detail?.id;
+      const id = e.detail?.id || e.detail?.deliveryId;
       if (id) {
         setAcceptedLocalIds(prev => [...prev, id]);
         navigate("/driver/deliveries");
@@ -438,11 +446,18 @@ export default function DriverHomePage() {
     window.addEventListener("delivery-declined", handleNativeReject);
 
     let declinePluginListener: any = null;
+    let acceptPluginListener: any = null;
     if (Capacitor.isNativePlatform()) {
       declinePluginListener = DeliveryOverlay.addListener("onDeliveryDeclined", ({ deliveryId }: { deliveryId: string }) => {
         if (deliveryId) {
           setRejectedLocalIds(prev => [...prev, deliveryId]);
           declineDeliveryLocally(deliveryId);
+        }
+      });
+      acceptPluginListener = DeliveryOverlay.addListener("onDeliveryAccepted", ({ deliveryId }: { deliveryId: string }) => {
+        if (deliveryId) {
+          console.log("[NativeAccept] Received onDeliveryAccepted event:", deliveryId);
+          handleAcceptDelivery(deliveryId);
         }
       });
     }
@@ -453,6 +468,9 @@ export default function DriverHomePage() {
       window.removeEventListener("delivery-declined", handleNativeReject);
       if (declinePluginListener) {
         declinePluginListener.then((l: any) => l.remove()).catch(() => {});
+      }
+      if (acceptPluginListener) {
+        acceptPluginListener.then((l: any) => l.remove()).catch(() => {});
       }
     };
   }, [navigate]);

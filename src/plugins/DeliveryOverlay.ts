@@ -19,6 +19,7 @@ export interface DeliveryOverlayPlugin {
   updateIncomingCall(options: IncomingCallOptions): Promise<void>;
   reportCallResult(options: { success: boolean; message?: string }): Promise<void>;
   saveDriverContext(options: { driverId: string; userToken: string }): Promise<void>;
+  getPendingAcceptedDelivery(): Promise<{ deliveryId: string }>;
   getPendingFcmToken(): Promise<{ token: string }>;
   cancelDeliveryNotification(options: { deliveryId: string }): Promise<void>;
   setDriverOnlineStatus(options: { isOnline: boolean }): Promise<void>;
@@ -27,7 +28,7 @@ export interface DeliveryOverlayPlugin {
   stopNativeAudio(): Promise<void>;
   playNativeAudio(): Promise<void>;
   addListener(
-    eventName: 'onFcmTokenRefresh' | 'onDeliveryDeclined',
+    eventName: 'onFcmTokenRefresh' | 'onDeliveryDeclined' | 'onDeliveryAccepted',
     listenerFunc: (response: any) => void
   ): Promise<PluginListenerHandle> & PluginListenerHandle;
 }
@@ -48,6 +49,7 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
       updateIncomingCall: async () => {},
       reportCallResult: async () => {},
       saveDriverContext: async () => {},
+      getPendingAcceptedDelivery: async () => ({ deliveryId: "" }),
       getPendingFcmToken: async () => ({ token: "" }),
       cancelDeliveryNotification: async () => {},
       setDriverOnlineStatus: async () => {},
