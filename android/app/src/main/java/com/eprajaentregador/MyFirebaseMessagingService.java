@@ -13,12 +13,70 @@ import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MyFirebaseMsgService";
-    private int hashId(String str) {
+
+    // ── Deduplicação de alertas por delivery_id ─────────────────────────────
+    // Múltiplos pushes/intents da mesma corrida (retransmissão FCM, reenvio do
+    // backend, rebroadcast) não podem piscar nem repetir o som: só o primeiro
+    // alerta dentro da janela dispara notificação.
+    private static final long DEDUP_WINDOW_MS = 120_000; // 2 minutos
+    private static final int MAX_TRACKED_ALERTS = 200;
+    private static final Map<String, Long> recentAlerts = Collections.synchronizedMap(
+            new LinkedHashMap<String, Long>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Long> eldest) {
+                    return size() > MAX_TRACKED_ALERTS;
+                }
+            });
+
+    /** Retorna true apenas no primeiro alerta da corrida dentro da janela. */
+    private static boolean markAlertedOnce(String key) {
+        long now = System.currentTimeMillis();
+        synchronized (recentAlerts) {
+            Iterator<Map.Entry<String, Long>> it = recentAlerts.entrySet().iterator();
+            while (it.hasNext()) {
+                if (now - it.next().getValue() > DEDUP_WINDOW_MS) it.remove();
+            }
+            Long last = recentAlerts.get(key);
+            if (last != null && now - last < DEDUP_WINDOW_MS) return false;
+            recentAlerts.put(key, now);
+            return true;
+        }
+    }
+
+    /**
+     * Cancelamento vindo do backend (outro entregador aceitou / corrida
+     * cancelada / rebroadcast): limpa a deduplicação para que um eventual
+     * reenvio legítimo da MESMA corrida volte a alertar.
+     */
+    public static void cancelDeliveryAlert(Context context, String deliveryId) {
+        if (deliveryId == null || deliveryId.isEmpty()) return;
+        synchronized (recentAlerts) {
+            recentAlerts.remove(deliveryId);
+        }
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(hashId(deliveryId));
+    }
+
+    /**
+     * Aceite/recusa feitos pelo próprio entregador no app: apenas remove a
+     * notificação da bandeja, MANTENDO a deduplicação para que pushes
+     * residuais da mesma corrida não re-alertem.
+     */
+    public static void dismissDeliveryAlert(Context context, String deliveryId) {
+        if (deliveryId == null || deliveryId.isEmpty()) return;
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(hashId(deliveryId));
+    }
+
+    private static int hashId(String str) {
         if (str == null) return 0;
         int hash = 0;
         for (int i = 0; i < str.length(); i++) {
@@ -42,18 +100,24 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // ── CANCELAMENTO: Quando outro entregador aceita a corrida ou ela é cancelada
         if ("cancel_delivery".equals(type)) {
             String deliveryId = data.get("deliveryId");
+            if (deliveryId == null || deliveryId.isEmpty()) deliveryId = data.get("delivery_id");
             Log.d(TAG, "Corrida " + deliveryId + " indisponível. Encerrando notificação.");
-
-            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null && deliveryId != null && !deliveryId.isEmpty()) {
-                nm.cancel(hashId(deliveryId));
-            }
+            cancelDeliveryAlert(this, deliveryId);
             return;
         }
 
-        boolean isDelivery = "delivery".equals(type) || "INSERT".equals(type) || "UPDATE".equals(type) 
+        boolean isDelivery = "delivery".equals(type) || "INSERT".equals(type) || "UPDATE".equals(type)
                 || "new_delivery".equals(type) || data.containsKey("deliveryId") || data.containsKey("delivery_id");
         if (!isDelivery) return;
+
+        // ── GUARDA OFFLINE: entregador offline não deve receber som/alerta de corrida.
+        // Default true para não quebrar instalações que ainda não gravaram a flag.
+        boolean driverOnline = getSharedPreferences(DeliveryOverlayPlugin.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean("is_online", true);
+        if (!driverOnline) {
+            Log.d(TAG, "Entregador offline — alerta de corrida suprimido.");
+            return;
+        }
 
         String deliveryId = data.get("deliveryId");
         if (deliveryId == null || deliveryId.isEmpty()) deliveryId = data.get("delivery_id");
@@ -111,6 +175,15 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (details.trim().isEmpty()) details = "Nova corrida disponível!";
         if (details.contains("Veja no app")) {
             details = details.replace("Veja no app", "Retirada na Loja");
+        }
+
+        // ── DEDUPLICAÇÃO: ignora qualquer push repetido da mesma corrida.
+        String dedupKey = (deliveryId != null && !deliveryId.isEmpty())
+                ? deliveryId
+                : "details:" + details.hashCode();
+        if (!markAlertedOnce(dedupKey)) {
+            Log.d(TAG, "Push duplicado ignorado para " + dedupKey + " (janela de 2 min).");
+            return;
         }
 
         // Uma única notificação informativa por corrida. O aceite/recusa acontece

@@ -150,4 +150,31 @@ public class DeliveryOverlayPlugin extends Plugin {
     public void dismissIncomingCall(PluginCall call) {
         call.resolve();
     }
+
+    /**
+     * Remove a notificação de corrida da bandeja quando o próprio entregador
+     * aceita/recusa dentro do app. Mantém a deduplicação ativa no service.
+     */
+    @PluginMethod
+    public void cancelDeliveryNotification(PluginCall call) {
+        String deliveryId = call.getString("deliveryId", "");
+        if (deliveryId != null && !deliveryId.isEmpty()) {
+            MyFirebaseMessagingService.dismissDeliveryAlert(getContext(), deliveryId);
+        }
+        call.resolve();
+    }
+
+    /**
+     * Grava o estado online/offline do entregador no SharedPreferences para que
+     * o MyFirebaseMessagingService suprima alertas quando ele estiver offline.
+     */
+    @PluginMethod
+    public void setDriverOnlineStatus(PluginCall call) {
+        Boolean isOnline = call.getBoolean("isOnline", true);
+        getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("is_online", Boolean.TRUE.equals(isOnline))
+                .apply();
+        call.resolve();
+    }
 }

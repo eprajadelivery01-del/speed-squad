@@ -18,6 +18,7 @@ import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { declineDeliveryLocally, acceptDeliveryLocally, getAcceptedDeliveries, getDeclinedDeliveries } from "@/hooks/useDriverNotifications";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
+import { safeRpc } from "@/lib/safeRpc";
 
 export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
@@ -304,6 +305,12 @@ export default function DriverHomePage() {
     
     if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
     
+    if (Capacitor.isNativePlatform()) {
+      // Sincroniza o estado online com o nativo: o serviço FCM suprime
+      // alertas de corrida enquanto o entregador estiver offline.
+      DeliveryOverlay.setDriverOnlineStatus({ isOnline: newStatus }).catch(() => {});
+    }
+
     if (newStatus) {
       startTracking(currentDriverRecord.id);
       toast({ title: "Você está online!" });
@@ -348,7 +355,9 @@ export default function DriverHomePage() {
       {
         onSuccess: () => {
           isSubmittingRef.current = false;
-          window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId } }));
+          // Persiste localmente e dispara "delivery-accepted": filtra o card,
+          // cancela a notificação nativa e evita toast duplo do realtime.
+          acceptDeliveryLocally(deliveryId);
           toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
           navigate("/driver/deliveries");
         },
@@ -377,6 +386,20 @@ export default function DriverHomePage() {
   const handleDeclineDelivery = (deliveryId: string) => {
     setRejectedLocalIds(prev => [...prev, deliveryId]);
     declineDeliveryLocally(deliveryId);
+
+    // Se a corrida estava atribuída especificamente a este entregador,
+    // libera no Supabase para voltar ao pool e refletir no painel admin.
+    const delivery = (broadcastData?.data ?? []).find((d: any) => d.id === deliveryId);
+    if (delivery?.driver_id && driverRecord?.id && delivery.driver_id === driverRecord.id) {
+      safeRpc("update_delivery_status_safe", {
+        p_delivery_id: deliveryId,
+        p_status: "released",
+        p_driver_id: driverRecord.id,
+      }).then(({ data, error }) => {
+        if (error) console.warn("[Decline] falha ao liberar corrida:", error);
+        else if ((data as any)?.success === false) console.warn("[Decline] liberação recusada:", (data as any)?.error);
+      });
+    }
   };
 
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";

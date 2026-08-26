@@ -83,31 +83,9 @@ export function useDriverNotifications() {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
         if (permissionRef.current === "granted") {
-          if (Capacitor.getPlatform() === "android") {
-            LocalNotifications.registerActionTypes({
-              types: [
-                {
-                  id: "DELIVERY_INFO",
-                  actions: [],
-                },
-              ],
-            }).catch(() => {});
-
-            LocalNotifications.listChannels().then((channels) => {
-              const hasChannel = channels.channels.some(c => c.id === 'delivery-incoming-v10');
-              if (!hasChannel) {
-                LocalNotifications.createChannel({
-                  id: "delivery-incoming-v10",
-                  name: "Novas Corridas É Pra Já",
-                  description: "Alerta de alta prioridade para novas corridas",
-                  importance: 5,
-                  visibility: 1,
-                  sound: "notification_sound.mp3",
-                  vibration: true,
-                }).catch(() => {});
-              }
-            });
-          }
+          // O canal de corridas (delivery-incoming-v10) é criado e validado
+          // exclusivamente pelo código nativo (NotificationChannels.java) para
+          // evitar configurações conflitantes congeladas pelo Android.
         }
       });
     } else {
@@ -193,6 +171,14 @@ export function useDriverNotifications() {
           console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
           const deliveryId = notification.data?.deliveryId;
           if (deliveryId) {
+              // Dedup: FCM + realtime + polling podem chegar juntos; só o primeiro anuncia.
+              if (!isOnlineRef.current) return;
+              if (seenIdsRef.current.has(deliveryId) || getDeclinedDeliveries().has(deliveryId)) {
+                  console.log("[FCM_NATIVE_RECEIVED] duplicado/recusado ignorado:", deliveryId);
+                  return;
+              }
+              seenIdsRef.current.add(deliveryId);
+              activeAlertsRef.current.add(deliveryId);
               try {
                  const { data } = await supabase
                    .from("deliveries")
@@ -255,6 +241,8 @@ export function useDriverNotifications() {
         }
         if (Capacitor.isNativePlatform()) {
           LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
+          // Remove também a notificação nativa postada pelo FCM na bandeja.
+          DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => {});
         }
       }
     };
@@ -370,6 +358,10 @@ export function useDriverNotifications() {
       if (!driverRow || cancelled) return;
       const driverId = driverRow.id;
       isOnlineRef.current = driverRow.is_online ?? false;
+      // Sincroniza o estado online com o nativo (suprime alertas FCM offline)
+      if (Capacitor.isNativePlatform()) {
+        DeliveryOverlay.setDriverOnlineStatus({ isOnline: isOnlineRef.current }).catch(() => {});
+      }
 
       // Persiste driver_id + token no SharedPreferences nativo para que o aceite
       // funcione via HTTP mesmo quando o JS está morto (tela bloqueada, app killed)
@@ -398,6 +390,9 @@ export function useDriverNotifications() {
             const updated = payload.new as any;
             const wasOnline = isOnlineRef.current;
             isOnlineRef.current = updated.is_online ?? false;
+            if (Capacitor.isNativePlatform()) {
+              DeliveryOverlay.setDriverOnlineStatus({ isOnline: isOnlineRef.current }).catch(() => {});
+            }
             if (!isOnlineRef.current && wasOnline) {
               // Silenced when going offline
               activeAlertsRef.current.clear();
@@ -440,6 +435,13 @@ export function useDriverNotifications() {
             .select("*");
           
           if (data && !cancelled) {
+            // Auto-healing: para alertas de corridas que saíram do pool
+            // (aceitas por outro entregador, canceladas), mesmo que o evento
+            // realtime tenha se perdido.
+            const availableIds = new Set(data.map((d: any) => d.id));
+            Array.from(activeAlertsRef.current).forEach((id) => {
+              if (!availableIds.has(id)) stopRingingFor(id);
+            });
             // Notify new runs
             data.forEach((d: any) => notifyNewDelivery(d));
           }
@@ -502,10 +504,14 @@ export function useDriverNotifications() {
 
             // Confirmation for own delivery
             if (d?.driver_id === driverId && o?.status !== d?.status && d?.status === "accepted") {
-              toast({
-                title: "✅ Corrida confirmada!",
-                description: "A entrega foi confirmada. Vá até o ponto de retirada.",
-              });
+              // Evita toast duplo quando o próprio entregador acabou de aceitar
+              // (a Home já exibe "Corrida aceita!" no onSuccess da mutation).
+              if (!getAcceptedDeliveries().has(d.id)) {
+                toast({
+                  title: "✅ Corrida confirmada!",
+                  description: "A entrega foi confirmada. Vá até o ponto de retirada.",
+                });
+              }
               activeAlertsRef.current.delete(d.id);
               if (activeAlertsRef.current.size === 0) {
                 stopAlert();
