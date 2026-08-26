@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -63,6 +64,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(hashId(deliveryId));
+        if (OverlayService.instance != null) {
+            OverlayService.instance.hideDeliveryCard(deliveryId);
+        }
     }
 
     /**
@@ -74,6 +78,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (deliveryId == null || deliveryId.isEmpty()) return;
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(hashId(deliveryId));
+        if (OverlayService.instance != null) {
+            OverlayService.instance.hideDeliveryCard(deliveryId);
+        }
     }
 
     private static int hashId(String str) {
@@ -267,6 +274,28 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             if (nm != null) {
                 nm.notify(notificationId, builder.build());
                 Log.d(TAG, "Notificação com botões disparada para deliveryId=" + deliveryId);
+            }
+
+            // Exibe o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
+            try {
+                if (OverlayService.instance != null) {
+                    OverlayService.instance.showDeliveryCard(deliveryId, finalStoreName, pickup, dropoff, fee);
+                } else {
+                    Intent overlayIntent = new Intent(this, OverlayService.class);
+                    overlayIntent.setAction(OverlayService.ACTION_SHOW_DELIVERY);
+                    overlayIntent.putExtra("deliveryId", deliveryId);
+                    overlayIntent.putExtra("storeName", finalStoreName);
+                    overlayIntent.putExtra("pickup", pickup);
+                    overlayIntent.putExtra("dropoff", dropoff);
+                    overlayIntent.putExtra("fee", fee);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(overlayIntent);
+                    } else {
+                        startService(overlayIntent);
+                    }
+                }
+            } catch (Exception eOverlay) {
+                Log.w(TAG, "Falha ao acionar overlay flutuante: " + eOverlay.getMessage());
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro na notificação: " + e.getMessage());

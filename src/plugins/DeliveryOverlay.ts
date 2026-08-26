@@ -22,9 +22,11 @@ export interface DeliveryOverlayPlugin {
   getPendingFcmToken(): Promise<{ token: string }>;
   cancelDeliveryNotification(options: { deliveryId: string }): Promise<void>;
   setDriverOnlineStatus(options: { isOnline: boolean }): Promise<void>;
+  showDeliveryCard(options: { deliveryId: string; storeName?: string; pickup?: string; dropoff?: string; fee?: string }): Promise<void>;
+  hideDeliveryCard(options: { deliveryId: string }): Promise<void>;
   addListener(
-    eventName: 'onFcmTokenRefresh',
-    listenerFunc: (response: { token: string }) => void
+    eventName: 'onFcmTokenRefresh' | 'onDeliveryDeclined',
+    listenerFunc: (response: any) => void
   ): Promise<PluginListenerHandle> & PluginListenerHandle;
 }
 
@@ -47,6 +49,8 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
       getPendingFcmToken: async () => ({ token: "" }),
       cancelDeliveryNotification: async () => {},
       setDriverOnlineStatus: async () => {},
+      showDeliveryCard: async () => {},
+      hideDeliveryCard: async () => {},
       addListener: (eventName: any, listenerFunc: any) => {
         return Promise.resolve({ remove: async () => {} }) as any;
       }

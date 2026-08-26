@@ -170,6 +170,42 @@ public class DeliveryOverlayPlugin extends Plugin {
         call.resolve();
     }
 
+    @PluginMethod
+    public void showDeliveryCard(PluginCall call) {
+        String deliveryId = call.getString("deliveryId", "");
+        String storeName  = call.getString("storeName", "Nova Corrida");
+        String pickup     = call.getString("pickup", "Retirada na Loja");
+        String dropoff    = call.getString("dropoff", "Endereço do cliente");
+        String fee        = call.getString("fee", "");
+
+        if (OverlayService.instance != null) {
+            OverlayService.instance.showDeliveryCard(deliveryId, storeName, pickup, dropoff, fee);
+        } else {
+            Intent intent = new Intent(getContext(), OverlayService.class);
+            intent.setAction(OverlayService.ACTION_SHOW_DELIVERY);
+            intent.putExtra("deliveryId", deliveryId);
+            intent.putExtra("storeName", storeName);
+            intent.putExtra("pickup", pickup);
+            intent.putExtra("dropoff", dropoff);
+            intent.putExtra("fee", fee);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(intent);
+            } else {
+                getContext().startService(intent);
+            }
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void hideDeliveryCard(PluginCall call) {
+        String deliveryId = call.getString("deliveryId", "");
+        if (OverlayService.instance != null) {
+            OverlayService.instance.hideDeliveryCard(deliveryId);
+        }
+        call.resolve();
+    }
+
     /**
      * Grava o estado online/offline do entregador no SharedPreferences para que
      * o MyFirebaseMessagingService suprima alertas quando ele estiver offline.

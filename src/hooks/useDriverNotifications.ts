@@ -241,8 +241,9 @@ export function useDriverNotifications() {
         }
         if (Capacitor.isNativePlatform()) {
           LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
-          // Remove também a notificação nativa postada pelo FCM na bandeja.
+          // Remove também a notificação nativa postada pelo FCM na bandeja e no overlay flutuante.
           DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => {});
+          DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => {});
         }
       }
     };
@@ -322,7 +323,20 @@ export function useDriverNotifications() {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) A notificação web
+      // 4) Notificação flutuante sobre outros apps (Overlay)
+      if (Capacitor.isNativePlatform()) {
+        try {
+          DeliveryOverlay.showDeliveryCard({
+            deliveryId: delivery.id,
+            storeName: displayStore,
+            pickup: fullPickup,
+            dropoff: fullDropoff,
+            fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`,
+          }).catch(() => {});
+        } catch {}
+      }
+
+      // 5) A notificação web
       if (!Capacitor.isNativePlatform() && permissionRef.current === "granted") {
         try {
           new Notification(title, {
@@ -341,6 +355,7 @@ export function useDriverNotifications() {
       }
       if (Capacitor.isNativePlatform()) {
         LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => {});
+        DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => {});
       }
       updateNotificationStatus(deliveryId, "expired");
     };
