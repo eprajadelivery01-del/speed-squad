@@ -28,14 +28,23 @@ public class MainActivity extends BridgeActivity {
         String deliveryId = intent.getStringExtra("deliveryId");
 
         if (deliveryId != null && !deliveryId.isEmpty() && "accept".equals(action)) {
+            android.util.Log.d("MainActivity", "handleIntent: ACEITAR deliveryId=" + deliveryId);
             NativeSoundPlayer.stopSound();
             MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
+
+            DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
 
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 if (DeliveryOverlayPlugin.instance != null) {
                     DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
                 }
             }, 600);
+
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (DeliveryOverlayPlugin.instance != null) {
+                    DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+                }
+            }, 1800);
         }
     }
 }

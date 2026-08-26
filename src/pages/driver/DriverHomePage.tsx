@@ -337,18 +337,41 @@ export default function DriverHomePage() {
     acceptDeliveryLocally(deliveryId);
     setAcceptedLocalIds(prev => [...prev, deliveryId]);
 
-    // Se driverRecord ainda não carregou, busca agora antes de prosseguir
+    // Se driverRecord ainda não carregou, busca no cache ou resolve com retries
     let currentRecord = driverRecord;
     if (!currentRecord) {
-      if (!user) { isSubmittingRef.current = false; return; }
-      const { data } = await supabase
-        .from("delivery_drivers")
-        .select("id, city_id")
-        .eq("user_id", user.id)
-        .single();
-      if (!data) { isSubmittingRef.current = false; return; }
-      currentRecord = { id: data.id, city_id: data.city_id };
-      setDriverRecord(currentRecord);
+      const cachedId = localStorage.getItem("driver_id");
+      if (cachedId) {
+        currentRecord = { id: cachedId, city_id: "" };
+        setDriverRecord(currentRecord);
+      } else {
+        for (let i = 0; i < 8; i++) {
+          let u = user;
+          if (!u?.id) {
+            const { data: authData } = await supabase.auth.getUser();
+            u = authData?.user;
+          }
+          if (u?.id) {
+            const { data: dRow } = await supabase
+              .from("delivery_drivers")
+              .select("id, city_id")
+              .eq("user_id", u.id)
+              .maybeSingle();
+            if (dRow?.id) {
+              currentRecord = { id: dRow.id, city_id: dRow.city_id };
+              setDriverRecord(currentRecord);
+              try { localStorage.setItem("driver_id", dRow.id); } catch(e) {}
+              break;
+            }
+          }
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
+      if (!currentRecord) {
+        isSubmittingRef.current = false;
+        toast({ title: "Erro de identificação", description: "Não foi possível carregar seu perfil de entregador.", variant: "destructive" });
+        return;
+      }
     }
 
     updateStatus(

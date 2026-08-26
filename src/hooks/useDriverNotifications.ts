@@ -251,6 +251,23 @@ export function useDriverNotifications() {
     window.addEventListener("delivery-accepted", handleDeclineEvent);
     window.addEventListener("delivery-rejected", handleDeclineEvent);
 
+    let nativeDeclineListener: any = null;
+    let nativeAcceptListener: any = null;
+    if (Capacitor.isNativePlatform()) {
+      nativeDeclineListener = DeliveryOverlay.addListener("onDeliveryDeclined", ({ deliveryId }: { deliveryId: string }) => {
+        if (deliveryId) {
+          declineDeliveryLocally(deliveryId);
+          handleDeclineEvent({ detail: { deliveryId } });
+        }
+      });
+      nativeAcceptListener = DeliveryOverlay.addListener("onDeliveryAccepted", ({ deliveryId }: { deliveryId: string }) => {
+        if (deliveryId) {
+          acceptDeliveryLocally(deliveryId);
+          handleDeclineEvent({ detail: { deliveryId } });
+        }
+      });
+    }
+
     const notifyNewDelivery = async (rawDelivery: any) => {
       if (!rawDelivery?.id) return;
       if (!isOnlineRef.current) return;
@@ -624,6 +641,8 @@ export function useDriverNotifications() {
       window.removeEventListener("delivery-declined", handleDeclineEvent);
       window.removeEventListener("delivery-accepted", handleDeclineEvent);
       window.removeEventListener("delivery-rejected", handleDeclineEvent);
+      if (nativeDeclineListener) nativeDeclineListener.remove();
+      if (nativeAcceptListener) nativeAcceptListener.remove();
       if (appStateListener) appStateListener.remove();
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];

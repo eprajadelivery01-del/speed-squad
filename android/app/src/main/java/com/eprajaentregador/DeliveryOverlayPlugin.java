@@ -39,6 +39,10 @@ public class DeliveryOverlayPlugin extends Plugin {
         notifyListeners("onDeliveryDeclined", ret);
     }
 
+    public static void setPendingAccepted(String deliveryId) {
+        pendingAcceptedDeliveryId = deliveryId;
+    }
+
     public void triggerDeliveryAccepted(String deliveryId) {
         if (deliveryId == null || deliveryId.isEmpty()) return;
         pendingAcceptedDeliveryId = deliveryId;

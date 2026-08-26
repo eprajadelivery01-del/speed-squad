@@ -57,6 +57,9 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
         if (data) {
           setDriverId(data.id);
           setIsOnline(data.is_online ?? false);
+          try {
+            localStorage.setItem("driver_id", data.id);
+          } catch(e) {}
         }
       });
   }, [user?.id]);

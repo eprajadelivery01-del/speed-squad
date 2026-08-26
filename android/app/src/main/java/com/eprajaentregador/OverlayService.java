@@ -215,6 +215,8 @@ public class OverlayService extends Service {
                         hideDeliveryCard(deliveryId);
                         MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
 
+                        DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+
                         Intent openApp = new Intent(this, MainActivity.class);
                         openApp.putExtra("deliveryId", deliveryId);
                         openApp.putExtra("action", "accept");
