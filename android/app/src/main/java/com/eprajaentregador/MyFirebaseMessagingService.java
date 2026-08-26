@@ -266,6 +266,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setAutoCancel(true)
                     .setOngoing(false)
                     .setOnlyAlertOnce(true)
+                    .setNotificationSilent()
                     .setSilent(true)
                     .setSound(null)
                     .setDefaults(0)
