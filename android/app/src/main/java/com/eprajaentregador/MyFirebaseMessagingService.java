@@ -260,8 +260,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(formattedBigText))
                     .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
-                    .setSound(sound)
-                    .setVibrate(new long[]{0, 600, 200, 600, 200, 600})
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
@@ -269,6 +267,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setContentIntent(tapPI)
                     .addAction(R.mipmap.ic_launcher, "ACEITAR", acceptPI)
                     .addAction(R.mipmap.ic_launcher, "RECUSAR", declinePI);
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                builder.setSound(sound);
+                builder.setVibrate(new long[]{0, 600, 200, 600, 200, 600});
+            }
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {

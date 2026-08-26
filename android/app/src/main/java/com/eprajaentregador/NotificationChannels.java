@@ -12,8 +12,8 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v12";
-    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v3";
+    public static final String INCOMING_CHANNEL_ID = "delivery-incoming-v15";
+    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v4";
 
     private NotificationChannels() {}
 
@@ -24,11 +24,14 @@ public final class NotificationChannels {
 
         // Limpa canais obsoletos para evitar conflitos ou sons silenciosos cacheados
         try {
+            nm.deleteNotificationChannel("delivery-incoming-v12");
             nm.deleteNotificationChannel("delivery-incoming-v10");
             nm.deleteNotificationChannel("delivery-incoming-v9");
             nm.deleteNotificationChannel("delivery-incoming-v8");
             nm.deleteNotificationChannel("delivery-incoming");
+            nm.deleteNotificationChannel("marketplace_orders_v3");
             nm.deleteNotificationChannel("marketplace_orders_v2");
+            nm.deleteNotificationChannel("overlay_service_channel");
         } catch (Exception ignored) {}
 
         Uri customSound = Uri.parse("android.resource://" + context.getPackageName() + "/" + R.raw.notification_sound);
