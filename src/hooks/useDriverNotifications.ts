@@ -258,15 +258,23 @@ export function useDriverNotifications() {
       const declined = getDeclinedDeliveries();
       if (declined.has(rawDelivery.id)) return;
 
+      const accepted = getAcceptedDeliveries();
+      if (accepted.has(rawDelivery.id)) return;
+
+      if (rawDelivery.driver_id && rawDelivery.driver_id !== null) return;
+      if (rawDelivery.status && rawDelivery.status !== "pending" && rawDelivery.status !== "broadcasted") return;
+
       if (seenIdsRef.current.has(rawDelivery.id)) return;
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // Dispara áudio contínuo oficial (/notification_sound.mp3) até o aceite/recusa
-      try {
-        startLoop();
-      } catch (e) {
-        console.warn("[Notify] som falhou:", e);
+      // Dispara áudio contínuo apenas no navegador web (no app Android, o som é tocado exclusivamente pela notificação nativa da central)
+      if (!Capacitor.isNativePlatform()) {
+        try {
+          startLoop();
+        } catch (e) {
+          console.warn("[Notify] som falhou:", e);
+        }
       }
 
       let storeName = "É Pra Já Delivery";

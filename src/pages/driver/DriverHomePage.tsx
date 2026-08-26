@@ -328,6 +328,15 @@ export default function DriverHomePage() {
     isSubmittingRef.current = true;
     stopAlert();
 
+    // Limpa imediatamente o popup flutuante e o som nativo para não continuar alertando
+    if (Capacitor.isNativePlatform()) {
+      DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => {});
+      DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => {});
+      DeliveryOverlay.stopNativeAudio().catch(() => {});
+    }
+    acceptDeliveryLocally(deliveryId);
+    setAcceptedLocalIds(prev => [...prev, deliveryId]);
+
     // Se driverRecord ainda não carregou, busca agora antes de prosseguir
     let currentRecord = driverRecord;
     if (!currentRecord) {
