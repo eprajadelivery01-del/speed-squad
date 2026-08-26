@@ -182,6 +182,22 @@ public class OverlayService extends Service {
             ensureOverlayView();
             if (floatingView == null) return;
 
+            // Acende a tela imediatamente se o aparelho estiver bloqueado ou apagado
+            try {
+                PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                if (pm != null) {
+                    PowerManager.WakeLock screenLock = pm.newWakeLock(
+                            PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                            "EprjaEntregador::ScreenWakeAlert");
+                    screenLock.acquire(15000);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Erro ao acordar tela: " + e.getMessage());
+            }
+
+            // Toca o áudio oficial nativo
+            NativeSoundPlayer.playDeliveryAlert(this);
+
             this.currentDeliveryId = deliveryId;
             View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
             TextView txtStoreName = floatingView.findViewById(R.id.cardStoreName);
@@ -203,6 +219,7 @@ public class OverlayService extends Service {
 
                 if (btnAccept != null) {
                     btnAccept.setOnClickListener(v -> {
+                        NativeSoundPlayer.stopSound();
                         hideDeliveryCard(deliveryId);
                         MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
 
@@ -217,6 +234,7 @@ public class OverlayService extends Service {
 
                 if (btnDecline != null) {
                     btnDecline.setOnClickListener(v -> {
+                        NativeSoundPlayer.stopSound();
                         hideDeliveryCard(deliveryId);
                         MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
                         if (DeliveryOverlayPlugin.instance != null) {
@@ -226,7 +244,10 @@ public class OverlayService extends Service {
                 }
 
                 if (btnClose != null) {
-                    btnClose.setOnClickListener(v -> hideDeliveryCard(deliveryId));
+                    btnClose.setOnClickListener(v -> {
+                        NativeSoundPlayer.stopSound();
+                        hideDeliveryCard(deliveryId);
+                    });
                 }
 
                 cardContainer.setVisibility(View.VISIBLE);
@@ -238,6 +259,7 @@ public class OverlayService extends Service {
     }
 
     public void hideDeliveryCard(String deliveryId) {
+        NativeSoundPlayer.stopSound();
         mainHandler.post(() -> {
             if (floatingView != null) {
                 View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);

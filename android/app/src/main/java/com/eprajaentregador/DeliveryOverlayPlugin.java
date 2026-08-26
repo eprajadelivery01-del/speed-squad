@@ -219,4 +219,16 @@ public class DeliveryOverlayPlugin extends Plugin {
                 .apply();
         call.resolve();
     }
+
+    @PluginMethod
+    public void stopNativeAudio(PluginCall call) {
+        NativeSoundPlayer.stopSound();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void playNativeAudio(PluginCall call) {
+        NativeSoundPlayer.playDeliveryAlert(getContext());
+        call.resolve();
+    }
 }

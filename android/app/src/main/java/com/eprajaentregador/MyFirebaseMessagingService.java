@@ -59,6 +59,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
      */
     public static void cancelDeliveryAlert(Context context, String deliveryId) {
         if (deliveryId == null || deliveryId.isEmpty()) return;
+        NativeSoundPlayer.stopSound();
         synchronized (recentAlerts) {
             recentAlerts.remove(deliveryId);
         }
@@ -76,6 +77,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
      */
     public static void dismissDeliveryAlert(Context context, String deliveryId) {
         if (deliveryId == null || deliveryId.isEmpty()) return;
+        NativeSoundPlayer.stopSound();
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(hashId(deliveryId));
         if (OverlayService.instance != null) {
@@ -278,6 +280,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 nm.notify(notificationId, builder.build());
                 Log.d(TAG, "Notificação com botões disparada para deliveryId=" + deliveryId);
             }
+
+            // Toca áudio oficial notification_sound.mp3 de forma nativa e direta
+            NativeSoundPlayer.playDeliveryAlert(this);
 
             // Exibe o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
             try {

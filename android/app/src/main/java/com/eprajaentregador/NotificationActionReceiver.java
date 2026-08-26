@@ -17,7 +17,8 @@ public class NotificationActionReceiver extends BroadcastReceiver {
         if (deliveryId == null || deliveryId.isEmpty()) return;
 
         if ("ACTION_DECLINE".equals(action)) {
-            // Dismiss notification from drawer and mark as declined
+            // Para o som imediatamente e remove notificação
+            NativeSoundPlayer.stopSound();
             MyFirebaseMessagingService.dismissDeliveryAlert(context, deliveryId);
 
             // Notify running Capacitor plugin if alive

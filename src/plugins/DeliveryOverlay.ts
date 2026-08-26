@@ -24,6 +24,8 @@ export interface DeliveryOverlayPlugin {
   setDriverOnlineStatus(options: { isOnline: boolean }): Promise<void>;
   showDeliveryCard(options: { deliveryId: string; storeName?: string; pickup?: string; dropoff?: string; fee?: string }): Promise<void>;
   hideDeliveryCard(options: { deliveryId: string }): Promise<void>;
+  stopNativeAudio(): Promise<void>;
+  playNativeAudio(): Promise<void>;
   addListener(
     eventName: 'onFcmTokenRefresh' | 'onDeliveryDeclined',
     listenerFunc: (response: any) => void
@@ -51,6 +53,8 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
       setDriverOnlineStatus: async () => {},
       showDeliveryCard: async () => {},
       hideDeliveryCard: async () => {},
+      stopNativeAudio: async () => {},
+      playNativeAudio: async () => {},
       addListener: (eventName: any, listenerFunc: any) => {
         return Promise.resolve({ remove: async () => {} }) as any;
       }

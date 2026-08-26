@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
+import { DeliveryOverlay } from "../plugins/DeliveryOverlay";
 
 // ═══════════════════════════════════════════════════════════════════
 // Singleton Audio — idêntico ao padrão do Lojista (pronto-agora-hub)
@@ -154,6 +155,7 @@ export function useAudioAlert() {
 
   const stopLoop = useCallback(() => {
     pendingLoop = false;
+    DeliveryOverlay.stopNativeAudio().catch(() => {});
     if (globalAudio) {
       const performPause = () => {
         try {
