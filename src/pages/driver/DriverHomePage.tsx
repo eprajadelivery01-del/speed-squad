@@ -2,7 +2,7 @@ import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { Power, Loader2, MessageSquare, MapPin, ChevronRight, Truck, DollarSign, CheckCircle, Package } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { findNearestCity } from "@/utils/location";
@@ -24,6 +24,7 @@ export default function DriverHomePage() {
   const { stopAlert, unlockAudio } = useAudioAlert();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const displayName = profile?.full_name?.trim() || metadataName || user?.email?.split("@")[0] || "";
@@ -414,7 +415,18 @@ export default function DriverHomePage() {
 
 
   // O modal de aceite interno foi totalmente desativado a pedido do usuário.
-  // As corridas aparecem diretamente na lista da tela inicial com os botões de aceitar/recusar.
+  // Auto-aceite caso o app tenha sido aberto pelo botão "ACEITAR" da notificação nativa
+  useEffect(() => {
+    const paramDeliveryId = searchParams.get("deliveryId");
+    const paramAction = searchParams.get("action");
+
+    if (paramDeliveryId && paramAction === "accept") {
+      setSearchParams({}, { replace: true });
+      handleAcceptDelivery(paramDeliveryId);
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Sincroniza eventos de aceite/recusa do app e do sistema nativo
   useEffect(() => {
     const handleNativeAccept = (e: any) => {
       const id = e.detail?.id;
@@ -433,11 +445,24 @@ export default function DriverHomePage() {
     window.addEventListener("delivery-accepted", handleNativeAccept);
     window.addEventListener("delivery-rejected", handleNativeReject);
     window.addEventListener("delivery-declined", handleNativeReject);
+
+    let declinePluginListener: any = null;
+    if (Capacitor.isNativePlatform()) {
+      declinePluginListener = DeliveryOverlay.addListener("onDeliveryDeclined", ({ deliveryId }: { deliveryId: string }) => {
+        if (deliveryId) {
+          setRejectedLocalIds(prev => [...prev, deliveryId]);
+          declineDeliveryLocally(deliveryId);
+        }
+      });
+    }
     
     return () => {
       window.removeEventListener("delivery-accepted", handleNativeAccept);
       window.removeEventListener("delivery-rejected", handleNativeReject);
       window.removeEventListener("delivery-declined", handleNativeReject);
+      if (declinePluginListener) {
+        declinePluginListener.then((l: any) => l.remove()).catch(() => {});
+      }
     };
   }, [navigate]);
 

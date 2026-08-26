@@ -203,6 +203,20 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             int notificationId = hashId(deliveryId == null ? details : deliveryId);
             PendingIntent tapPI = PendingIntent.getActivity(this, notificationId, openIntent, piFlags);
 
+            // Botão 1: ACEITAR na notificação da central
+            Intent acceptIntent = new Intent(this, MainActivity.class);
+            acceptIntent.putExtra("deliveryId", deliveryId);
+            acceptIntent.putExtra("action", "accept");
+            acceptIntent.putExtra("route", "/driver?deliveryId=" + deliveryId + "&action=accept");
+            acceptIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            PendingIntent acceptPI = PendingIntent.getActivity(this, notificationId * 10 + 1, acceptIntent, piFlags);
+
+            // Botão 2: RECUSAR na notificação da central
+            Intent declineIntent = new Intent(this, NotificationActionReceiver.class);
+            declineIntent.setAction("ACTION_DECLINE");
+            declineIntent.putExtra("deliveryId", deliveryId);
+            PendingIntent declinePI = PendingIntent.getBroadcast(this, notificationId * 10 + 2, declineIntent, piFlags);
+
             android.net.Uri sound = android.net.Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_sound);
 
         // Override estrito de title e storeName para garantir o Nome da Loja
@@ -245,12 +259,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setAutoCancel(true)
                     .setOngoing(false)
                     .setOnlyAlertOnce(true)
-                    .setContentIntent(tapPI);
+                    .setContentIntent(tapPI)
+                    .addAction(R.mipmap.ic_launcher, "ACEITAR", acceptPI)
+                    .addAction(R.mipmap.ic_launcher, "RECUSAR", declinePI);
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.notify(notificationId, builder.build());
-                Log.d(TAG, "Notificação única disparada para deliveryId=" + deliveryId);
+                Log.d(TAG, "Notificação com botões disparada para deliveryId=" + deliveryId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro na notificação: " + e.getMessage());

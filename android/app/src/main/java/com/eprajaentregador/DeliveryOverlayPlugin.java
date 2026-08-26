@@ -31,6 +31,12 @@ public class DeliveryOverlayPlugin extends Plugin {
         notifyListeners("onFcmTokenRefresh", ret);
     }
 
+    public void triggerDeliveryDeclined(String deliveryId) {
+        JSObject ret = new JSObject();
+        ret.put("deliveryId", deliveryId);
+        notifyListeners("onDeliveryDeclined", ret);
+    }
+
     @PluginMethod
     public void getPendingFcmToken(PluginCall call) {
         SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);

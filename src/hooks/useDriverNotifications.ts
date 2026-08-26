@@ -261,13 +261,11 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // No Android o FCM nativo produz um único som. No navegador/PWA usamos WebAudio.
-      if (!Capacitor.isNativePlatform()) {
-        try {
-          startLoop();
-        } catch (e) {
-          console.warn("[Notify] som falhou:", e);
-        }
+      // Dispara áudio contínuo oficial (/notification_sound.mp3) até o aceite/recusa
+      try {
+        startLoop();
+      } catch (e) {
+        console.warn("[Notify] som falhou:", e);
       }
 
       let storeName = "É Pra Já Delivery";

@@ -53,6 +53,15 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".NotificationActionReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="ACTION_DECLINE" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <!-- Permissions -->
