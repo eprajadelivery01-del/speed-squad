@@ -288,7 +288,7 @@ export function useDriverNotifications() {
       try {
         const { data: fullDelivery } = await supabase
           .from("available_deliveries")
-          .select("*, companies(name, address), orders(delivery_fee)")
+          .select("*, companies(name, address)")
           .eq("id", rawDelivery.id)
           .maybeSingle();
         if (fullDelivery) delivery = fullDelivery;
