@@ -401,7 +401,7 @@ export function useDriverNotifications() {
           }).catch((e: any) => console.warn("Erro ao atualizar tela:", e));
         }
 
-        if (permissionRef.current === "granted") {
+        if (permissionRef.current === "granted" && !isAppVisible) {
           LocalNotifications.schedule({
             notifications: [
               {

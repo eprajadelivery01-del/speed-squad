@@ -378,6 +378,12 @@ export default function DriverHomePage() {
     );
   };
 
+  const handleDeclineDelivery = (deliveryId: string) => {
+    setRejectedLocalIds(prev => [...prev, deliveryId]);
+    declineDeliveryLocally(deliveryId);
+    window.dispatchEvent(new CustomEvent("delivery-rejected", { detail: { id: deliveryId } }));
+  };
+
   const firstName = displayName ? displayName.split(/\s+/)[0] : "";
   const rawBroadcastDeliveries = broadcastData?.data ?? [];
   const broadcastDeliveries = useUniqueDeliveries(rawBroadcastDeliveries);
@@ -543,6 +549,7 @@ export default function DriverHomePage() {
                     key={del.id}
                     del={del}
                     onAcceptDelivery={handleAcceptDelivery}
+                    onDeclineDelivery={handleDeclineDelivery}
                     updatingStatus={updatingStatus}
                   />
                 ))}
@@ -578,7 +585,17 @@ export default function DriverHomePage() {
   );
 }
 
-function BroadcastDeliveryCard({ del, onAcceptDelivery, updatingStatus }: { del: any, onAcceptDelivery: (id: string) => void, updatingStatus: boolean }) {
+function BroadcastDeliveryCard({ 
+  del, 
+  onAcceptDelivery, 
+  onDeclineDelivery,
+  updatingStatus 
+}: { 
+  del: any, 
+  onAcceptDelivery: (id: string) => void,
+  onDeclineDelivery: (id: string) => void,
+  updatingStatus: boolean 
+}) {
   const [realStoreName, setRealStoreName] = useState<string>(
     del.companies?.trade_name || del.companies?.name || del.company_name || del.store_name || ""
   );
@@ -756,20 +773,29 @@ function BroadcastDeliveryCard({ del, onAcceptDelivery, updatingStatus }: { del:
         </div>
       )}
 
-      {/* Action Button */}
-      <button
-        onClick={() => onAcceptDelivery(del.id)}
-        disabled={updatingStatus}
-        className="relative w-full h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-base text-white shadow-[0_8px_20px_rgba(var(--primary),0.3)] hover:shadow-[0_10px_25px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all z-10 overflow-hidden group/btn"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#ff4713]" />
-        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
-        
-        <div className="relative flex items-center gap-2">
-          {updatingStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
-          ACEITAR CORRIDA
-        </div>
-      </button>
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 z-10 mt-1">
+        <button
+          onClick={() => onDeclineDelivery(del.id)}
+          disabled={updatingStatus}
+          className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-sm text-muted-foreground bg-muted/80 hover:bg-muted border border-border/50 transition-colors"
+        >
+          RECUSAR
+        </button>
+        <button
+          onClick={() => onAcceptDelivery(del.id)}
+          disabled={updatingStatus}
+          className="flex-[2] relative h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-sm text-white shadow-[0_8px_20px_rgba(var(--primary),0.3)] hover:shadow-[0_10px_25px_rgba(var(--primary),0.4)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all overflow-hidden group/btn"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-primary to-[#ff4713]" />
+          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
+          
+          <div className="relative flex items-center gap-2">
+            {updatingStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
+            ACEITAR CORRIDA
+          </div>
+        </button>
+      </div>
     </div>
   );
 }
