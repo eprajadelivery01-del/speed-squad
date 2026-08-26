@@ -12,8 +12,8 @@ import android.os.Build;
 /** Centraliza a criação do canal de notificação de corridas (som + vibração + tela bloqueada). */
 public final class NotificationChannels {
 
-    public static final String INCOMING_CHANNEL_ID = "delivery_alerts_official_v31";
-    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v31";
+    public static final String INCOMING_CHANNEL_ID = "delivery_alerts_official_v34";
+    public static final String MARKETPLACE_CHANNEL_ID = "marketplace_orders_v34";
 
     private NotificationChannels() {}
 
@@ -24,6 +24,8 @@ public final class NotificationChannels {
 
         // Limpa canais obsoletos para forçar o registro correto do som oficial no sistema
         try {
+            nm.deleteNotificationChannel("delivery_alerts_official_v31");
+            nm.deleteNotificationChannel("marketplace_orders_v31");
             nm.deleteNotificationChannel("delivery_alerts_v29_silent");
             nm.deleteNotificationChannel("marketplace_orders_v29_silent");
             nm.deleteNotificationChannel("fcm_fallback_notification_channel");
@@ -44,7 +46,7 @@ public final class NotificationChannels {
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .build();
 
-        // 1) Canal Nativo Marketplace Orders v31
+        // 1) Canal Nativo Marketplace Orders v34
         if (nm.getNotificationChannel(MARKETPLACE_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     MARKETPLACE_CHANNEL_ID, "Novos Pedidos & Corridas", NotificationManager.IMPORTANCE_HIGH);
@@ -59,7 +61,7 @@ public final class NotificationChannels {
             nm.createNotificationChannel(ch);
         }
 
-        // 2) Canal Nativo Entregas v31 com o som oficial notification_sound.mp3 registrado nativamente
+        // 2) Canal Nativo Entregas v34 com o som oficial notification_sound.mp3 registrado nativamente
         if (nm.getNotificationChannel(INCOMING_CHANNEL_ID) == null) {
             NotificationChannel ch = new NotificationChannel(
                     INCOMING_CHANNEL_ID, "Novas Corridas É Pra Já", NotificationManager.IMPORTANCE_HIGH);

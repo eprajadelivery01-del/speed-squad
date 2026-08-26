@@ -195,7 +195,9 @@ public class OverlayService extends Service {
                 Log.w(TAG, "Erro ao acordar tela: " + e.getMessage());
             }
 
-            // O áudio oficial é tocado exclusivamente na notificação da central do aparelho (MyFirebaseMessagingService)
+            // Toca o som oficial com volume total e prioridade de chamada
+            NativeSoundPlayer.playDeliveryAlert(this);
+
             this.currentDeliveryId = deliveryId;
             View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
             TextView txtStoreName = floatingView.findViewById(R.id.cardStoreName);

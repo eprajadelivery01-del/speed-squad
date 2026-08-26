@@ -41,7 +41,7 @@
         <!-- Define o canal oficial com som notification_sound.mp3 como padrão para o Firebase SDK -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="delivery_alerts_official_v31" />
+            android:value="delivery_alerts_official_v34" />
 
         <!-- Remove o serviço padrão do plugin Capacitor PushNotifications para evitar conflito e garantir que o MyFirebaseMessagingService receba 100% dos eventos em background -->
         <service
