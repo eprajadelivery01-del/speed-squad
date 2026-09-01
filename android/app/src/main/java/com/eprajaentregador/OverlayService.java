@@ -234,7 +234,10 @@ public class OverlayService extends Service {
             if (cardContainer != null) {
                 if (txtStoreName != null) txtStoreName.setText(storeName != null && !storeName.isEmpty() ? storeName : "Nova Corrida");
                 if (txtEarnings != null) {
-                    String formattedFee = fee != null && !fee.isEmpty() ? (fee.startsWith("R$") ? fee : "R$ " + fee) : "A calcular";
+                    String formattedFee = "A calcular";
+                    if (fee != null && !fee.trim().isEmpty() && !"0".equals(fee.trim()) && !"0.00".equals(fee.trim()) && !"R$ 0,00".equals(fee.trim()) && !"R$ 0.00".equals(fee.trim())) {
+                        formattedFee = fee.startsWith("R$") ? fee : "R$ " + fee;
+                    }
                     txtEarnings.setText("Ganhos: " + formattedFee);
                 }
                 if (txtPickup != null) txtPickup.setText("📍 Coleta: " + (pickup != null && !pickup.isEmpty() ? pickup : "Retirada na Loja"));
@@ -247,6 +250,9 @@ public class OverlayService extends Service {
                         MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
 
                         DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+                        if (DeliveryOverlayPlugin.instance != null) {
+                            DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+                        }
 
                         Intent openApp = new Intent(this, MainActivity.class);
                         openApp.putExtra("deliveryId", deliveryId);

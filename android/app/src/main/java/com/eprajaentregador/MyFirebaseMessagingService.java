@@ -149,6 +149,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         String fee        = data.get("fee");
         if (fee == null || fee.isEmpty()) fee = data.get("delivery_fee");
+        if (fee == null || fee.isEmpty()) fee = data.get("price");
+        if (fee == null || fee.isEmpty()) fee = data.get("value");
+        if (fee == null || fee.isEmpty()) fee = data.get("commission");
+        if (fee == null || fee.isEmpty()) fee = data.get("driver_fee");
+        if (fee == null || fee.isEmpty()) fee = data.get("total_value");
         if (storeName == null) storeName = "";
         if (pickup    == null) pickup    = "";
         if (dropoff   == null) dropoff   = "";
@@ -158,7 +163,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             address = address.replace("Veja no app", "Retirada na Loja");
         }
 
-        // Extrai o nome da loja e o endereço de entrega do bloco formatado caso venha como fallback
+        // Extrai o nome da loja, endereço e taxa do bloco formatado caso venham como fallback
         if ((storeName.isEmpty() || "Loja Parceira".equalsIgnoreCase(storeName.trim())) && address != null && address.contains("🏬 Loja:")) {
             try {
                 int startIdx = address.indexOf("🏬 Loja:") + "🏬 Loja:".length();
@@ -176,6 +181,16 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 String parsed = (endIdx != -1 ? address.substring(startIdx, endIdx) : address.substring(startIdx)).trim();
                 if (!parsed.isEmpty() && !"Endereço do cliente".equalsIgnoreCase(parsed)) {
                     dropoff = parsed;
+                }
+            } catch (Exception e) {}
+        }
+        if ((fee.isEmpty() || "0".equals(fee) || "0.00".equals(fee) || "R$ 0,00".equals(fee) || "R$ 0.00".equals(fee)) && address != null && address.contains("💰 Ganhos:")) {
+            try {
+                int startIdx = address.indexOf("💰 Ganhos:") + "💰 Ganhos:".length();
+                int endIdx = address.indexOf("\n", startIdx);
+                String parsed = (endIdx != -1 ? address.substring(startIdx, endIdx) : address.substring(startIdx)).trim();
+                if (!parsed.isEmpty() && !"R$ 0,00".equals(parsed) && !"R$ 0.00".equals(parsed)) {
+                    fee = parsed;
                 }
             } catch (Exception e) {}
         }

@@ -192,8 +192,8 @@ export function useDriverNotifications() {
           if (deliveryId) {
             // Dedup: FCM + realtime + polling podem chegar juntos; só o primeiro anuncia.
             if (!isOnlineRef.current) return;
-            if (seenIdsRef.current.has(deliveryId) || getDeclinedDeliveries().has(deliveryId)) {
-              console.log("[FCM_NATIVE_RECEIVED] duplicado/recusado ignorado:", deliveryId);
+            if (seenIdsRef.current.has(deliveryId) || getDeclinedDeliveries().has(deliveryId) || getAcceptedDeliveries().has(deliveryId)) {
+              console.log("[FCM_NATIVE_RECEIVED] duplicado/recusado/aceito ignorado:", deliveryId);
               return;
             }
             seenIdsRef.current.add(deliveryId);
@@ -313,83 +313,73 @@ export function useDriverNotifications() {
         }
       }
 
-      let storeName = "É Pra Já Delivery";
-      let pickup = "Retirada na Loja";
-      let dropoff = "Endereço do cliente";
-      let fee = 0;
+      // ── EXTRAÇÃO IMEDIATA DOS DADOS BRUTOS (0ms de latência para o entregador) ──
+      const initialStore = rawDelivery.companies?.name || rawDelivery.company_name || rawDelivery.store_name || rawDelivery.storeName || "É Pra Já Delivery";
+      const initialPickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || (initialStore !== "É Pra Já Delivery" ? initialStore : "Retirada na Loja");
+      const initialDropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || "Endereço do cliente";
+      const rawFee = Number(rawDelivery.delivery_fee || rawDelivery.price || rawDelivery.value || rawDelivery.commission || rawDelivery.driver_fee || rawDelivery.total_value || 0);
+      const initialFeeText = rawFee > 0 ? `R$ ${rawFee.toFixed(2).replace(".", ",")}` : "";
 
-      try {
-        storeName = (await fetchRealStoreName(rawDelivery)) || storeName;
-      } catch (e) {
-        console.warn("[Notify] nome da loja falhou:", e);
-      }
-      pickup = rawDelivery.pickup_address || rawDelivery.origin_address || rawDelivery.store_address || rawDelivery.companies?.address || storeName || pickup;
-      dropoff = rawDelivery.delivery_address || rawDelivery.dropoff_address || rawDelivery.address || dropoff;
-      fee = Number(rawDelivery.delivery_fee || rawDelivery.value || rawDelivery.price || rawDelivery.total_value || 0);
-
-      let delivery: any = rawDelivery;
-      try {
-        const { data: fullDelivery } = await supabase
-          .from("available_deliveries")
-          .select("*, companies(name, address)")
-          .eq("id", rawDelivery.id)
-          .maybeSingle();
-        if (fullDelivery) delivery = fullDelivery;
-      } catch (e) {
-        console.warn("[Notify] detalhe da corrida falhou, usando payload bruto:", e);
+      // 1) DISPARO IMEDIATO DO POPUP/CARD NATIVO SOBRE A TELA
+      if (Capacitor.isNativePlatform()) {
+        try {
+          DeliveryOverlay.showDeliveryCard({
+            deliveryId: rawDelivery.id,
+            storeName: initialStore,
+            pickup: initialPickup,
+            dropoff: initialDropoff,
+            fee: initialFeeText,
+          }).catch(() => { });
+        } catch { }
       }
 
-      let fullStoreName = storeName;
-      try {
-        fullStoreName = (await fetchRealStoreName(delivery)) || storeName;
-      } catch { }
-      const fullPickup = delivery.pickup_address || delivery.origin_address || delivery.store_address || delivery.companies?.address || fullStoreName || "Retirada na Loja";
-      const fullDropoff = delivery.delivery_address || delivery.dropoff_address || delivery.address || "Endereço do cliente";
-
-      const orderFee = delivery.orders?.delivery_fee ? Number(delivery.orders.delivery_fee) : 0;
-      const value = orderFee > 0 ? orderFee : Math.max(Number(delivery.delivery_fee) || 0, Number(delivery.value) || 0, Number(delivery.price) || 0, Number(delivery.total_value) || 0, fee);
-
-      const displayStore = fullStoreName || "É Pra Já Delivery";
-      const title = `🏬 ${displayStore}`;
-      const description = `${displayStore}\nColeta: ${fullPickup}\nEntrega: ${fullDropoff}\nGanhos: R$ ${Number(value).toFixed(2).replace(".", ",")}`;
-
-      // 2) Toast desativado para não poluir a tela do entregador
-      // 3) Central de notificações do app
+      // Central de notificações interna do app (imediata)
       try {
         addNotification({
           type: "delivery",
           title: "Nova corrida disponível",
-          description,
-          deliveryId: delivery.id,
+          description: `${initialStore}\nColeta: ${initialPickup}\nEntrega: ${initialDropoff}\nGanhos: ${initialFeeText || "A calcular"}`,
+          deliveryId: rawDelivery.id,
           deliveryStatus: "pending",
         });
       } catch (e) {
         console.warn("[Notify] central falhou:", e);
       }
 
-      // 4) Notificação flutuante sobre outros apps (Overlay)
-      if (Capacitor.isNativePlatform()) {
-        try {
-          DeliveryOverlay.showDeliveryCard({
-            deliveryId: delivery.id,
-            storeName: displayStore,
-            pickup: fullPickup,
-            dropoff: fullDropoff,
-            fee: `R$ ${Number(value).toFixed(2).replace(".", ",")}`,
-          }).catch(() => { });
-        } catch { }
-      }
+      // 2) ENRIQUECIMENTO ASSÍNCRONO EM BACKGROUND (busca dados completos da loja e do pedido)
+      Promise.all([
+        fetchRealStoreName(rawDelivery).catch(() => initialStore),
+        supabase
+          .from("available_deliveries")
+          .select("*, companies(name, address), orders(delivery_fee)")
+          .eq("id", rawDelivery.id)
+          .maybeSingle()
+          .catch(() => ({ data: null })),
+      ]).then(([resolvedStore, fullRes]) => {
+        if (cancelled || !activeAlertsRef.current.has(rawDelivery.id) || getAcceptedDeliveries().has(rawDelivery.id) || getDeclinedDeliveries().has(rawDelivery.id)) {
+          return;
+        }
 
-      // 5) A notificação web
-      if (!Capacitor.isNativePlatform() && permissionRef.current === "granted") {
-        try {
-          new Notification(title, {
-            body: description,
-            icon: "/logo.png",
-            tag: `delivery-${delivery.id}`,
-          });
-        } catch { }
-      }
+        const fullDelivery = fullRes?.data || rawDelivery;
+        const finalStore = resolvedStore || fullDelivery.companies?.name || initialStore;
+        const finalPickup = fullDelivery.pickup_address || fullDelivery.origin_address || fullDelivery.store_address || fullDelivery.companies?.address || (finalStore !== "É Pra Já Delivery" ? finalStore : initialPickup);
+        const finalDropoff = fullDelivery.delivery_address || fullDelivery.dropoff_address || fullDelivery.address || initialDropoff;
+
+        const orderFee = fullDelivery.orders?.delivery_fee ? Number(fullDelivery.orders.delivery_fee) : 0;
+        const finalFee = orderFee > 0 ? orderFee : Math.max(Number(fullDelivery.delivery_fee) || 0, Number(fullDelivery.value) || 0, Number(fullDelivery.price) || 0, Number(fullDelivery.commission) || 0, rawFee);
+        const finalFeeText = finalFee > 0 ? `R$ ${finalFee.toFixed(2).replace(".", ",")}` : initialFeeText;
+
+        // Atualiza o card nativo com nome real da loja e valor final
+        if (Capacitor.isNativePlatform()) {
+          DeliveryOverlay.showDeliveryCard({
+            deliveryId: rawDelivery.id,
+            storeName: finalStore,
+            pickup: finalPickup,
+            dropoff: finalDropoff,
+            fee: finalFeeText,
+          }).catch(() => { });
+        }
+      }).catch(() => { });
     };
 
     const stopRingingFor = (deliveryId: string) => {

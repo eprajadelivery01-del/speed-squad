@@ -147,6 +147,18 @@ serve(async (req) => {
       }
     }
 
+    // 3. Se a taxa ainda for zero ou nula, busca na tabela deliveries pelo registro atual
+    if ((!deliveryFee || deliveryFee === 0) && record.id) {
+      const { data: delRow } = await supabaseClient
+        .from('deliveries')
+        .select('price, value, commission, delivery_fee, driver_fee, total_value')
+        .eq('id', record.id)
+        .maybeSingle();
+      if (delRow) {
+        deliveryFee = Number(delRow.price) || Number(delRow.delivery_fee) || Number(delRow.value) || Number(delRow.commission) || Number(delRow.driver_fee) || Number(delRow.total_value) || 0;
+      }
+    }
+
     // Normalização final: nunca enviar vazio, "-", "—", "null" ou "undefined"
     const norm = (v: unknown, fallback: string) => {
       const s = String(v ?? "").trim()
@@ -160,7 +172,7 @@ serve(async (req) => {
     pickupAddr = norm(pickupAddr, "Retirada na Loja")
     dropoffAddr = norm(dropoffAddr, "Endereço do cliente")
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) deliveryFee = 0
-    const feeText = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`
+    const feeText = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : "A calcular"
 
     const formattedDetails = `🏬 Loja: ${companyName}\n📍 Coleta: ${pickupAddr}\n🏁 Entrega: ${dropoffAddr}\n💰 Ganhos: ${feeText}`
     const pushTitle = companyName && companyName !== "Loja Parceira" && companyName !== "É Pra Já Delivery" ? `🏬 ${companyName}` : `🏬 ${companyName}`;
