@@ -96,6 +96,8 @@ export function useDriverNotifications() {
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
   const seenIdsRef = useRef<Set<string>>(announcedDeliveryIds);
+  const isOnlineRef = useRef<boolean>(false);
+  const activeAlertsRef = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const driverIdRef = useRef<string | null>(null);
