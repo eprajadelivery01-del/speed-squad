@@ -58,7 +58,9 @@ export const DeliveryOverlay: DeliveryOverlayPlugin = Capacitor.getPlatform() ==
       stopNativeAudio: async () => {},
       playNativeAudio: async () => {},
       addListener: (eventName: any, listenerFunc: any) => {
-        return Promise.resolve({ remove: async () => {} }) as any;
+        const handle = { remove: async () => {} };
+        const promise = Promise.resolve(handle);
+        return Object.assign(promise, handle) as any;
       }
     };
 

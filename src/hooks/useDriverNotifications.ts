@@ -23,6 +23,25 @@ const hashId = (str: string | number) => {
 
 const announcedDeliveryIds = new Set<string>();
 
+export const safeRemoveListener = (listener: any) => {
+  if (!listener) return;
+  try {
+    if (typeof listener.then === "function") {
+      listener.then((l: any) => {
+        try {
+          if (l && typeof l.remove === "function") {
+            const res = l.remove();
+            if (res && typeof res.catch === "function") res.catch(() => {});
+          }
+        } catch { }
+      }).catch(() => { });
+    } else if (typeof listener.remove === "function") {
+      const res = listener.remove();
+      if (res && typeof res.catch === "function") res.catch(() => {});
+    }
+  } catch { }
+};
+
 export const getDeclinedDeliveries = (): Set<string> => {
   try {
     const list = localStorage.getItem("declined_deliveries");
@@ -217,11 +236,11 @@ export function useDriverNotifications() {
       }
 
       return () => {
-        if (regListener) regListener.then((l: any) => l.remove()).catch(() => { });
-        if (errListener) errListener.then((l: any) => l.remove()).catch(() => { });
-        if (actListener) actListener.then((l: any) => l.remove()).catch(() => { });
-        if (receivedListener) receivedListener.then((l: any) => l.remove()).catch(() => { });
-        if (refreshListener) refreshListener.remove();
+        safeRemoveListener(regListener);
+        safeRemoveListener(errListener);
+        safeRemoveListener(actListener);
+        safeRemoveListener(receivedListener);
+        safeRemoveListener(refreshListener);
       };
     }
   }, [user?.id]);
@@ -641,9 +660,9 @@ export function useDriverNotifications() {
       window.removeEventListener("delivery-declined", handleDeclineEvent);
       window.removeEventListener("delivery-accepted", handleDeclineEvent);
       window.removeEventListener("delivery-rejected", handleDeclineEvent);
-      if (nativeDeclineListener) nativeDeclineListener.remove();
-      if (nativeAcceptListener) nativeAcceptListener.remove();
-      if (appStateListener) appStateListener.remove();
+      safeRemoveListener(nativeDeclineListener);
+      safeRemoveListener(nativeAcceptListener);
+      safeRemoveListener(appStateListener);
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];
       if (intervalRef.current) clearInterval(intervalRef.current);

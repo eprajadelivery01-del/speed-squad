@@ -16,7 +16,7 @@ import { translateDeliveryError } from "@/lib/errorMessages";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
-import { declineDeliveryLocally, acceptDeliveryLocally, getAcceptedDeliveries, getDeclinedDeliveries } from "@/hooks/useDriverNotifications";
+import { declineDeliveryLocally, acceptDeliveryLocally, getAcceptedDeliveries, getDeclinedDeliveries, safeRemoveListener } from "@/hooks/useDriverNotifications";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
 import { safeRpc } from "@/lib/safeRpc";
 
@@ -81,7 +81,7 @@ export default function DriverHomePage() {
       });
 
       return () => {
-        listener.then(l => l.remove());
+        safeRemoveListener(listener);
       };
     }
   }, []);
@@ -475,12 +475,8 @@ export default function DriverHomePage() {
       window.removeEventListener("delivery-accepted", handleNativeAccept);
       window.removeEventListener("delivery-rejected", handleNativeReject);
       window.removeEventListener("delivery-declined", handleNativeReject);
-      if (declinePluginListener) {
-        declinePluginListener.then((l: any) => l.remove()).catch(() => { });
-      }
-      if (acceptPluginListener) {
-        acceptPluginListener.then((l: any) => l.remove()).catch(() => { });
-      }
+      safeRemoveListener(declinePluginListener);
+      safeRemoveListener(acceptPluginListener);
     };
   }, [navigate]);
 
