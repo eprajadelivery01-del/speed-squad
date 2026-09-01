@@ -17,7 +17,13 @@ export default function DriverDeliveriesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [driverId, setDriverId] = useState<string | null>(null);
+  const [driverId, setDriverId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("driver_id");
+    } catch {
+      return null;
+    }
+  });
   const { mutate: updateStatus, isPending: updating } = useUpdateDeliveryStatus();
   const { stopAlert } = useAudioAlert();
   const isSubmittingRef = useRef(false);
@@ -30,7 +36,12 @@ export default function DriverDeliveriesPage() {
         .eq("user_id", user.id)
         .single()
         .then(({ data }) => {
-          if (data) setDriverId(data.id);
+          if (data) {
+            setDriverId(data.id);
+            try {
+              localStorage.setItem("driver_id", data.id);
+            } catch { }
+          }
         });
     }
   }, [user]);

@@ -102,74 +102,105 @@ export function useDriverNotifications() {
   const queryClient = useQueryClient();
   const driverIdRef = useRef<string | null>(null);
 
+  const acceptDeliveryGlobal = async (deliveryId: string) => {
+    if (!deliveryId) return;
+    console.log("[GlobalAccept] Aceitando corrida globalmente:", deliveryId);
+
+    // 1. Imediatamente para som e cancela alertas/cards locais e nativos (0ms)
+    stopAlert();
+    activeAlertsRef.current.delete(deliveryId);
+    seenIdsRef.current.add(deliveryId);
+    acceptDeliveryLocally(deliveryId);
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => { });
+        DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => { });
+        DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => { });
+        DeliveryOverlay.stopNativeAudio().catch(() => { });
+      } catch { }
+    }
+
+    // 2. Garante que temos o driverId
+    let driverIdToUse = driverIdRef.current || localStorage.getItem("driver_id");
+    if (!driverIdToUse && user?.id) {
+      try {
+        const { data } = await supabase
+          .from("delivery_drivers")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (data?.id) {
+          driverIdToUse = data.id;
+          driverIdRef.current = data.id;
+          localStorage.setItem("driver_id", data.id);
+        }
+      } catch { }
+    }
+
+    // 3. Atualiza no Supabase imediatamente para 'accepted'
+    if (driverIdToUse) {
+      try {
+        const { data, error } = await safeRpc("update_delivery_status_safe", {
+          p_delivery_id: deliveryId,
+          p_status: "accepted",
+          p_driver_id: driverIdToUse,
+        });
+
+        if (error || (data as any)?.success === false) {
+          console.warn("[GlobalAccept] safeRpc retornou erro/falha, aplicando fallback direto:", error || data);
+          await supabase
+            .from("deliveries")
+            .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
+            .eq("id", deliveryId);
+        }
+        toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
+      } catch (e) {
+        console.warn("[GlobalAccept] Falha no safeRpc:", e);
+        try {
+          await supabase
+            .from("deliveries")
+            .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
+            .eq("id", deliveryId);
+        } catch { }
+      }
+    }
+
+    // 4. Invalida as queries do React Query para a aba de entregas atualizar instantaneamente
+    queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+    queryClient.refetchQueries({ queryKey: ["deliveries"] });
+    window.dispatchEvent(new CustomEvent("delivery-accepted", { detail: { id: deliveryId, deliveryId } }));
+
+    // 5. Navega para a aba de entregas em andamento
+    try {
+      if (typeof window !== "undefined" && !window.location.pathname.includes("/driver/deliveries")) {
+        navigate("/driver/deliveries");
+      }
+    } catch { }
+  };
+
+  const acceptDeliveryGlobalRef = useRef(acceptDeliveryGlobal);
+  acceptDeliveryGlobalRef.current = acceptDeliveryGlobal;
+
+  // Trata deep links e parâmetros de URL com ação de aceite imediato
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get("action");
+        const deliveryId = urlParams.get("deliveryId");
+        if (action === "accept" && deliveryId) {
+          console.log("[DeepLinkAccept] Executando aceite via URL:", deliveryId);
+          acceptDeliveryGlobalRef.current(deliveryId);
+        }
+      }
+    } catch { }
+  }, []);
+
   // Permission setup
   useEffect(() => {
     let cancelled = false;
 
-    const acceptDeliveryGlobal = async (deliveryId: string) => {
-      if (!deliveryId) return;
-      console.log("[GlobalAccept] Aceitando corrida globalmente:", deliveryId);
-
-      // 1. Imediatamente para som e cancela alertas/cards
-      stopAlert();
-      activeAlertsRef.current.delete(deliveryId);
-      seenIdsRef.current.add(deliveryId);
-      acceptDeliveryLocally(deliveryId);
-
-      if (Capacitor.isNativePlatform()) {
-        try {
-          LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => { });
-          DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => { });
-          DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => { });
-          DeliveryOverlay.stopNativeAudio().catch(() => { });
-        } catch { }
-      }
-
-      // 2. Garante que temos o driverId
-      let driverIdToUse = driverIdRef.current;
-      if (!driverIdToUse && user?.id) {
-        try {
-          const { data } = await supabase
-            .from("delivery_drivers")
-            .select("id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          if (data?.id) {
-            driverIdToUse = data.id;
-            driverIdRef.current = data.id;
-          }
-        } catch { }
-      }
-
-      // 3. Atualiza no Supabase imediatamente para 'accepted'
-      if (driverIdToUse) {
-        try {
-          const { data, error } = await safeRpc("update_delivery_status_safe", {
-            p_delivery_id: deliveryId,
-            p_status: "accepted",
-            p_driver_id: driverIdToUse,
-          });
-
-          if (!error && (data as any)?.success !== false) {
-            toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
-          } else {
-            console.warn("[GlobalAccept] Retorno RPC:", data, error);
-          }
-        } catch (e) {
-          console.warn("[GlobalAccept] Falha no safeRpc:", e);
-        }
-      }
-
-      // 4. Invalida as queries do React Query para a aba de entregas atualizar instantaneamente
-      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
-
-      // 5. Navega para a aba de entregas em andamento
-      try {
-        if (typeof window !== "undefined" && !window.location.pathname.includes("/driver/deliveries")) {
-          navigate("/driver/deliveries");
-        }
-      } catch { }
-    };
     if (Capacitor.isNativePlatform()) {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
@@ -353,14 +384,14 @@ export function useDriverNotifications() {
       });
       nativeAcceptListener = DeliveryOverlay.addListener("onDeliveryAccepted", ({ deliveryId }: { deliveryId: string }) => {
         if (deliveryId) {
-          acceptDeliveryGlobal(deliveryId);
+          acceptDeliveryGlobalRef.current(deliveryId);
         }
       });
 
       DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
         if (deliveryId) {
           console.log("[NativeAccept] Found pending accepted delivery on init:", deliveryId);
-          acceptDeliveryGlobal(deliveryId);
+          acceptDeliveryGlobalRef.current(deliveryId);
         }
       }).catch(() => { });
     }
@@ -590,7 +621,7 @@ export function useDriverNotifications() {
             DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
               if (deliveryId) {
                 console.log("[NativeAccept] Pending delivery accepted on resume:", deliveryId);
-                acceptDeliveryGlobal(deliveryId);
+                acceptDeliveryGlobalRef.current(deliveryId);
               }
             }).catch(() => { });
           }

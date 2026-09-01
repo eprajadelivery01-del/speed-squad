@@ -96,6 +96,9 @@ export default function DriverHomePage() {
       .then(({ data }) => {
         if (data) {
           setDriverRecord({ id: data.id, city_id: data.city_id });
+          try {
+            localStorage.setItem("driver_id", data.id);
+          } catch { }
           setIsOnline(data.is_online ?? false);
           setCommissionRate(data.commission_rate !== null && data.commission_rate !== undefined ? Number(data.commission_rate) : 0.40);
 
