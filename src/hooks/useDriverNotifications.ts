@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +12,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
+import { safeRpc } from "@/lib/safeRpc";
 
 const hashId = (str: string | number) => {
   const s = String(str);
@@ -93,11 +96,78 @@ export function useDriverNotifications() {
   const channelsRef = useRef<any[]>([]);
   const intervalRef = useRef<any>(null);
   const seenIdsRef = useRef<Set<string>>(announcedDeliveryIds);
-  const isOnlineRef = useRef<boolean>(false);
-  const activeAlertsRef = useRef<Set<string>>(new Set());
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const driverIdRef = useRef<string | null>(null);
 
   // Permission setup
   useEffect(() => {
+    let cancelled = false;
+
+    const acceptDeliveryGlobal = async (deliveryId: string) => {
+      if (!deliveryId) return;
+      console.log("[GlobalAccept] Aceitando corrida globalmente:", deliveryId);
+
+      // 1. Imediatamente para som e cancela alertas/cards
+      stopAlert();
+      activeAlertsRef.current.delete(deliveryId);
+      seenIdsRef.current.add(deliveryId);
+      acceptDeliveryLocally(deliveryId);
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          LocalNotifications.cancel({ notifications: [{ id: hashId(deliveryId) }] }).catch(() => { });
+          DeliveryOverlay.cancelDeliveryNotification({ deliveryId }).catch(() => { });
+          DeliveryOverlay.hideDeliveryCard({ deliveryId }).catch(() => { });
+          DeliveryOverlay.stopNativeAudio().catch(() => { });
+        } catch { }
+      }
+
+      // 2. Garante que temos o driverId
+      let driverIdToUse = driverIdRef.current;
+      if (!driverIdToUse && user?.id) {
+        try {
+          const { data } = await supabase
+            .from("delivery_drivers")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (data?.id) {
+            driverIdToUse = data.id;
+            driverIdRef.current = data.id;
+          }
+        } catch { }
+      }
+
+      // 3. Atualiza no Supabase imediatamente para 'accepted'
+      if (driverIdToUse) {
+        try {
+          const { data, error } = await safeRpc("update_delivery_status_safe", {
+            p_delivery_id: deliveryId,
+            p_status: "accepted",
+            p_driver_id: driverIdToUse,
+          });
+
+          if (!error && (data as any)?.success !== false) {
+            toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
+          } else {
+            console.warn("[GlobalAccept] Retorno RPC:", data, error);
+          }
+        } catch (e) {
+          console.warn("[GlobalAccept] Falha no safeRpc:", e);
+        }
+      }
+
+      // 4. Invalida as queries do React Query para a aba de entregas atualizar instantaneamente
+      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+
+      // 5. Navega para a aba de entregas em andamento
+      try {
+        if (typeof window !== "undefined" && !window.location.pathname.includes("/driver/deliveries")) {
+          navigate("/driver/deliveries");
+        }
+      } catch { }
+    };
     if (Capacitor.isNativePlatform()) {
       LocalNotifications.requestPermissions().then((res) => {
         permissionRef.current = res.display === "granted" ? "granted" : "denied";
@@ -281,10 +351,16 @@ export function useDriverNotifications() {
       });
       nativeAcceptListener = DeliveryOverlay.addListener("onDeliveryAccepted", ({ deliveryId }: { deliveryId: string }) => {
         if (deliveryId) {
-          acceptDeliveryLocally(deliveryId);
-          handleDeclineEvent({ detail: { deliveryId } });
+          acceptDeliveryGlobal(deliveryId);
         }
       });
+
+      DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
+        if (deliveryId) {
+          console.log("[NativeAccept] Found pending accepted delivery on init:", deliveryId);
+          acceptDeliveryGlobal(deliveryId);
+        }
+      }).catch(() => { });
     }
 
     const notifyNewDelivery = async (rawDelivery: any) => {
@@ -409,6 +485,7 @@ export function useDriverNotifications() {
 
       if (!driverRow || cancelled) return;
       const driverId = driverRow.id;
+      driverIdRef.current = driverId;
       isOnlineRef.current = driverRow.is_online ?? false;
       // Sincroniza o estado online com o nativo (suprime alertas FCM offline)
       if (Capacitor.isNativePlatform()) {
@@ -506,8 +583,18 @@ export function useDriverNotifications() {
 
       // Listener de retorno ao app para forçar fetch imediato caso o WebSocket tenha morrido no background
       appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive && isOnlineRef.current) {
-          pollDeliveries();
+        if (isActive) {
+          if (Capacitor.isNativePlatform()) {
+            DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
+              if (deliveryId) {
+                console.log("[NativeAccept] Pending delivery accepted on resume:", deliveryId);
+                acceptDeliveryGlobal(deliveryId);
+              }
+            }).catch(() => { });
+          }
+          if (isOnlineRef.current) {
+            pollDeliveries();
+          }
         }
       });
 

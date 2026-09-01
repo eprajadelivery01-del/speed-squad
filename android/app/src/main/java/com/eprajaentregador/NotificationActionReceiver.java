@@ -35,7 +35,7 @@ public class NotificationActionReceiver extends BroadcastReceiver {
                 Intent openApp = new Intent(context, MainActivity.class);
                 openApp.putExtra("deliveryId", deliveryId);
                 openApp.putExtra("action", "accept");
-                openApp.putExtra("route", "/driver?deliveryId=" + deliveryId + "&action=accept");
+                openApp.putExtra("route", "/driver/deliveries?deliveryId=" + deliveryId + "&action=accept");
                 openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 context.startActivity(openApp);
             } catch (Exception e) {

@@ -257,7 +257,7 @@ public class OverlayService extends Service {
                         Intent openApp = new Intent(this, MainActivity.class);
                         openApp.putExtra("deliveryId", deliveryId);
                         openApp.putExtra("action", "accept");
-                        openApp.putExtra("route", "/driver?deliveryId=" + deliveryId + "&action=accept");
+                        openApp.putExtra("route", "/driver/deliveries?deliveryId=" + deliveryId + "&action=accept");
                         openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(openApp);
                     });
