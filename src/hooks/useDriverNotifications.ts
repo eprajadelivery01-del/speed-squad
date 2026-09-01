@@ -349,12 +349,17 @@ export function useDriverNotifications() {
       // 2) ENRIQUECIMENTO ASSÍNCRONO EM BACKGROUND (busca dados completos da loja e do pedido)
       Promise.all([
         fetchRealStoreName(rawDelivery).catch(() => initialStore),
-        supabase
-          .from("available_deliveries")
-          .select("*, companies(name, address), orders(delivery_fee)")
-          .eq("id", rawDelivery.id)
-          .maybeSingle()
-          .catch(() => ({ data: null })),
+        (async () => {
+          try {
+            return await supabase
+              .from("available_deliveries")
+              .select("*, companies(name, address), orders(delivery_fee)")
+              .eq("id", rawDelivery.id)
+              .maybeSingle();
+          } catch {
+            return { data: null };
+          }
+        })(),
       ]).then(([resolvedStore, fullRes]) => {
         if (cancelled || !activeAlertsRef.current.has(rawDelivery.id) || getAcceptedDeliveries().has(rawDelivery.id) || getDeclinedDeliveries().has(rawDelivery.id)) {
           return;
