@@ -232,18 +232,17 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 piFlags |= PendingIntent.FLAG_IMMUTABLE;
             }
 
-            // Intent para abrir o popup nativo IncomingCallActivity
-            Intent incomingIntent = new Intent(this, IncomingCallActivity.class);
-            incomingIntent.putExtra("details", details);
-            incomingIntent.putExtra("deliveryId", deliveryId);
-            incomingIntent.putExtra("storeName", storeName);
-            incomingIntent.putExtra("pickup", pickup);
-            incomingIntent.putExtra("dropoff", dropoff);
-            incomingIntent.putExtra("fee", fee);
-            incomingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            // Intent para abrir o app principal MainActivity ao tocar na notificacao
+            Intent mainIntent = new Intent(this, MainActivity.class);
+            mainIntent.putExtra("details", details);
+            mainIntent.putExtra("deliveryId", deliveryId);
+            mainIntent.putExtra("storeName", storeName);
+            mainIntent.putExtra("pickup", pickup);
+            mainIntent.putExtra("dropoff", dropoff);
+            mainIntent.putExtra("fee", fee);
+            mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             
-            // Usamos notificationId fixo por corrida com PendingIntent atualizado
-            PendingIntent incomingPI = PendingIntent.getActivity(this, notificationId, incomingIntent, piFlags);
+            PendingIntent contentPI = PendingIntent.getActivity(this, notificationId, mainIntent, piFlags);
 
             // Botão 1: ACEITAR na notificação da central
             Intent acceptIntent = new Intent(this, NotificationActionReceiver.class);
@@ -274,7 +273,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_sound);
 
-            // Constrói notificação com fullScreenIntent (Acende a tela e abre IncomingCallActivity no Android 10+)
+            // Constrói notificação na central com som oficial e botões rápidos
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NotificationChannels.INCOMING_CHANNEL_ID)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(cardTitle)
@@ -287,37 +286,17 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setOngoing(false)
                     .setOnlyAlertOnce(false)
                     .setSound(soundUri)
-                    .setContentIntent(incomingPI)
-                    .setFullScreenIntent(incomingPI, true)
+                    .setContentIntent(contentPI)
                     .addAction(R.mipmap.ic_launcher, "ACEITAR", acceptPI)
                     .addAction(R.mipmap.ic_launcher, "RECUSAR", declinePI);
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.notify(notificationId, builder.build());
-                Log.d(TAG, "Notificação com fullScreenIntent e botões disparada para deliveryId=" + deliveryId);
+                Log.d(TAG, "Notificação da central disparada para deliveryId=" + deliveryId);
             }
 
-            // Se o popup já estava aberto/pausado na memória, aciona onNewIntent imediatamente
-            if (IncomingCallActivity.instance != null) {
-                final Intent finalIncomingIntent = incomingIntent;
-                IncomingCallActivity.instance.runOnUiThread(() -> {
-                    try {
-                        IncomingCallActivity.instance.onNewIntent(finalIncomingIntent);
-                    } catch (Exception eInstance) {
-                        Log.w(TAG, "Erro ao atualizar instance de IncomingCallActivity: " + eInstance.getMessage());
-                    }
-                });
-            }
-
-            // Tentativa de startActivity direta para tela ligada / overlay
-            try {
-                startActivity(incomingIntent);
-            } catch (Exception eAct) {
-                Log.d(TAG, "startActivity direto: " + eAct.getMessage());
-            }
-
-            // Exibe também o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
+            // Exibe o Card Flutuante Branco sobre outros apps (Overlay)
             try {
                 if (OverlayService.instance != null) {
                     OverlayService.instance.showDeliveryCard(deliveryId, finalStoreName, pickup, dropoff, fee);

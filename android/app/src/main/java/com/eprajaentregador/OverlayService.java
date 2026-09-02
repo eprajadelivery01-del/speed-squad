@@ -223,27 +223,83 @@ public class OverlayService extends Service {
 
             this.currentDeliveryId = deliveryId;
 
-            // Mantém o cardContainer do WindowManager oculto (o popup oficial é exclusivamente IncomingCallActivity)
-            if (floatingView != null) {
+            // Toca o áudio de notificação oficial
+            NativeSoundPlayer.playDeliveryAlert(this);
+
+            // Exibe e preenche o Card Flutuante Branco (deliveryCardContainer)
+            try {
                 View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
                 if (cardContainer != null) {
-                    cardContainer.setVisibility(View.GONE);
-                }
-            }
+                    cardContainer.setVisibility(View.VISIBLE);
 
-            // Dispara o popup nativo oficial IncomingCallActivity
-            try {
-                Intent callIntent = new Intent(this, IncomingCallActivity.class);
-                callIntent.putExtra("deliveryId", deliveryId);
-                callIntent.putExtra("storeName", storeName);
-                callIntent.putExtra("pickup", pickup);
-                callIntent.putExtra("dropoff", dropoff);
-                callIntent.putExtra("fee", fee);
-                callIntent.putExtra("details", (storeName != null ? storeName : "") + "\n" + (pickup != null ? pickup : "") + "\n" + (dropoff != null ? dropoff : "") + "\n" + (fee != null ? fee : ""));
-                callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(callIntent);
-            } catch (Exception eStart) {
-                Log.w(TAG, "Erro ao abrir IncomingCallActivity de OverlayService: " + eStart.getMessage());
+                    TextView txtStore = floatingView.findViewById(R.id.cardStoreName);
+                    TextView txtEarnings = floatingView.findViewById(R.id.cardEarnings);
+                    TextView txtPickup = floatingView.findViewById(R.id.cardPickup);
+                    TextView txtDropoff = floatingView.findViewById(R.id.cardDropoff);
+                    Button btnDecline = floatingView.findViewById(R.id.cardBtnDecline);
+                    Button btnAccept = floatingView.findViewById(R.id.cardBtnAccept);
+                    ImageView closeBtn = floatingView.findViewById(R.id.cardCloseBtn);
+
+                    String finalStore = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
+                            ? storeName.trim()
+                            : "Nova Corrida Disponível";
+                    String finalFee = (fee != null && !fee.trim().isEmpty()) ? fee.trim() : "A calcular";
+                    String finalPickup = (pickup != null && !pickup.trim().isEmpty()) ? pickup.trim() : "Retirada na Loja";
+                    String finalDropoff = (dropoff != null && !dropoff.trim().isEmpty()) ? dropoff.trim() : "Endereço do cliente";
+
+                    if (txtStore != null) txtStore.setText(finalStore);
+                    if (txtEarnings != null) txtEarnings.setText("Ganhos: " + finalFee);
+                    if (txtPickup != null) txtPickup.setText("📍 Coleta: " + finalPickup);
+                    if (txtDropoff != null) txtDropoff.setText("🏁 Entrega: " + finalDropoff);
+
+                    if (btnDecline != null) {
+                        btnDecline.setOnClickListener(v -> {
+                            Log.d(TAG, "Botão RECUSAR clicado no card branco.");
+                            NativeSoundPlayer.stopSound();
+                            hideDeliveryCard(deliveryId);
+                            if (DeliveryOverlayPlugin.instance != null) {
+                                DeliveryOverlayPlugin.instance.triggerDeliveryDeclined(deliveryId);
+                                DeliveryOverlayPlugin.instance.triggerCallResponse("reject", deliveryId);
+                            }
+                            MyFirebaseMessagingService.dismissDeliveryAlert(OverlayService.this, deliveryId);
+                        });
+                    }
+
+                    if (btnAccept != null) {
+                        btnAccept.setOnClickListener(v -> {
+                            Log.d(TAG, "Botão ACEITAR clicado no card branco.");
+                            NativeSoundPlayer.stopSound();
+                            hideDeliveryCard(deliveryId);
+                            DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+                            if (DeliveryOverlayPlugin.instance != null) {
+                                DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+                                DeliveryOverlayPlugin.instance.triggerCallResponse("accept", deliveryId);
+                            }
+                            MyFirebaseMessagingService.dismissDeliveryAlert(OverlayService.this, deliveryId);
+
+                            Intent openApp = new Intent(OverlayService.this, MainActivity.class);
+                            openApp.putExtra("deliveryId", deliveryId);
+                            openApp.putExtra("action", "accept");
+                            openApp.putExtra("route", "/driver/deliveries?deliveryId=" + deliveryId + "&action=accept");
+                            openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                            startActivity(openApp);
+                        });
+                    }
+
+                    if (closeBtn != null) {
+                        closeBtn.setOnClickListener(v -> {
+                            NativeSoundPlayer.stopSound();
+                            hideDeliveryCard(deliveryId);
+                            MyFirebaseMessagingService.dismissDeliveryAlert(OverlayService.this, deliveryId);
+                        });
+                    }
+
+                    if (windowManager != null && windowParams != null) {
+                        windowManager.updateViewLayout(floatingView, windowParams);
+                    }
+                }
+            } catch (Exception eCard) {
+                Log.e(TAG, "Erro ao configurar card flutuante branco: " + eCard.getMessage());
             }
         });
     }
