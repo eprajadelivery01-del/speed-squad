@@ -1,6 +1,7 @@
 package com.eprajaentregador;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -43,6 +44,16 @@ public class IncomingCallActivity extends Activity {
     private static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wdGt4bHJocmxzc2RzZXZwZ3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDE4MTQsImV4cCI6MjA5MDYxNzgxNH0.t8Cu-yFnSqOURT4GXCZ_mBghpxucT89nRBFlBNA1vZs";
 
     public static volatile IncomingCallActivity instance;
+
+    private static int hashId(String str) {
+        if (str == null) return 0;
+        int hash = 0;
+        for (int i = 0; i < str.length(); i++) {
+            hash = ((hash << 5) - hash) + str.charAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
 
     private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
@@ -298,24 +309,44 @@ public class IncomingCallActivity extends Activity {
             setSubmitting(true, "Aceitando...");
             stopRinging();
             stopStatusCheckLoop();
+            NativeSoundPlayer.stopSound();
 
             final String deliveryId = currentDeliveryId;
 
-            if (DeliveryOverlayPlugin.instance != null) {
-                Log.d(TAG, "Aceitar via JS plugin. deliveryId=" + deliveryId);
-                startResultTimeout();
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
-                }, 200);
-            } else {
-                Log.d(TAG, "Aceitar via HTTP nativo (JS indisponível). deliveryId=" + deliveryId);
-                new Thread(() -> {
-                    final boolean success = acceptDeliveryViaNativeHttp(deliveryId);
-                    runOnUiThread(() -> finishWithResult(
-                            success,
-                            success ? "✅ Corrida aceita!" : "❌ Corrida já foi aceita por outro entregador"));
-                }).start();
+            // 1. Imediatamente limpa notificações da bandeja e overlay
+            MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
+            try {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    nm.cancel(hashId(deliveryId));
+                    nm.cancelAll();
+                }
+            } catch (Exception ignored) {}
+
+            if (OverlayService.instance != null) {
+                OverlayService.instance.hideDeliveryCard(deliveryId);
             }
+
+            // 2. Registra aceite no plugin e dispara eventos para a camada JS/Web
+            DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+            if (DeliveryOverlayPlugin.instance != null) {
+                DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+                DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
+            }
+
+            // 3. Broadcast nativo de aceite
+            Intent acceptIntent = new Intent(ACTION_CALL_ACCEPTED);
+            acceptIntent.putExtra("deliveryId", deliveryId);
+            acceptIntent.setPackage(getPackageName());
+            sendBroadcast(acceptIntent);
+
+            // 4. Aceite direto nativo (HTTP RPC) em thread de background como garantia
+            new Thread(() -> {
+                acceptDeliveryViaNativeHttp(deliveryId);
+            }).start();
+
+            // 5. Finaliza a Activity do Popup e direciona para a tela principal
+            finishWithResult(true, "✅ Corrida aceita!");
         });
 
         // ===== BOTÃO REJEITAR =====
@@ -326,15 +357,37 @@ public class IncomingCallActivity extends Activity {
             btnReject.setText("Recusada");
             stopRinging();
             stopStatusCheckLoop();
-            if (DeliveryOverlayPlugin.instance != null) {
-                DeliveryOverlayPlugin.instance.triggerCallResponse("rejected", currentDeliveryId);
+            NativeSoundPlayer.stopSound();
+
+            final String deliveryId = currentDeliveryId;
+
+            // 1. Limpa notificação da bandeja e overlay
+            MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
+            try {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    nm.cancel(hashId(deliveryId));
+                }
+            } catch (Exception ignored) {}
+
+            if (OverlayService.instance != null) {
+                OverlayService.instance.hideDeliveryCard(deliveryId);
             }
+
+            // 2. Dispara eventos para o JS
+            if (DeliveryOverlayPlugin.instance != null) {
+                DeliveryOverlayPlugin.instance.triggerDeliveryDeclined(deliveryId);
+                DeliveryOverlayPlugin.instance.triggerCallResponse("rejected", deliveryId);
+            }
+
+            // 3. Broadcast nativo de rejeição
             Intent intent = new Intent(ACTION_CALL_REJECTED);
-            intent.putExtra("deliveryId", currentDeliveryId);
+            intent.putExtra("deliveryId", deliveryId);
             intent.setPackage(getPackageName());
             sendBroadcast(intent);
+
             Toast.makeText(getApplicationContext(), "Corrida recusada", Toast.LENGTH_SHORT).show();
-            new Handler(Looper.getMainLooper()).postDelayed(this::finish, 500);
+            new Handler(Looper.getMainLooper()).postDelayed(this::finish, 300);
         });
     }
 

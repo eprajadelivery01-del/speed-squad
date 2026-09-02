@@ -387,6 +387,15 @@ export function useDriverNotifications() {
           acceptDeliveryGlobalRef.current(deliveryId);
         }
       });
+      const nativeCallResponseListener = DeliveryOverlay.addListener("onCallResponse", ({ status, deliveryId }: { status: string; deliveryId?: string }) => {
+        if (!deliveryId) return;
+        if (status === "accepted") {
+          acceptDeliveryGlobalRef.current(deliveryId);
+        } else if (status === "rejected" || status === "declined") {
+          declineDeliveryLocally(deliveryId);
+          handleDeclineEvent({ detail: { deliveryId } });
+        }
+      });
 
       DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
         if (deliveryId) {
