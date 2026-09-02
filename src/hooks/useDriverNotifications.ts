@@ -108,7 +108,7 @@ export function useDriverNotifications() {
 
     // 1. Imediatamente para som e cancela alertas/cards locais e nativos (0ms)
     stopAlert();
-    activeAlertsRef.current.delete(deliveryId);
+    activeAlertsRef.current.clear();
     seenIdsRef.current.add(deliveryId);
     acceptDeliveryLocally(deliveryId);
 

@@ -222,92 +222,28 @@ public class OverlayService extends Service {
             }
 
             this.currentDeliveryId = deliveryId;
-            View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
-            TextView txtStoreName = floatingView.findViewById(R.id.cardStoreName);
-            TextView txtEarnings = floatingView.findViewById(R.id.cardEarnings);
-            TextView txtPickup = floatingView.findViewById(R.id.cardPickup);
-            TextView txtDropoff = floatingView.findViewById(R.id.cardDropoff);
-            Button btnAccept = floatingView.findViewById(R.id.cardBtnAccept);
-            Button btnDecline = floatingView.findViewById(R.id.cardBtnDecline);
-            ImageView btnClose = floatingView.findViewById(R.id.cardCloseBtn);
 
-            if (cardContainer != null) {
-                if (txtStoreName != null) txtStoreName.setText(storeName != null && !storeName.isEmpty() ? storeName : "Nova Corrida");
-                if (txtEarnings != null) {
-                    String formattedFee = "A calcular";
-                    if (fee != null && !fee.trim().isEmpty() && !"0".equals(fee.trim()) && !"0.00".equals(fee.trim()) && !"R$ 0,00".equals(fee.trim()) && !"R$ 0.00".equals(fee.trim())) {
-                        formattedFee = fee.startsWith("R$") ? fee : "R$ " + fee;
-                    }
-                    txtEarnings.setText("Ganhos: " + formattedFee);
+            // Mantém o cardContainer do WindowManager oculto (o popup oficial é exclusivamente IncomingCallActivity)
+            if (floatingView != null) {
+                View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
+                if (cardContainer != null) {
+                    cardContainer.setVisibility(View.GONE);
                 }
-                if (txtPickup != null) txtPickup.setText("📍 Coleta: " + (pickup != null && !pickup.isEmpty() ? pickup : "Retirada na Loja"));
-                if (txtDropoff != null) txtDropoff.setText("🏁 Entrega: " + (dropoff != null && !dropoff.isEmpty() ? dropoff : "Endereço do cliente"));
+            }
 
-                if (btnAccept != null) {
-                    btnAccept.setOnClickListener(v -> {
-                        NativeSoundPlayer.stopSound();
-                        hideDeliveryCard(deliveryId);
-                        MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
-
-                        DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
-                        if (DeliveryOverlayPlugin.instance != null) {
-                            DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
-                        }
-
-                        Intent openApp = new Intent(this, MainActivity.class);
-                        openApp.putExtra("deliveryId", deliveryId);
-                        openApp.putExtra("action", "accept");
-                        openApp.putExtra("route", "/driver/deliveries?deliveryId=" + deliveryId + "&action=accept");
-                        openApp.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        startActivity(openApp);
-                    });
-                }
-
-                if (btnDecline != null) {
-                    btnDecline.setOnClickListener(v -> {
-                        NativeSoundPlayer.stopSound();
-                        hideDeliveryCard(deliveryId);
-                        MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
-                        if (DeliveryOverlayPlugin.instance != null) {
-                            DeliveryOverlayPlugin.instance.triggerDeliveryDeclined(deliveryId);
-                        }
-                    });
-                }
-
-                if (btnClose != null) {
-                    btnClose.setOnClickListener(v -> {
-                        NativeSoundPlayer.stopSound();
-                        hideDeliveryCard(deliveryId);
-                        MyFirebaseMessagingService.dismissDeliveryAlert(this, deliveryId);
-                    });
-                }
-
-                View mainCloseBtn = floatingView.findViewById(R.id.closeButton);
-                if (mainCloseBtn != null) {
-                    mainCloseBtn.setOnClickListener(v -> hideOverlayBubble());
-                }
-
-                cardContainer.setVisibility(View.VISIBLE);
-                if (windowManager != null && windowParams != null && floatingView != null) {
-                    windowParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
-                    windowParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
-                    windowManager.updateViewLayout(floatingView, windowParams);
-                }
-
-                // Dispara também o popup IncomingCallActivity imediatamente sobre qualquer app
-                try {
-                    Intent callIntent = new Intent(this, IncomingCallActivity.class);
-                    callIntent.putExtra("deliveryId", deliveryId);
-                    callIntent.putExtra("storeName", storeName);
-                    callIntent.putExtra("pickup", pickup);
-                    callIntent.putExtra("dropoff", dropoff);
-                    callIntent.putExtra("fee", fee);
-                    callIntent.putExtra("details", storeName + "\n" + pickup + "\n" + dropoff + "\n" + fee);
-                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    startActivity(callIntent);
-                } catch (Exception eStart) {
-                    Log.w(TAG, "Erro ao abrir IncomingCallActivity de OverlayService: " + eStart.getMessage());
-                }
+            // Dispara o popup nativo oficial IncomingCallActivity
+            try {
+                Intent callIntent = new Intent(this, IncomingCallActivity.class);
+                callIntent.putExtra("deliveryId", deliveryId);
+                callIntent.putExtra("storeName", storeName);
+                callIntent.putExtra("pickup", pickup);
+                callIntent.putExtra("dropoff", dropoff);
+                callIntent.putExtra("fee", fee);
+                callIntent.putExtra("details", (storeName != null ? storeName : "") + "\n" + (pickup != null ? pickup : "") + "\n" + (dropoff != null ? dropoff : "") + "\n" + (fee != null ? fee : ""));
+                callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(callIntent);
+            } catch (Exception eStart) {
+                Log.w(TAG, "Erro ao abrir IncomingCallActivity de OverlayService: " + eStart.getMessage());
             }
         });
     }

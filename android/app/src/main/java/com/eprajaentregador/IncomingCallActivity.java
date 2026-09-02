@@ -562,11 +562,10 @@ public class IncomingCallActivity extends Activity {
         if (instance == this) instance = null;
         stopStatusCheckLoop();
         stopRinging();
+        NativeSoundPlayer.stopSound();
         try {
-            unregisterReceiver(updateReceiver);
-        } catch (Exception e) {
-            // Ignore
-        }
+            if (updateReceiver != null) unregisterReceiver(updateReceiver);
+        } catch (Exception ignored) {}
         if (wakeLock != null && wakeLock.isHeld()) {
             try {
                 wakeLock.release();
@@ -592,6 +591,7 @@ public class IncomingCallActivity extends Activity {
         }
         stopRinging();
         stopStatusCheckLoop();
+        NativeSoundPlayer.stopSound();
 
         String text = message != null && !message.trim().isEmpty()
                 ? message
