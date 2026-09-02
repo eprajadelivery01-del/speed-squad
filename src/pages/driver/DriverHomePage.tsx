@@ -362,7 +362,6 @@ export default function DriverHomePage() {
           // Persiste localmente e dispara "delivery-accepted": filtra o card,
           // cancela a notificação nativa e evita toast duplo do realtime.
           acceptDeliveryLocally(deliveryId);
-          toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
           navigate("/driver/deliveries");
         },
         onError: (error: any) => {

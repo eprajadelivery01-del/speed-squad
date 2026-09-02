@@ -87,7 +87,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   const currentTab = tabs.find(t => isActive(t.href));
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-zinc-950 pb-24">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-zinc-950 pb-16">
       {/* Top Header */}
       <header className="bg-background border-b border-border shadow-sm px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -201,10 +201,9 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
 
       {/* Bottom Navigation */}
       <nav 
-        className="fixed bottom-0 z-50 w-full border-t border-border bg-background pb-6 pt-1"
-        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed bottom-0 z-50 w-full border-t border-border bg-background py-1"
       >
-        <div className="flex h-16 items-center justify-around px-2">
+        <div className="flex h-14 items-center justify-around px-2">
           {tabs.map((tab) => {
             const active = isActive(tab.href);
             

@@ -154,7 +154,6 @@ export function useDriverNotifications() {
             .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
             .eq("id", deliveryId);
         }
-        toast({ title: "✅ Corrida aceita!", description: "Vá até o local de retirada." });
       } catch (e) {
         console.warn("[GlobalAccept] Falha no safeRpc:", e);
         try {
