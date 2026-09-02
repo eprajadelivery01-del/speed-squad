@@ -223,10 +223,7 @@ public class OverlayService extends Service {
 
             this.currentDeliveryId = deliveryId;
 
-            // Toca o áudio de notificação oficial
-            NativeSoundPlayer.playDeliveryAlert(this);
-
-            // Exibe e preenche o Card Flutuante Branco (deliveryCardContainer)
+            // Exibe e preenche o Card Flutuante Branco (deliveryCardContainer) de forma silenciosa (o som é da notificação da central)
             try {
                 View cardContainer = floatingView.findViewById(R.id.deliveryCardContainer);
                 if (cardContainer != null) {
