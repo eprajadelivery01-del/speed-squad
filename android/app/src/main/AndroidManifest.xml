@@ -38,6 +38,7 @@
             android:screenOrientation="portrait"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
+            android:taskAffinity="com.eprajaentregador.incoming"
             android:exported="true" />
         <service
             android:name=".MyFirebaseMessagingService"

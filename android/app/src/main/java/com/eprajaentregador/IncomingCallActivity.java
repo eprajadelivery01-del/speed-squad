@@ -42,7 +42,7 @@ public class IncomingCallActivity extends Activity {
     private static final String SUPABASE_URL = "https://nptkxlrhrlssdsevpgqe.supabase.co";
     private static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wdGt4bHJocmxzc2RzZXZwZ3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDE4MTQsImV4cCI6MjA5MDYxNzgxNH0.t8Cu-yFnSqOURT4GXCZ_mBghpxucT89nRBFlBNA1vZs";
 
-    public static IncomingCallActivity instance;
+    public static volatile IncomingCallActivity instance;
 
     private MediaPlayer mediaPlayer;
     private Vibrator vibrator;
@@ -58,7 +58,6 @@ public class IncomingCallActivity extends Activity {
     private boolean resultHandled = false;
     private Handler resultTimeoutHandler;
     private Runnable resultTimeoutRunnable;
-
 
     private BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
@@ -142,21 +141,7 @@ public class IncomingCallActivity extends Activity {
         if (tvDropoff != null) tvDropoff.setText(dropoff);
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        instance = this;
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ACTION_UPDATE_CALL);
-        filter.addAction(ACTION_CANCEL_CALL);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(updateReceiver, filter);
-        }
-
-        // Acende a tela e mostra sobre a tela de bloqueio
+    private void wakeUpScreen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
@@ -167,23 +152,27 @@ public class IncomingCallActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
 
-        // Wake lock agressivo para garantir que a tela acende
-        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (powerManager != null) {
-            wakeLock = powerManager.newWakeLock(
-                    PowerManager.FULL_WAKE_LOCK
-                            | PowerManager.ACQUIRE_CAUSES_WAKEUP
-                            | PowerManager.ON_AFTER_RELEASE,
-                    "DeliveryApp:IncomingCall");
-            wakeLock.acquire(60000); // 60 segundos max
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                if (wakeLock == null) {
+                    wakeLock = powerManager.newWakeLock(
+                            PowerManager.FULL_WAKE_LOCK
+                                    | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                                    | PowerManager.ON_AFTER_RELEASE,
+                            "DeliveryApp:IncomingCall");
+                }
+                if (!wakeLock.isHeld()) {
+                    wakeLock.acquire(60000); // 60s
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "WakeLock acquire error: " + e.getMessage());
         }
+    }
 
-        setContentView(R.layout.activity_incoming_call);
-
-        btnAccept = findViewById(R.id.btnAccept);
-        btnReject = findViewById(R.id.btnReject);
-
-        // Toca o som de alerta
+    private void startAlertSoundAndVibration() {
+        stopRinging();
         try {
             mediaPlayer = MediaPlayer.create(this, R.raw.notification_sound);
             if (mediaPlayer != null) {
@@ -194,26 +183,50 @@ public class IncomingCallActivity extends Activity {
             Log.e(TAG, "Erro ao tocar som: " + e.getMessage());
         }
 
-        // Vibração pulsante
-        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (vibrator != null && vibrator.hasVibrator()) {
-            long[] pattern = {0, 1000, 1000};
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0));
-            } else {
-                vibrator.vibrate(pattern, 0);
+        try {
+            vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                long[] pattern = {0, 1000, 1000};
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0));
+                } else {
+                    vibrator.vibrate(pattern, 0);
+                }
             }
+        } catch (Exception eVib) {
+            Log.w(TAG, "Erro vibração: " + eVib.getMessage());
         }
+    }
 
-        // Carrega os detalhes da corrida
-        String details = getIntent().getStringExtra("details");
-        currentDeliveryId = getIntent().getStringExtra("deliveryId");
-        String storeName = getIntent().getStringExtra("storeName");
-        String pickup    = getIntent().getStringExtra("pickup");
-        String dropoff   = getIntent().getStringExtra("dropoff");
-        String fee       = getIntent().getStringExtra("fee");
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        instance = this;
+        Log.d(TAG, "onNewIntent disparado para nova corrida!");
 
-        // Prioriza dados do plugin estático (mais recentes, vindos do JS ou FCM nativo)
+        wakeUpScreen();
+
+        isSubmitting = false;
+        resultHandled = false;
+        setSubmitting(false, "Aceitar");
+
+        loadIntentData(intent);
+        startAlertSoundAndVibration();
+
+        stopStatusCheckLoop();
+        startStatusCheckLoop();
+    }
+
+    private void loadIntentData(Intent intent) {
+        if (intent == null) return;
+        String details = intent.getStringExtra("details");
+        currentDeliveryId = intent.getStringExtra("deliveryId");
+        String storeName = intent.getStringExtra("storeName");
+        String pickup    = intent.getStringExtra("pickup");
+        String dropoff   = intent.getStringExtra("dropoff");
+        String fee       = intent.getStringExtra("fee");
+
         if (DeliveryOverlayPlugin.latestDetails != null && !DeliveryOverlayPlugin.latestDetails.isEmpty()) {
             details = DeliveryOverlayPlugin.latestDetails;
         }
@@ -236,13 +249,36 @@ public class IncomingCallActivity extends Activity {
         updateCall(details, currentDeliveryId, storeName, pickup, dropoff, fee);
         applyResponsiveHeight();
 
-        // Se algum dado essencial não veio no payload, completa buscando no Supabase
         boolean incomplete = clean(storeName).isEmpty() || clean(dropoff).isEmpty()
                 || clean(pickup).isEmpty() || clean(fee).isEmpty();
         if (incomplete) {
             fetchMissingDetails(currentDeliveryId);
         }
+    }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        instance = this;
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_UPDATE_CALL);
+        filter.addAction(ACTION_CANCEL_CALL);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(updateReceiver, filter);
+        }
+
+        wakeUpScreen();
+
+        setContentView(R.layout.activity_incoming_call);
+
+        btnAccept = findViewById(R.id.btnAccept);
+        btnReject = findViewById(R.id.btnReject);
+
+        startAlertSoundAndVibration();
+        loadIntentData(getIntent());
 
         View btnClose = findViewById(R.id.btnClose);
         if (btnClose != null) {
@@ -301,7 +337,6 @@ public class IncomingCallActivity extends Activity {
             new Handler(Looper.getMainLooper()).postDelayed(this::finish, 500);
         });
     }
-
 
     private void startStatusCheckLoop() {
         if (checkHandler == null) {
@@ -450,7 +485,9 @@ public class IncomingCallActivity extends Activity {
             mediaPlayer = null;
         }
         if (vibrator != null) {
-            vibrator.cancel();
+            try {
+                vibrator.cancel();
+            } catch (Exception ignored) {}
         }
     }
 
@@ -466,7 +503,9 @@ public class IncomingCallActivity extends Activity {
             // Ignore
         }
         if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
+            try {
+                wakeLock.release();
+            } catch (Exception ignored) {}
         }
     }
 
@@ -608,4 +647,3 @@ public class IncomingCallActivity extends Activity {
         return "";
     }
 }
-

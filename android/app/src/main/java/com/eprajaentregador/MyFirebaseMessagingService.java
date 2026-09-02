@@ -24,18 +24,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MyFirebaseMsgService";
 
-    // ── Deduplicação de alertas por delivery_id ─────────────────────────────
-    private static final long DEDUP_WINDOW_MS = 120_000; // 2 minutos
-    private static final int MAX_TRACKED_ALERTS = 200;
+    // ── Deduplicação anti-rajada rápida apenas (3 segundos) ─────────────────
+    private static final long DEDUP_WINDOW_MS = 3_000;
+    private static final int MAX_TRACKED_ALERTS = 50;
     private static final Map<String, Long> recentAlerts = Collections.synchronizedMap(
-            new LinkedHashMap<String, Long>(64, 0.75f, true) {
+            new LinkedHashMap<String, Long>(32, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(Map.Entry<String, Long> eldest) {
                     return size() > MAX_TRACKED_ALERTS;
                 }
             });
 
-    /** Retorna true apenas no primeiro alerta da corrida dentro da janela. */
+    /** Retorna true apenas no primeiro alerta da corrida dentro da janela de 3s. */
     private static boolean markAlertedOnce(String key) {
         long now = System.currentTimeMillis();
         synchronized (recentAlerts) {
@@ -73,12 +73,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     /**
      * Aceite/recusa feitos pelo próprio entregador no app: apenas remove a
-     * notificação da bandeja, MANTENDO a deduplicação para que pushes
-     * residuais da mesma corrida não re-alertem.
+     * notificação da bandeja, limpando o alerta.
      */
     public static void dismissDeliveryAlert(Context context, String deliveryId) {
         if (deliveryId == null || deliveryId.isEmpty()) return;
         NativeSoundPlayer.stopSound();
+        synchronized (recentAlerts) {
+            recentAlerts.remove(deliveryId);
+        }
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(hashId(deliveryId));
         if (OverlayService.instance != null) {
@@ -174,7 +176,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 if (!parsed.isEmpty() && !"Loja Parceira".equalsIgnoreCase(parsed)) {
                     storeName = parsed;
                 }
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
         if ((dropoff.isEmpty() || "Endereço do cliente".equalsIgnoreCase(dropoff.trim())) && address != null && address.contains("🏁 Entrega:")) {
             try {
@@ -184,7 +186,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 if (!parsed.isEmpty() && !"Endereço do cliente".equalsIgnoreCase(parsed)) {
                     dropoff = parsed;
                 }
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
         if ((fee.isEmpty() || "0".equals(fee) || "0.00".equals(fee) || "R$ 0,00".equals(fee) || "R$ 0.00".equals(fee)) && address != null && address.contains("💰 Ganhos:")) {
             try {
@@ -194,7 +196,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 if (!parsed.isEmpty() && !"R$ 0,00".equals(parsed) && !"R$ 0.00".equals(parsed)) {
                     fee = parsed;
                 }
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
 
         String details    = (title  != null && !title.isEmpty()   ? title + "\n"  : "")
@@ -204,12 +206,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             details = details.replace("Veja no app", "Retirada na Loja");
         }
 
-        // ── DEDUPLICAÇÃO: ignora qualquer push repetido da mesma corrida.
+        // ── DEDUPLICAÇÃO ANTI-BURST (3s apenas)
         String dedupKey = (deliveryId != null && !deliveryId.isEmpty())
                 ? deliveryId
                 : "details:" + details.hashCode();
         if (!markAlertedOnce(dedupKey)) {
-            Log.d(TAG, "Push duplicado ignorado para " + dedupKey + " (janela de 2 min).");
+            Log.d(TAG, "Push duplicado ignorado para " + dedupKey + " (janela de 3s).");
             return;
         }
 
@@ -238,7 +240,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             incomingIntent.putExtra("pickup", pickup);
             incomingIntent.putExtra("dropoff", dropoff);
             incomingIntent.putExtra("fee", fee);
-            incomingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            incomingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            
+            // Usamos notificationId fixo por corrida com PendingIntent atualizado
             PendingIntent incomingPI = PendingIntent.getActivity(this, notificationId, incomingIntent, piFlags);
 
             // Botão 1: ACEITAR na notificação da central
@@ -294,11 +298,23 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 Log.d(TAG, "Notificação com fullScreenIntent e botões disparada para deliveryId=" + deliveryId);
             }
 
+            // Se o popup já estava aberto/pausado na memória, aciona onNewIntent imediatamente
+            if (IncomingCallActivity.instance != null) {
+                final Intent finalIncomingIntent = incomingIntent;
+                IncomingCallActivity.instance.runOnUiThread(() -> {
+                    try {
+                        IncomingCallActivity.instance.onNewIntent(finalIncomingIntent);
+                    } catch (Exception eInstance) {
+                        Log.w(TAG, "Erro ao atualizar instance de IncomingCallActivity: " + eInstance.getMessage());
+                    }
+                });
+            }
+
             // Tentativa de startActivity direta para tela ligada / overlay
             try {
                 startActivity(incomingIntent);
             } catch (Exception eAct) {
-                Log.d(TAG, "startActivity direto não permitido pelo SO (usando fullScreenIntent): " + eAct.getMessage());
+                Log.d(TAG, "startActivity direto: " + eAct.getMessage());
             }
 
             // Exibe também o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
