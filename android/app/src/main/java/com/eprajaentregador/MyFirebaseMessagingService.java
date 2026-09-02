@@ -280,7 +280,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                     .setContentTitle(cardTitle)
                     .setContentText(cardSubtext)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(formattedBigText))
-                    .setCategory(NotificationCompat.CATEGORY_CALL)
+                    .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
