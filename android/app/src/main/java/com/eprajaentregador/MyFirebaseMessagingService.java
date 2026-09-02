@@ -25,9 +25,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private static final String TAG = "MyFirebaseMsgService";
 
     // ── Deduplicação de alertas por delivery_id ─────────────────────────────
-    // Múltiplos pushes/intents da mesma corrida (retransmissão FCM, reenvio do
-    // backend, rebroadcast) não podem piscar nem repetir o som: só o primeiro
-    // alerta dentro da janela dispara notificação.
     private static final long DEDUP_WINDOW_MS = 120_000; // 2 minutos
     private static final int MAX_TRACKED_ALERTS = 200;
     private static final Map<String, Long> recentAlerts = Collections.synchronizedMap(
@@ -69,6 +66,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (OverlayService.instance != null) {
             OverlayService.instance.hideDeliveryCard(deliveryId);
         }
+        if (IncomingCallActivity.instance != null) {
+            IncomingCallActivity.instance.runOnUiThread(() -> IncomingCallActivity.instance.finish());
+        }
     }
 
     /**
@@ -83,6 +83,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (nm != null) nm.cancel(hashId(deliveryId));
         if (OverlayService.instance != null) {
             OverlayService.instance.hideDeliveryCard(deliveryId);
+        }
+        if (IncomingCallActivity.instance != null) {
+            IncomingCallActivity.instance.runOnUiThread(() -> IncomingCallActivity.instance.finish());
         }
     }
 
@@ -121,7 +124,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (!isDelivery) return;
 
         // ── GUARDA OFFLINE: entregador offline não deve receber som/alerta de corrida.
-        // Default true para não quebrar instalações que ainda não gravaram a flag.
         boolean driverOnline = getSharedPreferences(DeliveryOverlayPlugin.PREFS_NAME, Context.MODE_PRIVATE)
                 .getBoolean("is_online", true);
         if (!driverOnline) {
@@ -211,24 +213,35 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        // Uma única notificação informativa por corrida. O aceite/recusa acontece
-        // exclusivamente no card da tela inicial do app.
+        // Salva nos static fields para a IncomingCallActivity / Plugins lerem
+        DeliveryOverlayPlugin.latestDetails    = details;
+        DeliveryOverlayPlugin.latestDeliveryId = deliveryId != null ? deliveryId : "";
+        DeliveryOverlayPlugin.latestStore      = storeName;
+        DeliveryOverlayPlugin.latestPickup     = pickup;
+        DeliveryOverlayPlugin.latestDropoff    = dropoff;
+        DeliveryOverlayPlugin.latestFee        = fee;
+
         try {
             ensureChannel();
 
-            Intent openIntent = new Intent(this, MainActivity.class);
-            openIntent.putExtra("deliveryId", deliveryId);
-            openIntent.putExtra("route", "/driver");
-            openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
+            int notificationId = hashId(deliveryId == null ? details : deliveryId);
             int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 piFlags |= PendingIntent.FLAG_IMMUTABLE;
             }
-            int notificationId = hashId(deliveryId == null ? details : deliveryId);
-            PendingIntent tapPI = PendingIntent.getActivity(this, notificationId, openIntent, piFlags);
 
-            // Botão 1: ACEITAR na notificação da central (BroadcastReceiver para parada instantânea)
+            // Intent para abrir o popup nativo IncomingCallActivity
+            Intent incomingIntent = new Intent(this, IncomingCallActivity.class);
+            incomingIntent.putExtra("details", details);
+            incomingIntent.putExtra("deliveryId", deliveryId);
+            incomingIntent.putExtra("storeName", storeName);
+            incomingIntent.putExtra("pickup", pickup);
+            incomingIntent.putExtra("dropoff", dropoff);
+            incomingIntent.putExtra("fee", fee);
+            incomingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent incomingPI = PendingIntent.getActivity(this, notificationId, incomingIntent, piFlags);
+
+            // Botão 1: ACEITAR na notificação da central
             Intent acceptIntent = new Intent(this, NotificationActionReceiver.class);
             acceptIntent.setAction("ACTION_ACCEPT");
             acceptIntent.putExtra("deliveryId", deliveryId);
@@ -240,25 +253,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             declineIntent.putExtra("deliveryId", deliveryId);
             PendingIntent declinePI = PendingIntent.getBroadcast(this, notificationId * 10 + 2, declineIntent, piFlags);
 
-            android.net.Uri sound = android.net.Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_sound);
+            String finalStoreName = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
+                    ? storeName.trim()
+                    : "É Pra Já Delivery";
 
-        // Override estrito de title e storeName para garantir o Nome da Loja
-        if (title != null && title.contains("Nova corrida") && address != null && address.contains("🏬 Loja:")) {
-            try {
-                int startIdx = address.indexOf("🏬 Loja:") + "🏬 Loja:".length();
-                int endIdx = address.indexOf("\n", startIdx);
-                String parsedStore = (endIdx != -1 ? address.substring(startIdx, endIdx) : address.substring(startIdx)).trim();
-                if (!parsedStore.isEmpty() && !"Loja Parceira".equalsIgnoreCase(parsedStore)) {
-                    storeName = parsedStore;
-                }
-            } catch (Exception e) {}
-        }
-
-        String finalStoreName = (storeName != null && !storeName.trim().isEmpty() && !"Loja Parceira".equalsIgnoreCase(storeName.trim()))
-                ? storeName.trim()
-                : "É Pra Já Delivery";
-
-        String cardTitle = "🏬 " + finalStoreName;
+            String cardTitle = "🏬 " + finalStoreName;
 
             String cardSubtext = (dropoff != null && !dropoff.trim().isEmpty() && !"Endereço do cliente".equalsIgnoreCase(dropoff.trim()))
                     ? "🏁 Entrega: " + dropoff.trim()
@@ -271,29 +270,38 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.notification_sound);
 
+            // Constrói notificação com fullScreenIntent (Acende a tela e abre IncomingCallActivity no Android 10+)
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NotificationChannels.INCOMING_CHANNEL_ID)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(cardTitle)
                     .setContentText(cardSubtext)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(formattedBigText))
-                    .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                    .setCategory(NotificationCompat.CATEGORY_CALL)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setAutoCancel(true)
                     .setOngoing(false)
                     .setOnlyAlertOnce(false)
                     .setSound(soundUri)
-                    .setContentIntent(tapPI)
+                    .setContentIntent(incomingPI)
+                    .setFullScreenIntent(incomingPI, true)
                     .addAction(R.mipmap.ic_launcher, "ACEITAR", acceptPI)
                     .addAction(R.mipmap.ic_launcher, "RECUSAR", declinePI);
 
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
                 nm.notify(notificationId, builder.build());
-                Log.d(TAG, "Notificação com botões disparada para deliveryId=" + deliveryId);
+                Log.d(TAG, "Notificação com fullScreenIntent e botões disparada para deliveryId=" + deliveryId);
             }
 
-            // Exibe o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
+            // Tentativa de startActivity direta para tela ligada / overlay
+            try {
+                startActivity(incomingIntent);
+            } catch (Exception eAct) {
+                Log.d(TAG, "startActivity direto não permitido pelo SO (usando fullScreenIntent): " + eAct.getMessage());
+            }
+
+            // Exibe também o Card Flutuante de Aceite/Recusa sobre outros apps (Overlay)
             try {
                 if (OverlayService.instance != null) {
                     OverlayService.instance.showDeliveryCard(deliveryId, finalStoreName, pickup, dropoff, fee);
