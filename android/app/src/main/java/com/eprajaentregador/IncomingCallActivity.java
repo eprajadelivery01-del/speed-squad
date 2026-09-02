@@ -338,6 +338,18 @@ public class IncomingCallActivity extends Activity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        try {
+            if (getWindow() != null) {
+                int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.92);
+                getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+                getWindow().setGravity(android.view.Gravity.CENTER);
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void startStatusCheckLoop() {
         if (checkHandler == null) {
             checkHandler = new Handler(Looper.getMainLooper());

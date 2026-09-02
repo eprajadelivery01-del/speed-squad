@@ -289,7 +289,24 @@ public class OverlayService extends Service {
 
                 cardContainer.setVisibility(View.VISIBLE);
                 if (windowManager != null && windowParams != null && floatingView != null) {
+                    windowParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
+                    windowParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
                     windowManager.updateViewLayout(floatingView, windowParams);
+                }
+
+                // Dispara também o popup IncomingCallActivity imediatamente sobre qualquer app
+                try {
+                    Intent callIntent = new Intent(this, IncomingCallActivity.class);
+                    callIntent.putExtra("deliveryId", deliveryId);
+                    callIntent.putExtra("storeName", storeName);
+                    callIntent.putExtra("pickup", pickup);
+                    callIntent.putExtra("dropoff", dropoff);
+                    callIntent.putExtra("fee", fee);
+                    callIntent.putExtra("details", storeName + "\n" + pickup + "\n" + dropoff + "\n" + fee);
+                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                    startActivity(callIntent);
+                } catch (Exception eStart) {
+                    Log.w(TAG, "Erro ao abrir IncomingCallActivity de OverlayService: " + eStart.getMessage());
                 }
             }
         });
