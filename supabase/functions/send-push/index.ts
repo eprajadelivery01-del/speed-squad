@@ -220,6 +220,10 @@ serve(async (req) => {
             direct_boot_ok: true
           },
           apns: {
+            headers: {
+              "apns-priority": "10",
+              "apns-push-type": "alert"
+            },
             payload: {
               aps: {
                 alert: {
@@ -227,6 +231,8 @@ serve(async (req) => {
                   body: pushBody
                 },
                 sound: "default",
+                badge: 1,
+                "content-available": 1,
                 category: "DELIVERY_INFO"
               }
             }

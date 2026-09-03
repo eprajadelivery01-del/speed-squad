@@ -234,6 +234,14 @@ export function useDriverNotifications() {
           console.log("[FCM] Sincronizando token:", tokenVal.slice(0, 15) + "...");
           localStorage.setItem("driver_fcm_token", tokenVal);
 
+          const cachedDriverId = localStorage.getItem("driver_id");
+          if (cachedDriverId) {
+            await supabase
+              .from("delivery_drivers")
+              .update({ fcm_token: tokenVal } as any)
+              .eq("id", cachedDriverId);
+          }
+
           if (user?.id) {
             const { error } = await supabase
               .from("delivery_drivers")
@@ -241,7 +249,6 @@ export function useDriverNotifications() {
               .eq("user_id", user.id);
             if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (user_id):", error.message);
           }
-
         };
 
         // Escuta novas identificações do FCM
@@ -262,13 +269,13 @@ export function useDriverNotifications() {
 
         // Tenta sincronizar token já existente em cache quando o usuário carrega
         const cachedToken = localStorage.getItem("driver_fcm_token");
-        if (cachedToken && user?.id) {
+        if (cachedToken) {
           syncFcmToken(cachedToken);
         }
 
         // Solicita permissões e registra no PushNotifications
         PushNotifications.requestPermissions().then((result) => {
-          if (result.receive === "granted") {
+          if (result.receive === "granted" || (result as any).display === "granted") {
             PushNotifications.register().catch(e => console.warn("PushNotifications.register erro (safe):", e));
           }
         }).catch(e => console.warn("PushNotifications.requestPermissions erro:", e));
