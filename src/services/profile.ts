@@ -10,7 +10,7 @@ export async function getProfile(userId: string) {
     .from("profiles")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -20,10 +20,9 @@ export async function updateProfile(userId: string, data: any) {
     .from("profiles")
     .update(data)
     .eq("user_id", userId)
-    .select()
-    .single();
+    .select();
   if (error) throw error;
-  return updatedData;
+  return updatedData?.[0] || null;
 }
 
 export async function uploadAvatar(userId: string, file: File) {

@@ -52,7 +52,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
       .from("delivery_drivers")
       .select("id, is_online")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setDriverId(data.id);

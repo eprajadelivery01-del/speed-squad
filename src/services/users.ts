@@ -42,22 +42,79 @@ export async function rejectUser(userId: string) {
 }
 
 export async function updateProfile(userId: string, updates: { id?: string; full_name?: string; phone?: string; document?: string; avatar_url?: string }) {
+  const profileId = updates.id;
   const { id, ...realUpdates } = updates;
-  const { data, error } = await supabase
+  const updatePayload: Record<string, any> = { 
+    ...realUpdates, 
+    updated_at: new Date().toISOString() 
+  };
+
+  // 1. Tenta atualizar pelo user_id (chave canônica do usuário auth no profiles)
+  let { data, error } = await supabase
     .from("profiles")
-    .update({ 
-      ...realUpdates, 
-      updated_at: new Date().toISOString() 
-    })
-    .eq('id', userId)
-    .select()
-    .single();
-    
+    .update(updatePayload)
+    .eq("user_id", userId)
+    .select();
+
+  // 2. Se nenhuma linha foi afetada, tenta pelo id (caso o registro tenha id diferente ou user_id nulo)
+  if (!error && (!data || data.length === 0)) {
+    const targetId = profileId || userId;
+    const res = await supabase
+      .from("profiles")
+      .update({
+        ...updatePayload,
+        user_id: userId
+      })
+      .eq("id", targetId)
+      .select();
+    data = res.data;
+    error = res.error;
+  }
+
+  // 3. Se ainda não existir registro na tabela profiles, cria via upsert seguro
+  if (!error && (!data || data.length === 0)) {
+    const insertPayload: any = {
+      id: profileId || userId,
+      user_id: userId,
+      ...realUpdates,
+      status: "active",
+      role: "driver",
+      updated_at: new Date().toISOString()
+    };
+    const res = await supabase
+      .from("profiles")
+      .upsert(insertPayload, { onConflict: "user_id" })
+      .select();
+    data = res.data;
+    error = res.error;
+  }
+
   if (error) {
+    console.error("[updateProfile] Error updating profile:", error);
     throw error;
   }
-  
-  return data;
+
+  // 4. Sincroniza também com a tabela delivery_drivers para manter os dados sincronizados
+  try {
+    const driverUpdates: Record<string, any> = {};
+    if (realUpdates.full_name !== undefined) driverUpdates.full_name = realUpdates.full_name;
+    if (realUpdates.phone !== undefined) driverUpdates.phone = realUpdates.phone;
+    if (realUpdates.avatar_url !== undefined) driverUpdates.avatar_url = realUpdates.avatar_url;
+    if (realUpdates.document !== undefined) driverUpdates.document = realUpdates.document;
+
+    if (Object.keys(driverUpdates).length > 0) {
+      driverUpdates.updated_at = new Date().toISOString();
+      await supabase
+        .from("delivery_drivers")
+        .update(driverUpdates)
+        .eq("user_id", userId);
+    }
+  } catch (syncErr) {
+    console.warn("[updateProfile] Could not sync changes to delivery_drivers:", syncErr);
+  }
+
+  const result = data && data.length > 0 ? data[0] : { id: profileId || userId, user_id: userId, ...realUpdates };
+  return result;
 }
 
 export async function uploadAvatar(userId: string, file: File) {
