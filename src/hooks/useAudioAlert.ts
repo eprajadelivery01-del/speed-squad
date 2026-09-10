@@ -37,10 +37,18 @@ if (typeof window !== "undefined") {
     if (isUnlocked) return;
 
     isUnlocking = true;
+    globalAudio.muted = true;
     globalAudio.volume = 0;
     const p = globalAudio.play();
     lastPlayPromise = p;
     p.then(() => {
+        try {
+          if (!pendingLoop) {
+            globalAudio!.pause();
+            globalAudio!.currentTime = 0;
+          }
+        } catch {}
+        globalAudio!.muted = false;
         isUnlocked = true;
         isUnlocking = false;
         if (lastPlayPromise === p) lastPlayPromise = null;
@@ -54,6 +62,7 @@ if (typeof window !== "undefined") {
         }
       })
       .catch(() => {
+        if (globalAudio) globalAudio.muted = false;
         if (lastPlayPromise === p) lastPlayPromise = null;
         isUnlocking = false;
       });
@@ -85,19 +94,25 @@ export function isAudioGloballyUnlocked(): boolean {
 
 export function useAudioAlert() {
   const unlockAudio = useCallback(() => {
-    if (globalAudio) {
-      globalAudio.volume = 0;
-      const p = globalAudio.play();
-      lastPlayPromise = p;
-      p.then(() => {
-          isUnlocked = true;
-          if (lastPlayPromise === p) lastPlayPromise = null;
-        })
-        .catch((e) => {
-          if (lastPlayPromise === p) lastPlayPromise = null;
-          if (import.meta.env.DEV) console.warn("[AudioAlert] Falha ao destravar áudio:", e);
-        });
-    }
+    if (isUnlocked || !globalAudio) return;
+    globalAudio.muted = true;
+    globalAudio.volume = 0;
+    const p = globalAudio.play();
+    lastPlayPromise = p;
+    p.then(() => {
+        try {
+          globalAudio!.pause();
+          globalAudio!.currentTime = 0;
+        } catch {}
+        globalAudio!.muted = false;
+        isUnlocked = true;
+        if (lastPlayPromise === p) lastPlayPromise = null;
+      })
+      .catch((e) => {
+        if (globalAudio) globalAudio.muted = false;
+        if (lastPlayPromise === p) lastPlayPromise = null;
+        if (import.meta.env.DEV) console.warn("[AudioAlert] Falha ao destravar áudio:", e);
+      });
   }, []);
 
   const playAlert = useCallback(() => {

@@ -262,9 +262,11 @@ export default function DriverHomePage() {
   };
 
   const handleToggle = async () => {
-    unlockAudio(); // Destrava o áudio no clique do usuário
-    sessionStorage.setItem("sound_enabled", "true");
-    sessionStorage.setItem("epj_sound_enabled", "true");
+    if (!isOnline) {
+      unlockAudio(); // Destrava o áudio no clique do usuário apenas ao ficar online
+      sessionStorage.setItem("sound_enabled", "true");
+      sessionStorage.setItem("epj_sound_enabled", "true");
+    }
 
     let currentDriverRecord = driverRecord;
 

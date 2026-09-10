@@ -5,8 +5,11 @@ const config: CapacitorConfig = {
   appName: 'É Pra Já - Entregador',
   webDir: 'dist',
   plugins: {
+    LocalNotifications: {
+      sound: "notification_sound.mp3",
+    },
     PushNotifications: {
-      presentationOptions: ["badge", "alert"],
+      presentationOptions: ["badge", "sound", "alert"],
     },
   },
 };

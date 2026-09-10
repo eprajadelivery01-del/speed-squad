@@ -202,6 +202,10 @@ serve(async (req) => {
       const message = {
         message: {
           token: token,
+          notification: {
+            title: pushTitle,
+            body: pushBody
+          },
           data: {
             type: "delivery",
             deliveryId: record.id,
@@ -230,7 +234,7 @@ serve(async (req) => {
                   title: pushTitle,
                   body: pushBody
                 },
-                sound: "default",
+                sound: "notification_sound.mp3",
                 badge: 1,
                 "content-available": 1,
                 category: "DELIVERY_INFO"

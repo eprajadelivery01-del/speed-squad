@@ -335,6 +335,15 @@ export function useDriverNotifications() {
                 deliveryId,
                 deliveryStatus: "pending",
               });
+
+              // No iOS nativo, aciona o loop sonoro contínuo oficial
+              if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'ios') {
+                try {
+                  startLoop();
+                } catch (e) {
+                  console.warn("[FCM] startLoop erro:", e);
+                }
+              }
             } catch (e) {
               console.warn("Erro validando FCM status:", e);
             }
@@ -428,8 +437,8 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // Dispara áudio contínuo apenas no navegador web (no app Android, o som é tocado exclusivamente pela notificação nativa da central)
-      if (!Capacitor.isNativePlatform()) {
+      // Dispara áudio contínuo na web E no iOS nativo (no Android, o som é tocado pelo serviço foreground nativo/NotificationChannels)
+      if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'ios') {
         try {
           startLoop();
         } catch (e) {
