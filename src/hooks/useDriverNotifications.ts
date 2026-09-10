@@ -231,8 +231,9 @@ export function useDriverNotifications() {
       try {
         const syncFcmToken = async (tokenVal: string) => {
           if (!tokenVal) return;
-          console.log("[FCM] Sincronizando token:", tokenVal.slice(0, 15) + "...");
+          console.log("[FCM Entregador] Sincronizando token:", tokenVal.slice(0, 15) + "...");
           localStorage.setItem("driver_fcm_token", tokenVal);
+          localStorage.setItem("fcm_token", tokenVal);
 
           const cachedDriverId = localStorage.getItem("driver_id");
           if (cachedDriverId) {
@@ -243,11 +244,40 @@ export function useDriverNotifications() {
           }
 
           if (user?.id) {
-            const { error } = await supabase
+            // 1. Atualiza delivery_drivers
+            const { error: drvErr } = await supabase
               .from("delivery_drivers")
               .update({ fcm_token: tokenVal } as any)
               .eq("user_id", user.id);
-            if (error) console.error("[FCM] Erro ao salvar token em delivery_drivers (user_id):", error.message);
+            if (drvErr) console.error("[FCM] Erro ao salvar token em delivery_drivers:", drvErr.message);
+
+            // 2. Atualiza profiles
+            await supabase
+              .from("profiles")
+              .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() })
+              .eq("id", user.id)
+              .catch(() => {});
+
+            // 3. Registra em device_tokens
+            await supabase
+              .from("device_tokens")
+              .upsert({
+                token: tokenVal,
+                user_id: user.id,
+                platform: Capacitor.getPlatform(),
+                updated_at: new Date().toISOString(),
+              }, { onConflict: "token" })
+              .catch(() => {});
+
+            // 4. Notifica backend Edge Function send-push
+            supabase.functions.invoke("send-push", {
+              body: {
+                action: "register_token",
+                token: tokenVal,
+                userId: user.id,
+                platform: Capacitor.getPlatform(),
+              },
+            }).catch(() => {});
           }
         };
 
@@ -273,12 +303,22 @@ export function useDriverNotifications() {
           syncFcmToken(cachedToken);
         }
 
-        // Solicita permissões e registra no PushNotifications
-        PushNotifications.requestPermissions().then((result) => {
-          if (result.receive === "granted" || (result as any).display === "granted") {
-            PushNotifications.register().catch(e => console.warn("PushNotifications.register erro (safe):", e));
+        // Solicita permissões e registra no PushNotifications nativo (iOS / Android)
+        const initPushPermissions = async () => {
+          try {
+            let perm = await PushNotifications.checkPermissions();
+            if (perm.receive !== "granted" && (perm as any).display !== "granted") {
+              perm = await PushNotifications.requestPermissions();
+            }
+            if (perm.receive === "granted" || (perm as any).display === "granted") {
+              await PushNotifications.register();
+              console.log("[Push Entregador] Registrado com sucesso no serviço nativo");
+            }
+          } catch (e) {
+            console.warn("[Push Entregador] Erro ao registrar push nativo:", e);
           }
-        }).catch(e => console.warn("PushNotifications.requestPermissions erro:", e));
+        };
+        initPushPermissions();
 
         errListener = PushNotifications.addListener("registrationError", (error: any) => {
           console.error("Erro no PushNotifications.register:", error);
