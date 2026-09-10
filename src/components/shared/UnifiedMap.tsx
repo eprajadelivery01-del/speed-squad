@@ -75,16 +75,22 @@ export function UnifiedMap({
     map.current.on("load", () => {
       mapLoaded.current = true;
       if (!centerCity && !regions.length && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            map.current?.flyTo({
-              center: [pos.coords.longitude, pos.coords.latitude],
-              zoom: 13,
-              duration: 2000
-            });
-          },
-          (err) => console.log("Geolocation error:", err)
-        );
+        if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+          navigator.permissions.query({ name: "geolocation" as any }).then((perm) => {
+            if (perm.state === "granted") {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  map.current?.flyTo({
+                    center: [pos.coords.longitude, pos.coords.latitude],
+                    zoom: 13,
+                    duration: 2000
+                  });
+                },
+                (err) => console.log("Geolocation error:", err)
+              );
+            }
+          }).catch(() => {});
+        }
       }
     });
 

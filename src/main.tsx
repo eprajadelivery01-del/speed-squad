@@ -34,10 +34,22 @@ sonnerToast.error = function (message: any, options: any) {
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Register Service Worker for PWA (Web only - not in native app)
-if ("serviceWorker" in navigator && !Capacitor.isNativePlatform() && !/lovable(project)?\.app$/.test(window.location.hostname)) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((err) => {
-      console.warn("SW registration failed: ", err);
+if ("serviceWorker" in navigator) {
+  if (Capacitor.isNativePlatform()) {
+    // No app nativo (iOS / Android), desregistra qualquer Service Worker residual
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        reg.unregister();
+      }
     });
-  });
+  } else if (!/lovable(project)?\.app$/.test(window.location.hostname)) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").then((reg) => {
+        // Força atualização imediata para substituir qualquer versão antiga corrompida
+        reg.update().catch(() => {});
+      }).catch((err) => {
+        console.warn("SW registration failed: ", err);
+      });
+    });
+  }
 }

@@ -137,9 +137,20 @@ export default function DriverHomePage() {
   const { selectedCity, setCity } = useCity();
 
 
-  const updateLocation = useCallback(async (drivId: string) => {
+  const updateLocation = useCallback(async (drivId: string, isUserGesture = false) => {
     if (!navigator.geolocation) return;
     if (isQueryingRef.current) return;
+
+    // No navegador Web, não solicita permissão sem gesto do usuário para evitar violação do browser
+    if (typeof navigator !== "undefined" && navigator.permissions?.query && !isUserGesture && !Capacitor.isNativePlatform()) {
+      try {
+        const perm = await navigator.permissions.query({ name: "geolocation" as any });
+        if (perm.state !== "granted") {
+          return;
+        }
+      } catch { }
+    }
+
     isQueryingRef.current = true;
     setIsDetecting(true);
 
@@ -193,9 +204,9 @@ export default function DriverHomePage() {
     );
   }, [selectedCity, setCity]);
 
-  const startTracking = useCallback((drivId: string) => {
-    updateLocation(drivId);
-    intervalRef.current = setInterval(() => updateLocation(drivId), 30000);
+  const startTracking = useCallback((drivId: string, isUserGesture = true) => {
+    updateLocation(drivId, isUserGesture);
+    intervalRef.current = setInterval(() => updateLocation(drivId, false), 30000);
     if (navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
