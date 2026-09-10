@@ -34,6 +34,42 @@ serve(async (req) => {
     const accessToken = accessTokenObj.token
     const projectId = serviceAccount.project_id
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
+    const BUNDLE_ID = "br.com.epraja.entregador"
+
+    async function resolveFcmToken(rawToken: string, driverId?: string): Promise<string> {
+      const isApnsHex = /^[0-9a-fA-F]{64}$/.test(rawToken.trim())
+      if (!isApnsHex) return rawToken
+      console.log(`[FCM] Token APNs bruto detectado (${rawToken.slice(0, 10)}...). Convertendo via BatchImport...`)
+      for (const sandbox of [false, true]) {
+        try {
+          const res = await fetch("https://iid.googleapis.com/iid/v1:batchImport", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "access_token_auth": "true",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              application: BUNDLE_ID,
+              sandbox: sandbox,
+              apns_tokens: [rawToken.trim()]
+            })
+          })
+          const data = await res.json()
+          const mapped = data?.results?.[0]
+          if (mapped?.status === "OK" && mapped.registration_token) {
+            console.log(`[FCM] Token APNs convertido com sucesso (sandbox=${sandbox}):`, mapped.registration_token.slice(0, 15) + "...")
+            if (driverId) {
+              supabaseClient.from('delivery_drivers').update({ fcm_token: mapped.registration_token }).eq('id', driverId).then(() => {})
+            }
+            return mapped.registration_token
+          }
+        } catch (e) {
+          console.warn(`[FCM] Falha ao converter token APNs (sandbox=${sandbox}):`, e)
+        }
+      }
+      return rawToken
+    }
 
     // =========================================================================
     // CASE A: UPDATE EVENT — Delivery accepted or cancelled by another driver
@@ -46,7 +82,7 @@ serve(async (req) => {
 
       let query = supabaseClient
         .from('delivery_drivers')
-        .select('fcm_token')
+        .select('id, fcm_token')
         .not('fcm_token', 'is', null)
         .eq('is_online', true)
 
@@ -60,8 +96,8 @@ serve(async (req) => {
         return new Response("No online drivers to cancel notification", { status: 200 })
       }
 
-      const tokens = drivers.map(d => d.fcm_token).filter(Boolean)
-      const cancelRequests = tokens.map(token => {
+      const cancelRequests = drivers.map(async (d) => {
+        const token = await resolveFcmToken(d.fcm_token, d.id)
         const message = {
           message: {
             token: token,
@@ -73,6 +109,17 @@ serve(async (req) => {
               priority: "HIGH",
               ttl: "120s",
               direct_boot_ok: true
+            },
+            apns: {
+              headers: {
+                "apns-priority": "10",
+                "apns-push-type": "background"
+              },
+              payload: {
+                aps: {
+                  "content-available": 1
+                }
+              }
             }
           }
         }
@@ -88,7 +135,7 @@ serve(async (req) => {
 
       const cancelResults = await Promise.all(cancelRequests)
       console.log("FCM Cancel Results:", cancelResults)
-      return new Response(JSON.stringify({ success: true, action: "cancelled", count: tokens.length }), {
+      return new Response(JSON.stringify({ success: true, action: "cancelled", count: drivers.length }), {
         headers: { "Content-Type": "application/json" }
       })
     }
@@ -180,7 +227,7 @@ serve(async (req) => {
 
     let query = supabaseClient
       .from('delivery_drivers')
-      .select('fcm_token')
+      .select('id, fcm_token')
       .not('fcm_token', 'is', null)
       .eq('is_online', true)
 
@@ -194,14 +241,14 @@ serve(async (req) => {
       return new Response("No online drivers with push tokens found", { status: 200 })
     }
 
-    const tokens = drivers.map(d => d.fcm_token).filter(Boolean)
-    console.log(`Enviando push para ${tokens.length} dispositivos...`)
+    console.log(`Enviando push para ${drivers.length} dispositivos...`)
 
     // Firebase HTTP v1 API aceita apenas 1 mensagem por request
-    const requests = tokens.map(token => {
+    const requests = drivers.map(async (d) => {
+      const resolvedToken = await resolveFcmToken(d.fcm_token, d.id)
       const message = {
         message: {
-          token: token,
+          token: resolvedToken,
           notification: {
             title: pushTitle,
             body: pushBody
@@ -237,6 +284,7 @@ serve(async (req) => {
                 sound: "notification_sound.mp3",
                 badge: 1,
                 "content-available": 1,
+                "mutable-content": 1,
                 category: "DELIVERY_INFO"
               }
             }
