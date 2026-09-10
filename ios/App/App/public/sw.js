@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epj-entregador-v3';
+const CACHE_NAME = 'epj-entregador-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -30,7 +30,7 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
-  // Only handle GET same-origin requests
+  // Only handle GET requests
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
@@ -41,23 +41,44 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/~oauth')) return;
   if (url.pathname.startsWith('/api')) return;
 
-  // SPA navigation fallback: always serve index.html for navigation requests
-  if (req.mode === 'navigate') {
+  const isNavigationOrSpaRoute =
+    req.mode === 'navigate' ||
+    (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) ||
+    (!url.pathname.split('/').pop().includes('.') && !url.pathname.startsWith('/api'));
+
+  // SPA navigation fallback: always serve index.html for navigation / SPA page routes
+  if (isNavigationOrSpaRoute) {
     event.respondWith(
-      fetch(req).catch(() =>
-        caches.match('/index.html').then((r) => r || caches.match('/'))
-      )
+      fetch(req).catch(async () => {
+        const cachedIndex = await caches.match('/index.html');
+        if (cachedIndex) return cachedIndex;
+        const cachedRoot = await caches.match('/');
+        if (cachedRoot) return cachedRoot;
+        return new Response('<!DOCTYPE html><html><head><meta charset="utf-8"><title>É Pra Já - Entregador</title></head><body><script>window.location.reload();</script></body></html>', {
+          headers: { 'Content-Type': 'text/html' }
+        });
+      })
     );
     return;
   }
 
-  // Cache-first for static assets, with network fallback
+  // Cache-first for static assets, with safe network fallback (never throw Response.error)
   event.respondWith(
     caches.match(req).then((cached) => {
-      return (
-        cached ||
-        fetch(req).catch(() => cached || Response.error())
-      );
+      if (cached) return cached;
+      return fetch(req)
+        .then((res) => {
+          if (res && res.status === 200 && res.type === 'basic') {
+            const resClone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(async () => {
+          const fallback = await caches.match(req);
+          if (fallback) return fallback;
+          return new Response('', { status: 504, statusText: 'Gateway Timeout' });
+        });
     })
   );
 });
