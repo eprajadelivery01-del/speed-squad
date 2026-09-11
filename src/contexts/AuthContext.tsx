@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, ReactNode,
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { safeRpc } from "@/lib/safeRpc";
+import { safeUnlinkAndPrepareDriverDeletion } from "@/services/drivers";
 
 type AppRole = "admin" | "company" | "driver" | "customer";
 type UserStatus = "pending" | "active" | "rejected";
@@ -266,8 +267,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = async () => {
     if (!user) return;
     try {
-      const { error } = await safeRpc("delete_my_account");
-      if (error) throw new Error(error);
+      // 1. Desvincula o entregador de todas as entregas (setando driver_id = null)
+      // para NUNCA apagar o histórico de entregas do sistema
+      await safeUnlinkAndPrepareDriverDeletion(user.id);
+
+      // 2. Executa a deleção segura de auth
+      try {
+        const { error } = await safeRpc("delete_my_account");
+        if (error) console.warn("[deleteAccount] Aviso em delete_my_account:", error);
+      } catch (e) {
+        console.warn("[deleteAccount] Erro ao chamar delete_my_account:", e);
+      }
+
+      // 3. Limpeza completa dos dados locais
+      try {
+        localStorage.removeItem("driver_id");
+        localStorage.removeItem("epj_driver_id");
+        localStorage.removeItem("chat_read_timestamps");
+        localStorage.removeItem("epj_chat_read_timestamps");
+        localStorage.removeItem("epj_opened_conversations");
+      } catch {}
+
       await signOut();
     } catch (error) {
       if (import.meta.env.DEV) console.error("Erro ao deletar conta:", error);

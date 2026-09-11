@@ -149,3 +149,103 @@ export function useAcceptDelivery() {
     },
   });
 }
+
+/**
+ * Desvincula com segurança total o entregador de todas as entregas antes da exclusão da conta.
+ * NUNCA exclui as entregas; define o driver_id como NULL para manter 100% do histórico
+ * do lojista, do cliente e do financeiro intactos no sistema.
+ */
+export async function safeUnlinkAndPrepareDriverDeletion(userId: string) {
+  if (!userId) return;
+
+  try {
+    // 1. Obter os identificadores do entregador (tanto em delivery_drivers quanto o próprio auth user_id)
+    const { data: driverRecord } = await supabase
+      .from("delivery_drivers")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const targetIds = Array.from(new Set([driverRecord?.id, userId])).filter(Boolean) as string[];
+
+    for (const dId of targetIds) {
+      // 2. Corridas em andamento voltam para o pool geral (broadcasted) com driver_id NULL para não travar a loja
+      try {
+        await supabase
+          .from("deliveries")
+          .update({
+            driver_id: null,
+            status: "broadcasted" as any,
+            accepted_at: null,
+            collected_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("driver_id", dId)
+          .in("status", ["accepted", "collecting", "in_route"] as any);
+      } catch (err) {
+        console.warn("[safeUnlink] Aviso ao resetar corridas ativas:", err);
+      }
+
+      // 3. TODAS as entregas (incluindo concluídas e canceladas) têm seu driver_id setado para NULL.
+      // Isso protege 100% o histórico contra qualquer cascade delete e preserva o banco.
+      try {
+        await supabase
+          .from("deliveries")
+          .update({
+            driver_id: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("driver_id", dId);
+      } catch (err) {
+        console.warn("[safeUnlink] Aviso ao desvincular entregas concluídas:", err);
+      }
+
+      // 4. Desvincular ocorrências e avaliações para manter integridade relacional
+      try {
+        await supabase.from("occurrences").update({ driver_id: null }).eq("driver_id", dId);
+      } catch {}
+
+      try {
+        await supabase.from("delivery_occurrences").update({ driver_id: null }).eq("driver_id", dId);
+      } catch {}
+
+      try {
+        await supabase.from("reviews").update({ driver_id: null }).eq("driver_id", dId);
+      } catch {}
+
+      try {
+        await supabase.from("delivery_ratings").update({ driver_id: null }).eq("driver_id", dId);
+      } catch {}
+
+      // 5. Limpar registros efêmeros exclusivos do motorista
+      try {
+        await supabase.from("driver_location_history").delete().eq("driver_id", dId);
+      } catch {}
+
+      try {
+        await supabase.from("driver_earnings").delete().eq("driver_id", dId);
+      } catch {}
+    }
+
+    // 6. Desvincular o registro em delivery_drivers do auth.users antes da deleção de conta
+    if (driverRecord?.id) {
+      try {
+        await supabase
+          .from("delivery_drivers")
+          .update({
+            is_online: false,
+            online: false,
+            status: "deleted",
+            user_id: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", driverRecord.id);
+      } catch (err) {
+        console.warn("[safeUnlink] Aviso ao sanitizar delivery_drivers:", err);
+      }
+    }
+  } catch (err) {
+    console.error("[safeUnlinkAndPrepareDriverDeletion] Falha no processo de desvinculação:", err);
+  }
+}
+

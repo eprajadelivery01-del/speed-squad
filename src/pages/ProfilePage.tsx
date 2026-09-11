@@ -31,12 +31,34 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [coverUrl, setCoverUrl] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [period, setPeriod] = useState("today");
   const [customDate, setCustomDate] = useState(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().split("T")[0];
   });
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) return;
+    setIsDeletingAccount(true);
+    toast({
+      title: "Excluindo conta...",
+      description: "Desvinculando entregas e finalizando conta com segurança.",
+    });
+    try {
+      await deleteAccount();
+      navigate("/login");
+    } catch (err: any) {
+      console.error("Erro ao excluir conta:", err);
+      toast({
+        title: "Erro ao excluir conta",
+        description: err?.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+      setIsDeletingAccount(false);
+    }
+  };
   
   const [driverStats, setDriverStats] = useState({ 
     deliveries: 0, 
@@ -374,15 +396,20 @@ export default function ProfilePage() {
               <AlertDialogContent className="rounded-[32px] max-w-[90vw] sm:max-w-lg border-0 shadow-2xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-xl font-black">Tem certeza absoluta?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-sm font-medium">VocÃª perderÃ¡ o acesso e todo o histÃ³rico. Essa aÃ§Ã£o Ã© irreversÃ­vel.</AlertDialogDescription>
+                  <AlertDialogDescription className="text-sm font-medium">
+                    Você perderá o acesso a esta conta. Todas as entregas concluídas e em andamento serão desvinculadas com segurança (ficando com entregador nulo) e permanecerão intactas no histórico do sistema. Essa ação é irreversível.
+                  </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col gap-3 mt-4">
-                  <AlertDialogCancel className="rounded-xl font-bold h-12 m-0 bg-slate-100 border-none">Cancelar</AlertDialogCancel>
+                  <AlertDialogCancel disabled={isDeletingAccount} className="rounded-xl font-bold h-12 m-0 bg-slate-100 border-none">
+                    Cancelar
+                  </AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={async () => { try { await deleteAccount(); navigate("/login"); } catch (e) { } }}
-                    className="bg-rose-500 text-white hover:bg-rose-600 rounded-xl font-black h-12 m-0 shadow-lg shadow-rose-500/30"
+                    disabled={isDeletingAccount}
+                    onClick={handleDeleteAccount}
+                    className="bg-rose-500 text-white hover:bg-rose-600 rounded-xl font-black h-12 m-0 shadow-lg shadow-rose-500/30 disabled:opacity-50"
                   >
-                    Sim, Excluir Minha Conta
+                    {isDeletingAccount ? "Excluindo conta..." : "Sim, Excluir Minha Conta"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
