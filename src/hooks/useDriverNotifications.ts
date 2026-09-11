@@ -524,11 +524,29 @@ export function useDriverNotifications() {
         fetchRealStoreName(rawDelivery).catch(() => initialStore),
         (async () => {
           try {
-            return await supabase
+            const { data: delRow } = await supabase
               .from("available_deliveries")
-              .select("*, companies(name, address), orders(delivery_fee)")
+              .select("*, companies(name, address)")
               .eq("id", rawDelivery.id)
               .maybeSingle();
+
+            let orderFee = 0;
+            const ordId = rawDelivery.order_id || (delRow as any)?.order_id;
+            if (ordId) {
+              const { data: ord } = await supabase
+                .from("orders")
+                .select("delivery_fee")
+                .eq("id", ordId)
+                .maybeSingle();
+              if (ord?.delivery_fee) orderFee = Number(ord.delivery_fee);
+            }
+
+            return {
+              data: {
+                ...(delRow || rawDelivery),
+                orders: orderFee > 0 ? { delivery_fee: orderFee } : null,
+              },
+            };
           } catch {
             return { data: null };
           }
