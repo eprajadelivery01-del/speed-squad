@@ -52,7 +52,7 @@ export async function updateProfile(userId: string, updates: { id?: string; full
   // 1. Tenta atualizar pelo user_id (chave canônica do usuário auth no profiles)
   let { data, error } = await supabase
     .from("profiles")
-    .update(updatePayload)
+    .update(updatePayload as any)
     .eq("user_id", userId)
     .select();
 
@@ -106,7 +106,7 @@ export async function updateProfile(userId: string, updates: { id?: string; full
       driverUpdates.updated_at = new Date().toISOString();
       await supabase
         .from("delivery_drivers")
-        .update(driverUpdates)
+        .update(driverUpdates as any)
         .eq("user_id", userId);
     }
   } catch (syncErr) {

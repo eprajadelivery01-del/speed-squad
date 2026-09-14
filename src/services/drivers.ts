@@ -235,7 +235,7 @@ export async function safeUnlinkAndPrepareDriverDeletion(userId: string) {
           .update({
             is_online: false,
             online: false,
-            status: "deleted",
+            status: "deleted" as any,
             user_id: null,
             updated_at: new Date().toISOString(),
           })

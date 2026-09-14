@@ -252,22 +252,20 @@ export function useDriverNotifications() {
             if (drvErr) console.error("[FCM] Erro ao salvar token em delivery_drivers:", drvErr.message);
 
             // 2. Atualiza profiles
-            await supabase
+            await (supabase
               .from("profiles")
-              .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() })
-              .eq("id", user.id)
-              .catch(() => {});
+              .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() } as any)
+              .eq("id", user.id) as any).catch(() => {});
 
             // 3. Registra em device_tokens
-            await supabase
-              .from("device_tokens")
+            await (supabase
+              .from("device_tokens" as any)
               .upsert({
                 token: tokenVal,
                 user_id: user.id,
                 platform: Capacitor.getPlatform(),
                 updated_at: new Date().toISOString(),
-              }, { onConflict: "token" })
-              .catch(() => {});
+              } as any, { onConflict: "token" }) as any).catch(() => {});
 
             // 4. Notifica backend Edge Function send-push
             supabase.functions.invoke("send-push", {
@@ -442,7 +440,7 @@ export function useDriverNotifications() {
           acceptDeliveryGlobalRef.current(deliveryId);
         }
       });
-      const nativeCallResponseListener = DeliveryOverlay.addListener("onCallResponse", ({ status, deliveryId }: { status: string; deliveryId?: string }) => {
+      const nativeCallResponseListener = (DeliveryOverlay as any).addListener("onCallResponse", ({ status, deliveryId }: { status: string; deliveryId?: string }) => {
         if (!deliveryId) return;
         if (status === "accepted") {
           acceptDeliveryGlobalRef.current(deliveryId);
