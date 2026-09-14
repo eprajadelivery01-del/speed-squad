@@ -2,13 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
-import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, X, MessageCircle, ShoppingBag } from "lucide-react";
+import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, X, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/** Mensagem padrão enviada ao cliente ao chamar no WhatsApp. */
-const DEFAULT_CUSTOMER_WA_MESSAGE = encodeURIComponent(
-  `Olá! 👋\n\nSou o entregador do É Pra Já Delivery responsável pela sua entrega.\n\nPode me enviar sua localização pelo WhatsApp para facilitar a entrega? 📍\n\nObrigado! 🚀`
-);
+import { WhatsAppIcon } from "@/components/shared/WhatsAppIcon";
+import { openWhatsApp, CUSTOMER_LOCATION_MESSAGE } from "@/lib/whatsapp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -193,7 +190,43 @@ export default function DriverDeliveriesPage() {
 }
 
 function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
+  const { toast: cardToast } = useToast();
   const [showInfo, setShowInfo] = useState(false);
+
+  /** Abre a conversa do CLIENTE no WhatsApp do aparelho, com a mensagem preenchida. */
+  const handleWhatsAppCustomer = () => {
+    const res = openWhatsApp({
+      phone: delivery.customer_phone,
+      message: CUSTOMER_LOCATION_MESSAGE,
+      deliveryId: delivery.id,
+      debugLabel: "customer",
+    });
+    if (!res.ok) {
+      cardToast({
+        title: "Não foi possível abrir o WhatsApp",
+        description:
+          res.reason === "no-phone" || res.reason === "invalid-phone"
+            ? "Cliente sem telefone cadastrado."
+            : "WhatsApp não está instalado neste aparelho.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWhatsAppStore = () => {
+    const res = openWhatsApp({
+      phone: delivery.companies?.phone,
+      deliveryId: delivery.id,
+      debugLabel: "store",
+    });
+    if (!res.ok) {
+      cardToast({
+        title: "Não foi possível abrir o WhatsApp",
+        description: "Telefone da loja indisponível ou inválido.",
+        variant: "destructive",
+      });
+    }
+  };
   const [realStoreName, setRealStoreName] = useState<string>(
     delivery.companies?.name || delivery.companies?.trade_name || delivery.company_name || delivery.store_name || ""
   );
@@ -434,17 +467,15 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             </div>
           </button>
 
-          {delivery.customer_phone && (
-            <a
-              href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}?text=${DEFAULT_CUSTOMER_WA_MESSAGE}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-14 w-14 rounded-2xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(37,211,102,0.3)] flex items-center justify-center shrink-0"
-              title="Chamar Cliente no WhatsApp"
-            >
-              <MessageCircle className="h-6 w-6 text-white" />
-            </a>
-          )}
+          <button
+            type="button"
+            onClick={handleWhatsAppCustomer}
+            className="h-14 w-14 rounded-2xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(37,211,102,0.3)] flex items-center justify-center shrink-0"
+            title="Pedir localização do cliente pelo WhatsApp"
+            aria-label="Pedir localização do cliente pelo WhatsApp"
+          >
+            <WhatsAppIcon className="h-6 w-6" />
+          </button>
 
           <button onClick={() => setShowInfo(!showInfo)} className="h-14 w-14 rounded-2xl border-2 border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center shrink-0">
             <AlertCircle className="h-6 w-6" />
@@ -479,17 +510,14 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               </div>
             )}
 
-            {delivery.customer_phone && (
-              <a
-                href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}?text=${DEFAULT_CUSTOMER_WA_MESSAGE}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp do Cliente
-              </a>
-            )}
+            <button
+              type="button"
+              onClick={handleWhatsAppCustomer}
+              className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
+            >
+              <WhatsAppIcon className="h-4 w-4" />
+              Pedir localização (WhatsApp)
+            </button>
 
             {delivery.companies?.phone && (
               <div className="flex items-center gap-2 pt-1 border-t border-border">
@@ -502,15 +530,14 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             )}
 
             {delivery.companies?.phone && (
-              <a
-                href={`https://wa.me/55${delivery.companies.phone.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={handleWhatsAppStore}
                 className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
               >
-                <MessageCircle className="h-4 w-4" />
+                <WhatsAppIcon className="h-4 w-4" />
                 WhatsApp da Loja
-              </a>
+              </button>
             )}
           </div>
         </div>
