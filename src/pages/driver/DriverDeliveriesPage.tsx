@@ -530,15 +530,14 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             )}
 
             {delivery.companies?.phone && (
-              <a
-                href={`https://wa.me/55${delivery.companies.phone.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={handleWhatsAppStore}
                 className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
               >
-                <MessageCircle className="h-4 w-4" />
+                <WhatsAppIcon className="h-4 w-4" />
                 WhatsApp da Loja
-              </a>
+              </button>
             )}
           </div>
         </div>
