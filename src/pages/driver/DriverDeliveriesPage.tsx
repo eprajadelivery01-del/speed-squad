@@ -4,6 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
 import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, X, MessageCircle, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Mensagem padrão enviada ao cliente ao chamar no WhatsApp. */
+const DEFAULT_CUSTOMER_WA_MESSAGE = encodeURIComponent(
+  `Olá! 👋\n\nSou o entregador do É Pra Já Delivery responsável pela sua entrega.\n\nPode me enviar sua localização pelo WhatsApp para facilitar a entrega? 📍\n\nObrigado! 🚀`
+);
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -431,7 +436,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
 
           {delivery.customer_phone && (
             <a
-              href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}`}
+              href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}?text=${DEFAULT_CUSTOMER_WA_MESSAGE}`}
               target="_blank"
               rel="noopener noreferrer"
               className="h-14 w-14 rounded-2xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(37,211,102,0.3)] flex items-center justify-center shrink-0"
@@ -476,7 +481,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
 
             {delivery.customer_phone && (
               <a
-                href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}`}
+                href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}?text=${DEFAULT_CUSTOMER_WA_MESSAGE}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
