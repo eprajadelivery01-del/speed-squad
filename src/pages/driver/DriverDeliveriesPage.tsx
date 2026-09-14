@@ -467,17 +467,15 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             </div>
           </button>
 
-          {delivery.customer_phone && (
-            <a
-              href={`https://wa.me/55${delivery.customer_phone.replace(/\D/g, "")}?text=${DEFAULT_CUSTOMER_WA_MESSAGE}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-14 w-14 rounded-2xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(37,211,102,0.3)] flex items-center justify-center shrink-0"
-              title="Chamar Cliente no WhatsApp"
-            >
-              <MessageCircle className="h-6 w-6 text-white" />
-            </a>
-          )}
+          <button
+            type="button"
+            onClick={handleWhatsAppCustomer}
+            className="h-14 w-14 rounded-2xl bg-[#25D366] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(37,211,102,0.3)] flex items-center justify-center shrink-0"
+            title="Pedir localização do cliente pelo WhatsApp"
+            aria-label="Pedir localização do cliente pelo WhatsApp"
+          >
+            <WhatsAppIcon className="h-6 w-6" />
+          </button>
 
           <button onClick={() => setShowInfo(!showInfo)} className="h-14 w-14 rounded-2xl border-2 border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center shrink-0">
             <AlertCircle className="h-6 w-6" />
