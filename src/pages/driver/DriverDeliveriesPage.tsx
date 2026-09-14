@@ -2,13 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { DriverLayout } from "@/components/driver/DriverLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeliveries, useUpdateDeliveryStatus } from "@/services/deliveries";
-import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, X, MessageCircle, ShoppingBag } from "lucide-react";
+import { Truck, MapPin, DollarSign, Package, Play, CheckCircle, AlertCircle, Loader2, Phone, User, X, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/** Mensagem padrão enviada ao cliente ao chamar no WhatsApp. */
-const DEFAULT_CUSTOMER_WA_MESSAGE = encodeURIComponent(
-  `Olá! 👋\n\nSou o entregador do É Pra Já Delivery responsável pela sua entrega.\n\nPode me enviar sua localização pelo WhatsApp para facilitar a entrega? 📍\n\nObrigado! 🚀`
-);
+import { WhatsAppIcon } from "@/components/shared/WhatsAppIcon";
+import { openWhatsApp, CUSTOMER_LOCATION_MESSAGE } from "@/lib/whatsapp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
