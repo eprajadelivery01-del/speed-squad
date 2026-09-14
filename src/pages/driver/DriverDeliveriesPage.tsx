@@ -190,7 +190,43 @@ export default function DriverDeliveriesPage() {
 }
 
 function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: any, onAction: () => void, loading: boolean, isAssigned?: boolean }) {
+  const { toast: cardToast } = useToast();
   const [showInfo, setShowInfo] = useState(false);
+
+  /** Abre a conversa do CLIENTE no WhatsApp do aparelho, com a mensagem preenchida. */
+  const handleWhatsAppCustomer = () => {
+    const res = openWhatsApp({
+      phone: delivery.customer_phone,
+      message: CUSTOMER_LOCATION_MESSAGE,
+      deliveryId: delivery.id,
+      debugLabel: "customer",
+    });
+    if (!res.ok) {
+      cardToast({
+        title: "Não foi possível abrir o WhatsApp",
+        description:
+          res.reason === "no-phone" || res.reason === "invalid-phone"
+            ? "Cliente sem telefone cadastrado."
+            : "WhatsApp não está instalado neste aparelho.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWhatsAppStore = () => {
+    const res = openWhatsApp({
+      phone: delivery.companies?.phone,
+      deliveryId: delivery.id,
+      debugLabel: "store",
+    });
+    if (!res.ok) {
+      cardToast({
+        title: "Não foi possível abrir o WhatsApp",
+        description: "Telefone da loja indisponível ou inválido.",
+        variant: "destructive",
+      });
+    }
+  };
   const [realStoreName, setRealStoreName] = useState<string>(
     delivery.companies?.name || delivery.companies?.trade_name || delivery.company_name || delivery.store_name || ""
   );
