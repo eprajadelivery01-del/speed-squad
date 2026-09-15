@@ -31,21 +31,35 @@ sonnerToast.error = function (message: any, options: any) {
   return originalError.apply(this, arguments as any);
 };
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+
+if (!rootElement) {
+  throw new Error("Elemento raiz do aplicativo não encontrado.");
+}
+
+createRoot(rootElement).render(<App />);
 
 // Register Service Worker for PWA (Web only - not in native app)
 if ("serviceWorker" in navigator) {
-  if (Capacitor.isNativePlatform()) {
-    // No app nativo (iOS / Android), desregistra qualquer Service Worker residual
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const reg of registrations) {
-        reg.unregister();
-      }
+  const isPreviewHost = /(^|\.)lovable(project)?\.(app|com)$/.test(window.location.hostname);
+  const mustDisableServiceWorker =
+    import.meta.env.DEV || Capacitor.isNativePlatform() || isPreviewHost;
+
+  if (mustDisableServiceWorker) {
+    // O cache de módulos do servidor de desenvolvimento pode misturar versões do React.
+    Promise.all([
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister()))),
+      "caches" in window
+        ? caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        : Promise.resolve([]),
+    ]).catch((error) => {
+      console.warn("Falha ao remover cache antigo do aplicativo:", error);
     });
-  } else if (!/lovable(project)?\.app$/.test(window.location.hostname)) {
+  } else {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("/sw.js").then((reg) => {
-        // Força atualização imediata para substituir qualquer versão antiga corrompida
         reg.update().catch(() => {});
       }).catch((err) => {
         console.warn("SW registration failed: ", err);

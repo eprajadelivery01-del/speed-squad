@@ -1,4 +1,5 @@
-const CACHE_NAME = 'epj-entregador-v4';
+const CACHE_NAME = 'epj-entregador-v5';
+const IS_PREVIEW_HOST = /(^|\.)lovable(project)?\.(app|com)$/.test(self.location.hostname);
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -8,6 +9,11 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  if (IS_PREVIEW_HOST) {
+    self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {}))
   );
@@ -15,12 +21,22 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  if (IS_PREVIEW_HOST) {
+    event.waitUntil(
+      caches.keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.matchAll({ type: 'window' }))
+        .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
+    );
+    return;
+  }
+
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', (event) => {
@@ -35,6 +51,18 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  // Nunca armazena módulos do Vite. Esses caminhos mudam durante o desenvolvimento
+  // e um arquivo antigo pode carregar uma segunda instância incompatível do React.
+  if (
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('__vite')
+  ) {
+    event.respondWith(fetch(req));
+    return;
+  }
 
   // Skip Supabase, API, and auth callback routes
   if (url.hostname.includes('supabase.co')) return;
