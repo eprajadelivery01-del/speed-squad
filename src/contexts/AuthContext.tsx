@@ -82,15 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
-  const fetchUserData = useCallback(async (authUser: User) => {
+  const fetchUserData = useCallback(async (authUser: User, attempt = 1) => {
     const userId = authUser.id;
     if (fetchingRef.current === userId) return;
     fetchingRef.current = userId;
     setDataLoaded(false);
-    
+
     try {
-      const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 10000)
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 15000)
       );
 
       // Usando seleção específica de colunas para contornar erro de Schema
@@ -109,6 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const [rolesRes, profileRes] = results;
 
       if (!mountedRef.current) return;
+
+      // Se a consulta de roles falhou (rede/RLS), NÃO zera permissões: tenta de novo
+      if (rolesRes?.error) {
+        throw new Error(rolesRes.error.message || "roles fetch failed");
+      }
 
       let finalRoles: AppRole[] = [];
       if (rolesRes?.data) {
@@ -139,16 +144,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextProfile = buildProfile(profileRes?.data ?? null, authUser);
       setProfile(nextProfile);
       setUserStatus((profileRes?.data?.status as UserStatus | null) ?? (nextProfile ? "active" : null));
+      setDataLoaded(true);
     } catch (error: any) {
       if (!mountedRef.current) return;
+
+      // Falha de rede/timeout: tenta novamente antes de bloquear o acesso
+      if (attempt < 4) {
+        fetchingRef.current = null;
+        const delay = attempt * 1500;
+        setTimeout(() => {
+          if (!mountedRef.current) return;
+          void fetchUserData(authUser, attempt + 1);
+        }, delay);
+        return;
+      }
+
       setProfile(buildProfile(null, authUser));
-      setRoles([]);
       setUserStatus(null);
-    } finally {
-      fetchingRef.current = null;
       setDataLoaded(true);
+    } finally {
+      if (fetchingRef.current === userId) fetchingRef.current = null;
     }
   }, []);
+
 
   useEffect(() => {
     mountedRef.current = true;
