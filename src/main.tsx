@@ -1,69 +1,49 @@
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
-import { initializeGlobalErrorHandlers, reportErrorToTelegram } from "@/services/logger";
-import { toast as sonnerToast } from "sonner";
-import { Capacitor } from "@capacitor/core";
+const isPreviewHost = /(^|\.)lovable(project)?\.(app|com)$/.test(window.location.hostname);
+const mustDisableServiceWorker = import.meta.env.DEV || isPreviewHost;
 
-initializeGlobalErrorHandlers("App Entregador");
+async function clearStaleRuntime(): Promise<boolean> {
+  if (!mustDisableServiceWorker || !("serviceWorker" in navigator)) return true;
 
-// Patch sonner toast.error globally to automatically capture all user-facing errors
-const originalError = sonnerToast.error;
-sonnerToast.error = function (message: any, options: any) {
-  const text = typeof message === "string" ? message : JSON.stringify(message);
-  
-  if (text.includes("offline")) {
-    return originalError.apply(this, arguments as any);
+  const wasControlled = Boolean(navigator.serviceWorker.controller);
+  const registrations = await navigator.serviceWorker.getRegistrations();
+
+  await Promise.all([
+    ...registrations.map((registration) => registration.unregister()),
+    "caches" in window
+      ? caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      : Promise.resolve([]),
+  ]);
+
+  // Desregistrar não remove o controle da aba atual; uma única recarga limpa isso.
+  if (wasControlled && sessionStorage.getItem("runtime-cache-cleared") !== "1") {
+    sessionStorage.setItem("runtime-cache-cleared", "1");
+    window.location.reload();
+    return false;
   }
 
-  /*
-  reportErrorToTelegram({
-    error_message: `Alerta para o Usuário: ${text}`,
-    stack_trace: `Sonner toast.error exibido na tela do entregador.`,
-    url: window.location.href,
-    additional_info: {
-      isUserFacingAlert: true,
-      options: options ? JSON.stringify(options) : ""
-    }
-  }, "App Entregador").catch(() => {});
-  */
-  
-  return originalError.apply(this, arguments as any);
-};
-
-const rootElement = document.getElementById("root");
-
-if (!rootElement) {
-  throw new Error("Elemento raiz do aplicativo não encontrado.");
+  sessionStorage.removeItem("runtime-cache-cleared");
+  return true;
 }
 
-createRoot(rootElement).render(<App />);
+async function bootstrap() {
+  try {
+    if (!(await clearStaleRuntime())) return;
+  } catch (error) {
+    console.warn("Falha ao remover cache antigo do aplicativo:", error);
+  }
 
-// Register Service Worker for PWA (Web only - not in native app)
-if ("serviceWorker" in navigator) {
-  const isPreviewHost = /(^|\.)lovable(project)?\.(app|com)$/.test(window.location.hostname);
-  const mustDisableServiceWorker =
-    import.meta.env.DEV || Capacitor.isNativePlatform() || isPreviewHost;
+  // React só é importado depois que qualquer runtime antigo deixou de controlar a página.
+  await import("./application.tsx");
 
-  if (mustDisableServiceWorker) {
-    // O cache de módulos do servidor de desenvolvimento pode misturar versões do React.
-    Promise.all([
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister()))),
-      "caches" in window
-        ? caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-        : Promise.resolve([]),
-    ]).catch((error) => {
-      console.warn("Falha ao remover cache antigo do aplicativo:", error);
-    });
-  } else {
+  if (!mustDisableServiceWorker && "serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").then((reg) => {
-        reg.update().catch(() => {});
-      }).catch((err) => {
-        console.warn("SW registration failed: ", err);
+      navigator.serviceWorker.register("/sw.js").then((registration) => {
+        registration.update().catch(() => {});
+      }).catch((error) => {
+        console.warn("SW registration failed:", error);
       });
     });
   }
 }
+
+void bootstrap();
