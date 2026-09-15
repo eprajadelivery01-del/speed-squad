@@ -1,4 +1,5 @@
 const CACHE_NAME = 'epj-entregador-v5';
+const IS_PREVIEW_HOST = /(^|\.)lovable(project)?\.(app|com)$/.test(self.location.hostname);
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -8,6 +9,11 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  if (IS_PREVIEW_HOST) {
+    self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {}))
   );
@@ -15,6 +21,17 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  if (IS_PREVIEW_HOST) {
+    event.waitUntil(
+      caches.keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.matchAll({ type: 'window' }))
+        .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
+    );
+    return;
+  }
+
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
