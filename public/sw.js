@@ -1,4 +1,4 @@
-const CACHE_NAME = 'epj-entregador-v4';
+const CACHE_NAME = 'epj-entregador-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -16,11 +16,10 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', (event) => {
@@ -35,6 +34,18 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  // Nunca armazena módulos do Vite. Esses caminhos mudam durante o desenvolvimento
+  // e um arquivo antigo pode carregar uma segunda instância incompatível do React.
+  if (
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('__vite')
+  ) {
+    event.respondWith(fetch(req));
+    return;
+  }
 
   // Skip Supabase, API, and auth callback routes
   if (url.hostname.includes('supabase.co')) return;
