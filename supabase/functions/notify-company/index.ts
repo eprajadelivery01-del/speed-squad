@@ -65,16 +65,64 @@ serve(async (req) => {
       return new Response(JSON.stringify({ message: 'Company does not have an FCM token' }), { status: 200 });
     }
 
+    let targetToken = company.fcm_token;
+    if (/^[0-9a-fA-F]{64}$/.test(String(targetToken).trim())) {
+      console.log(`[notify-company] Token APNs bruto detectado (${targetToken.slice(0, 10)}...). Convertendo para FCM...`);
+      try {
+        const tokenObj = await (admin.app().options.credential as any)?.getAccessToken?.();
+        const accessTok = tokenObj?.access_token;
+        if (accessTok) {
+          const candidateBundles = ["br.com.epraja.lojista", "br.com.epraja.appFma", "br.com.epraja.entregador"];
+          for (const bId of candidateBundles) {
+            for (const sandbox of [false, true]) {
+              try {
+                const res = await fetch("https://iid.googleapis.com/iid/v1:batchImport", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${accessTok}`,
+                    "access_token_auth": "true",
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    application: bId,
+                    sandbox: sandbox,
+                    apns_tokens: [String(targetToken).trim()]
+                  })
+                });
+                const data = await res.json();
+                const mapped = data?.results?.[0];
+                if (mapped?.status === "OK" && mapped.registration_token) {
+                  console.log(`[notify-company] Token APNs convertido com sucesso para ${bId}:`, mapped.registration_token.slice(0, 15));
+                  targetToken = mapped.registration_token;
+                  break;
+                }
+              } catch (errConv) {
+                console.warn(`[notify-company] Erro ao converter token APNs para ${bId}:`, errConv);
+              }
+            }
+            if (targetToken !== company.fcm_token) break;
+          }
+        }
+      } catch (errAuth) {
+        console.warn("[notify-company] Erro ao obter access token para conversão APNs:", errAuth);
+      }
+    }
+
+    const titleText = '📦 Novo pedido recebido!';
+    const bodyText = `Pedido #${record.id.substring(0, 6).toUpperCase()} no valor de R$ ${record.total || '0,00'}`;
+
     const message = {
       data: {
         type: 'order',
         orderId: record.id,
-        title: '📦 Novo pedido recebido!',
-        body: `Pedido #${record.id.substring(0, 6).toUpperCase()} no valor de R$ ${record.total || '0,00'}`
+        title: titleText,
+        body: bodyText,
+        app: 'lojista',
+        bundleId: 'br.com.epraja.lojista'
       },
       notification: {
-        title: '📦 Novo pedido recebido!',
-        body: `Pedido #${record.id.substring(0, 6).toUpperCase()} no valor de R$ ${record.total || '0,00'}`
+        title: titleText,
+        body: bodyText
       },
       android: {
         priority: 'high' as const,
@@ -84,17 +132,26 @@ serve(async (req) => {
         }
       },
       apns: {
+        headers: {
+          "apns-priority": "10",
+          "apns-push-type": "alert"
+        },
         payload: {
           aps: {
-            sound: 'notification_sound.caf',
-            badge: 1
+            alert: {
+              title: titleText,
+              body: bodyText
+            },
+            sound: 'notification_sound.mp3',
+            badge: 1,
+            "mutable-content": 1
           }
         }
       },
-      token: company.fcm_token
+      token: targetToken
     };
 
-    console.log(`Sending push to company ${record.company_id} with token ${company.fcm_token}`);
+    console.log(`Sending push to company ${record.company_id} with token ${targetToken}`);
     const response = await admin.messaging().send(message);
     console.log("FCM Response:", response);
 

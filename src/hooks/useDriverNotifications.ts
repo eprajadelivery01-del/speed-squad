@@ -274,6 +274,8 @@ export function useDriverNotifications() {
                 token: tokenVal,
                 userId: user.id,
                 platform: Capacitor.getPlatform(),
+                app: "entregador",
+                bundleId: "br.com.epraja.entregador",
               },
             }).catch(() => {});
           }
