@@ -474,7 +474,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
             title="Pedir localização do cliente pelo WhatsApp"
             aria-label="Pedir localização do cliente pelo WhatsApp"
           >
-            <WhatsAppIcon className="h-6 w-6" />
+            <WhatsAppIcon variant="white-bubble" className="h-7 w-7 drop-shadow-sm" />
           </button>
 
           <button onClick={() => setShowInfo(!showInfo)} className="h-14 w-14 rounded-2xl border-2 border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center shrink-0">
@@ -515,7 +515,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
               onClick={handleWhatsAppCustomer}
               className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
             >
-              <WhatsAppIcon className="h-4 w-4" />
+              <WhatsAppIcon variant="green-bubble" className="h-4 w-4" />
               Pedir localização (WhatsApp)
             </button>
 
@@ -535,7 +535,7 @@ function DeliveryCard({ delivery, onAction, loading, isAssigned }: { delivery: a
                 onClick={handleWhatsAppStore}
                 className="flex items-center gap-2 bg-[#25D366]/10 text-[#25D366] font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors w-full justify-center"
               >
-                <WhatsAppIcon className="h-4 w-4" />
+                <WhatsAppIcon variant="green-bubble" className="h-4 w-4" />
                 WhatsApp da Loja
               </button>
             )}
