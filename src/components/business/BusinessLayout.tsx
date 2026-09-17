@@ -142,7 +142,7 @@ export function BusinessLayout({ children, title }: BusinessLayoutProps) {
       </div>
 
       {/* Bottom nav (mobile only) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-card border-t border-border flex items-center justify-around py-1 px-2">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-card border-t border-border flex items-center justify-around pt-1 pb-[env(safe-area-inset-bottom,0px)] px-2">
         {tabs.map((tab) => {
           const active = isActive(tab.href);
           return (
