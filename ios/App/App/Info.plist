@@ -56,6 +56,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
 	
 	<!-- Privacy Permissions for Capacitor/Web -->
 	<key>NSLocationWhenInUseUsageDescription</key>

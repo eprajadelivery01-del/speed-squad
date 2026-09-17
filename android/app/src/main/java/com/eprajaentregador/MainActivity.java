@@ -15,15 +15,18 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(DeliveryOverlayPlugin.class);
         NotificationChannels.ensureIncomingChannel(this);
         super.onCreate(savedInstanceState);
-
-        // Garante que o conteúdo do app respeite a barra de status (topo) e navegação (rodapé)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
+        setupStatusBar();
         handleIntent(getIntent());
+    }
+
+    private void setupStatusBar() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            getWindow().setStatusBarContrastEnforced(false);
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(0xFF0D0D0D);
+        }
     }
 
     @Override
