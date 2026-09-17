@@ -121,7 +121,26 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        boolean isDelivery = "delivery".equals(type) || "INSERT".equals(type) || "UPDATE".equals(type)
+        // ── SEGURANÇA E ISOLAMENTO: Apenas eventos destinados explicitamente ao Entregador
+        String targetApp = data.get("app");
+        String bundleId  = data.get("bundleId");
+        if (targetApp != null && !targetApp.isEmpty() && !"entregador".equalsIgnoreCase(targetApp) && !"driver".equalsIgnoreCase(targetApp)) {
+            Log.d(TAG, "Push ignorado pelo app do entregador: targetApp=" + targetApp);
+            return;
+        }
+        if (bundleId != null && !bundleId.isEmpty() && !"br.com.epraja.entregador".equalsIgnoreCase(bundleId)) {
+            Log.d(TAG, "Push ignorado pelo app do entregador: bundleId=" + bundleId);
+            return;
+        }
+
+        if ("marketing".equalsIgnoreCase(type) || "broadcast".equalsIgnoreCase(type)) {
+            Log.d(TAG, "Push de marketing recebido — não aciona o card de corrida.");
+            return;
+        }
+
+        String eventType = data.get("eventType");
+        boolean isDelivery = "delivery".equals(type) || "delivery_available".equals(type)
+                || "delivery_available".equals(eventType) || "INSERT".equals(type) || "UPDATE".equals(type)
                 || "new_delivery".equals(type) || data.containsKey("deliveryId") || data.containsKey("delivery_id");
         if (!isDelivery) return;
 

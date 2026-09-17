@@ -94,7 +94,7 @@ public class OverlayService extends Service {
         boolean canOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
                 || android.provider.Settings.canDrawOverlays(this);
         if (!canOverlay) {
-            Log.d(TAG, "Sem permissão de overlay — serviço segue apenas mantendo o app ativo.");
+            Log.w(TAG, "[DELIVERY_OVERLAY] overlay permission = denied");
             return;
         }
 
@@ -206,7 +206,10 @@ public class OverlayService extends Service {
     public void showDeliveryCard(final String deliveryId, final String storeName, final String pickup, final String dropoff, final String fee) {
         mainHandler.post(() -> {
             ensureOverlayView();
-            if (floatingView == null) return;
+            if (floatingView == null) {
+                Log.w(TAG, "[DELIVERY_OVERLAY] overlay permission = denied (card flutuante não pode ser exibido)");
+                return;
+            }
 
             // Acende a tela imediatamente se o aparelho estiver bloqueado ou apagado
             try {
