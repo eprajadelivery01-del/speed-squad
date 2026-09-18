@@ -8,7 +8,7 @@ const SUPABASE_PUBLISHABLE_KEY = (window as any).SUPABASE_CONFIG?.anonKey || "ey
 // GUARDIAN DO BANCO DE DADOS - NUNCA REMOVER
 const OFFICIAL_DB = "nptkxlrhrlssdsevpgqe";
 if (!SUPABASE_URL.includes(OFFICIAL_DB)) {
-  fetch("https://api.telegram.org/bot8798211446:AAHLAxDhYh81qj7o39qBkkaez3vZvEJnXqw/sendMessage", {
+  fetch("https://api.telegram.org/bot8822944243:AAE1dZ0GhBzvnDZRoIw4w9kjv5mRM3oyuWk/sendMessage", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
