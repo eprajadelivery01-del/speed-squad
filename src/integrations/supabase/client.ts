@@ -12,7 +12,7 @@ if (!SUPABASE_URL.includes(OFFICIAL_DB)) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      chat_id: "538563060",
+      chat_id: "-5164097344",
       text: `🚨 *SABOTAGEM DE BANCO DE DADOS DETECTADA!* 🚨\n\nApp Entregador (Speed-Squad) foi inicializado com um banco de dados incorreto!\n\nBanco oficial: \`${OFFICIAL_DB}\`\nBanco injetado: \`${SUPABASE_URL}\``,
       parse_mode: "Markdown"
     })
