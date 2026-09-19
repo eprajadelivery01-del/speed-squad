@@ -252,10 +252,14 @@ export function useDriverNotifications() {
             if (drvErr) console.error("[FCM] Erro ao salvar token em delivery_drivers:", drvErr.message);
 
             // 2. Atualiza profiles
-            await (supabase
-              .from("profiles")
-              .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() } as any)
-              .eq("id", user.id) as any).catch(() => {});
+            try {
+              await supabase
+                .from("profiles")
+                .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() } as any)
+                .eq("id", user.id);
+            } catch (e) {
+              console.warn("[FCM] Falha ao atualizar profiles:", e);
+            }
 
             const app = "entregador";
             const bundle_id = "br.com.epraja.entregador";
@@ -269,28 +273,36 @@ export function useDriverNotifications() {
             });
 
             // 3. Registra em device_tokens com identidade explícita do Entregador
-            await (supabase
-              .from("device_tokens" as any)
-              .upsert({
-                token: tokenVal,
-                user_id: user.id,
-                platform,
-                app,
-                bundle_id,
-                updated_at: new Date().toISOString(),
-              } as any, { onConflict: "token" }) as any).catch(() => {});
+            try {
+              await supabase
+                .from("device_tokens" as any)
+                .upsert({
+                  token: tokenVal,
+                  user_id: user.id,
+                  platform,
+                  app,
+                  bundle_id,
+                  updated_at: new Date().toISOString(),
+                } as any, { onConflict: "token" });
+            } catch (e) {
+              console.warn("[FCM] Falha ao persistir em device_tokens:", e);
+            }
 
             // 4. Notifica backend Edge Function send-push
-            supabase.functions.invoke("send-push", {
-              body: {
-                action: "register_token",
-                token: tokenVal,
-                userId: user.id,
-                platform,
-                app,
-                bundleId: bundle_id,
-              },
-            }).catch(() => {});
+            try {
+              await supabase.functions.invoke("send-push", {
+                body: {
+                  action: "register_token",
+                  token: tokenVal,
+                  userId: user.id,
+                  platform,
+                  app,
+                  bundleId: bundle_id,
+                },
+              });
+            } catch (e) {
+              console.warn("[FCM] Falha ao chamar edge function register_token:", e);
+            }
 
             // 5. Verificação pós-upsert para auditoria e confirmação da gravação
             try {
