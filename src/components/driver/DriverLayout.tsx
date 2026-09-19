@@ -44,6 +44,7 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   const { profile, user } = useAuth();
   const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
   const [driverId, setDriverId] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
   const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
 
   const handleCopyCoupon = (code: string, e: React.MouseEvent) => {
