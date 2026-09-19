@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare } from "lucide-react";
+import { Home, Truck, AlertTriangle, User, Bell, Trash2, MessageSquare, Copy, Check, Tag, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllRealtime } from "@/services/realtime";
@@ -44,7 +44,14 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
   const { profile, user } = useAuth();
   const { notifications, unreadCount, markAsRead, clearAll } = useNotifications();
   const [driverId, setDriverId] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(false);
+  const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
+
+  const handleCopyCoupon = (code: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(code);
+    setCopiedCoupon(code);
+    setTimeout(() => setCopiedCoupon(null), 2500);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -151,19 +158,63 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
                         <div 
                           key={n.id} 
                           className={cn(
-                            "p-4 transition-colors cursor-pointer hover:bg-muted/50",
+                            "p-4 transition-colors cursor-pointer hover:bg-muted/50 relative",
                             !n.read && "bg-primary/5 border-l-2 border-primary"
                           )}
                           onClick={() => markAsRead(n.id)}
                         >
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <h4 className="text-sm font-bold text-foreground">{n.title}</h4>
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {n.emoji && <span className="text-base shrink-0">{n.emoji}</span>}
+                              <h4 className="text-sm font-bold text-foreground leading-snug truncate">{n.title}</h4>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
                               {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">{n.description}</p>
+
+                          {/* Imagem da Campanha */}
+                          {n.image_url && (
+                            <div className="w-full h-32 rounded-xl overflow-hidden my-2 bg-muted relative">
+                              <img 
+                                src={n.image_url} 
+                                alt="" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                              />
+                            </div>
+                          )}
+
+                          <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">{n.description}</p>
                           
+                          {/* Cupom de Desconto */}
+                          {n.coupon_code && (
+                            <div 
+                              className="bg-primary/10 border border-primary/20 rounded-xl p-2.5 flex items-center justify-between gap-2 mt-2" 
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Tag className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="font-mono font-black text-primary text-xs tracking-wider truncate">{n.coupon_code}</span>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                onClick={(e) => handleCopyCoupon(n.coupon_code!, e)} 
+                                className="h-7 px-2.5 text-[10px] font-bold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all shrink-0"
+                              >
+                                {copiedCoupon === n.coupon_code ? (
+                                  <>
+                                    <Check className="w-3 h-3 mr-1" /> Copiado
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3 mr-1" /> Copiar
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+
                           {/* Status Badge */}
                           {n.type === 'delivery' && n.deliveryStatus && n.deliveryStatus !== 'pending' && (
                             <div className="mt-2">
@@ -180,6 +231,14 @@ export function DriverLayout({ children, title }: DriverLayoutProps) {
                               >
                                 {n.deliveryStatus === 'accepted' ? 'Corrida Aceita' :
                                  n.deliveryStatus === 'rejected' ? 'Corrida Recusada' : 'Corrida Expirada'}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {n.type === 'marketing' && (
+                            <div className="mt-2 flex items-center gap-1">
+                              <Badge variant="secondary" className="text-[9px] font-bold bg-primary/10 text-primary border-primary/20">
+                                📣 Comunicado
                               </Badge>
                             </div>
                           )}
