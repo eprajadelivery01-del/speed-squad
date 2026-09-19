@@ -257,13 +257,15 @@ export function useDriverNotifications() {
               .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() } as any)
               .eq("id", user.id) as any).catch(() => {});
 
-            // 3. Registra em device_tokens
+            // 3. Registra em device_tokens com identidade explícita do Entregador
             await (supabase
               .from("device_tokens" as any)
               .upsert({
                 token: tokenVal,
                 user_id: user.id,
                 platform: Capacitor.getPlatform(),
+                app: "entregador",
+                bundle_id: "br.com.epraja.entregador",
                 updated_at: new Date().toISOString(),
               } as any, { onConflict: "token" }) as any).catch(() => {});
 
