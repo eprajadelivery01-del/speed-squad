@@ -257,15 +257,26 @@ export function useDriverNotifications() {
               .update({ fcm_token: tokenVal, updated_at: new Date().toISOString() } as any)
               .eq("id", user.id) as any).catch(() => {});
 
+            const app = "entregador";
+            const bundle_id = "br.com.epraja.entregador";
+            const platform = Capacitor.getPlatform();
+
+            console.log("[PUSH REGISTER]", {
+              platform,
+              app,
+              bundle_id,
+              hasToken: !!tokenVal,
+            });
+
             // 3. Registra em device_tokens com identidade explícita do Entregador
             await (supabase
               .from("device_tokens" as any)
               .upsert({
                 token: tokenVal,
                 user_id: user.id,
-                platform: Capacitor.getPlatform(),
-                app: "entregador",
-                bundle_id: "br.com.epraja.entregador",
+                platform,
+                app,
+                bundle_id,
                 updated_at: new Date().toISOString(),
               } as any, { onConflict: "token" }) as any).catch(() => {});
 
@@ -275,11 +286,33 @@ export function useDriverNotifications() {
                 action: "register_token",
                 token: tokenVal,
                 userId: user.id,
-                platform: Capacitor.getPlatform(),
-                app: "entregador",
-                bundleId: "br.com.epraja.entregador",
+                platform,
+                app,
+                bundleId: bundle_id,
               },
             }).catch(() => {});
+
+            // 5. Verificação pós-upsert para auditoria e confirmação da gravação
+            try {
+              const { data: checkData } = await supabase
+                .from("device_tokens" as any)
+                .select("id, user_id, platform, app, bundle_id, disabled_at, created_at, updated_at")
+                .eq("token", tokenVal)
+                .maybeSingle();
+
+              if (checkData) {
+                console.log("[PUSH REGISTER VERIFIED]", {
+                  id: checkData.id,
+                  user_id: checkData.user_id,
+                  platform: checkData.platform,
+                  app: checkData.app,
+                  bundle_id: checkData.bundle_id,
+                  disabled_at: checkData.disabled_at,
+                  updated_at: checkData.updated_at,
+                  hasToken: true,
+                });
+              }
+            } catch (e) {}
           }
         };
 
