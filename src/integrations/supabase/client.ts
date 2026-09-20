@@ -30,6 +30,40 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
+// Garantir que todos os query builders do Postgrest (select, update, insert, delete, rpc)
+// implementem .catch() e .finally() como uma Promise padrão, eliminando o erro:
+// "Unhandled Rejection: B.from(...).update(...).eq(...).catch is not a function"
+try {
+  const sampleBuilder = (supabase.from as any)('_dummy_patch_').select();
+  let proto = Object.getPrototypeOf(sampleBuilder);
+  while (proto && proto !== Object.prototype) {
+    if (!proto.catch) {
+      proto.catch = function (onRejected: any) {
+        return this.then(undefined, onRejected);
+      };
+    }
+    if (!proto.finally) {
+      proto.finally = function (onFinally: any) {
+        return this.then(
+          (val: any) => {
+            if (onFinally) onFinally();
+            return val;
+          },
+          (err: any) => {
+            if (onFinally) onFinally();
+            throw err;
+          }
+        );
+      };
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+} catch (e) {
+  if (import.meta.env.DEV) {
+    console.warn("[Supabase Patch] Falha ao injetar catch/finally em PostgrestBuilder:", e);
+  }
+}
+
 // Handle token refresh errors gracefully by NOT logging the user out immediately.
 // The user should remain logged in until an explicit API call fails with 401 Unauthorized,
 // or until they manually click 'sair'.
