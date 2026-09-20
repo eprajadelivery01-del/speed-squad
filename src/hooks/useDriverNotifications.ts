@@ -9,6 +9,7 @@ import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
@@ -329,10 +330,30 @@ export function useDriverNotifications() {
         };
 
         // Escuta novas identificações do FCM
-        regListener = PushNotifications.addListener("registration", (token) => {
-          console.log("FCM Token recebido:", token.value);
+        regListener = PushNotifications.addListener("registration", async (token) => {
+          console.log("FCM/APNs Token recebido:", token.value);
+          if (Capacitor.getPlatform() === "ios") {
+            try {
+              const fcmRes = await FirebaseMessaging.getToken();
+              if (fcmRes?.token) {
+                console.log("[FCM][ENTREGADOR][iOS] FCM registration token obtido com sucesso:", fcmRes.token.slice(0, 12));
+                syncFcmToken(fcmRes.token);
+                return;
+              }
+            } catch (errFcm) {
+              console.warn("[FCM][ENTREGADOR][iOS] Falha ao obter token via FirebaseMessaging:", errFcm);
+            }
+          }
           syncFcmToken(token.value);
         });
+
+        // Listener nativo do Firebase Messaging para tokenReceived
+        FirebaseMessaging.addListener("tokenReceived", ({ token }) => {
+          if (token) {
+            console.log("[FCM][ENTREGADOR] tokenReceived via FirebaseMessaging:", token.slice(0, 12));
+            syncFcmToken(token);
+          }
+        }).catch(() => {});
 
         DeliveryOverlay.getPendingFcmToken().then(({ token }) => {
           if (token) syncFcmToken(token);
