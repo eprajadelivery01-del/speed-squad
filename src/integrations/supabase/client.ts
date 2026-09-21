@@ -34,29 +34,39 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // implementem .catch() e .finally() como uma Promise padrão, eliminando o erro:
 // "Unhandled Rejection: B.from(...).update(...).eq(...).catch is not a function"
 try {
-  const sampleBuilder = (supabase.from as any)('_dummy_patch_').select();
-  let proto = Object.getPrototypeOf(sampleBuilder);
-  while (proto && proto !== Object.prototype) {
-    if (!proto.catch) {
-      proto.catch = function (onRejected: any) {
-        return this.then(undefined, onRejected);
-      };
+  const builders = [
+    (supabase.from as any)('_dummy_patch_').select(),
+    (supabase.from as any)('_dummy_patch_').insert({}),
+    (supabase.from as any)('_dummy_patch_').update({}),
+    (supabase.from as any)('_dummy_patch_').delete(),
+    (supabase.from as any)('_dummy_patch_').upsert({}),
+    (supabase as any).rpc('_dummy_patch_')
+  ];
+
+  for (const b of builders) {
+    let proto = Object.getPrototypeOf(b);
+    while (proto && proto !== Object.prototype) {
+      if (!proto.catch) {
+        proto.catch = function (onRejected: any) {
+          return this.then(undefined, onRejected);
+        };
+      }
+      if (!proto.finally) {
+        proto.finally = function (onFinally: any) {
+          return this.then(
+            (val: any) => {
+              if (onFinally) onFinally();
+              return val;
+            },
+            (err: any) => {
+              if (onFinally) onFinally();
+              throw err;
+            }
+          );
+        };
+      }
+      proto = Object.getPrototypeOf(proto);
     }
-    if (!proto.finally) {
-      proto.finally = function (onFinally: any) {
-        return this.then(
-          (val: any) => {
-            if (onFinally) onFinally();
-            return val;
-          },
-          (err: any) => {
-            if (onFinally) onFinally();
-            throw err;
-          }
-        );
-      };
-    }
-    proto = Object.getPrototypeOf(proto);
   }
 } catch (e) {
   if (import.meta.env.DEV) {
