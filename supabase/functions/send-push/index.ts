@@ -239,7 +239,24 @@ async function sendToToken(
           priority: "HIGH",
           ttl: "45s",
           direct_boot_ok: true
-        }
+        },
+        apns: {
+          headers: {
+            "apns-priority": "10",
+            "apns-push-type": "alert",
+            "apns-topic": resolvedBundleId,
+          },
+          payload: {
+            aps: {
+              alert: { title, body },
+              sound: "notification_sound.mp3",
+              badge: 1,
+              "content-available": 1,
+              "mutable-content": 1,
+              category: `delivery-${data.deliveryId || "new"}`
+            },
+          },
+        },
       }
     };
   } else {
