@@ -403,6 +403,19 @@ export function useDriverNotifications() {
           }
         });
 
+        // Listener para clique na notificação local da central do iOS/Android
+        try {
+          LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
+            console.log("[LOCAL_NOTIF_CLICK] Local notification action performed:", action);
+            const extra = action.notification?.extra;
+            const deliveryId = extra?.deliveryId;
+            const targetRoute = extra?.route || (deliveryId ? `/driver?deliveryId=${deliveryId}` : "/driver");
+            if (targetRoute && typeof window !== "undefined") {
+              window.location.href = targetRoute;
+            }
+          }).catch(() => {});
+        } catch {}
+
         receivedListener = PushNotifications.addListener("pushNotificationReceived", async (notification) => {
           console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
           const deliveryId = notification.data?.deliveryId;
@@ -444,13 +457,32 @@ export function useDriverNotifications() {
                 deliveryStatus: "pending",
               });
 
-              // No iOS nativo, aciona o loop sonoro contínuo oficial
-              if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'ios') {
+              // Na plataforma iOS / Native, dispara a notificação nativa na Central do iPhone
+              if (Capacitor.isNativePlatform()) {
                 try {
-                  startLoop();
-                } catch (e) {
-                  console.warn("[FCM] startLoop erro:", e);
-                }
+                  LocalNotifications.schedule({
+                    notifications: [
+                      {
+                        id: hashId(deliveryId),
+                        title: "🛵 Nova Corrida Disponível!",
+                        body: `${storeName} • Ganhos: ${fcmFee}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}`,
+                        sound: "notification_sound.mp3",
+                        actionTypeId: "",
+                        extra: {
+                          deliveryId,
+                          route: `/driver?deliveryId=${deliveryId}`,
+                        },
+                      },
+                    ],
+                  }).catch(() => {});
+                } catch {}
+              }
+
+              // Dispara o alerta sonoro oficial uma única vez
+              try {
+                playAlert();
+              } catch (e) {
+                console.warn("[FCM] playAlert erro:", e);
               }
             } catch (e) {
               console.warn("Erro validando FCM status:", e);
@@ -545,13 +577,11 @@ export function useDriverNotifications() {
       seenIdsRef.current.add(rawDelivery.id);
       activeAlertsRef.current.add(rawDelivery.id);
 
-      // Dispara áudio contínuo na web E no iOS nativo (no Android, o som é tocado pelo serviço foreground nativo/NotificationChannels)
-      if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'ios') {
-        try {
-          startLoop();
-        } catch (e) {
-          console.warn("[Notify] som falhou:", e);
-        }
+      // Dispara o som oficial de notificação uma única vez
+      try {
+        playAlert();
+      } catch (e) {
+        console.warn("[Notify] som falhou:", e);
       }
 
       // ── EXTRAÇÃO IMEDIATA DOS DADOS BRUTOS (0ms de latência para o entregador) ──
@@ -561,7 +591,7 @@ export function useDriverNotifications() {
       const rawFee = Number(rawDelivery.delivery_fee || rawDelivery.price || rawDelivery.value || rawDelivery.commission || rawDelivery.driver_fee || rawDelivery.total_value || 0);
       const initialFeeText = rawFee > 0 ? `R$ ${rawFee.toFixed(2).replace(".", ",")}` : "";
 
-      // 1) DISPARO IMEDIATO DO POPUP/CARD NATIVO SOBRE A TELA
+      // 1) DISPARO IMEDIATO DO POPUP/CARD NATIVO SOBRE A TELA (Android)
       if (Capacitor.isNativePlatform()) {
         try {
           DeliveryOverlay.showDeliveryCard({
@@ -572,6 +602,25 @@ export function useDriverNotifications() {
             fee: initialFeeText,
           }).catch(() => { });
         } catch { }
+
+        // 2) DISPARO IMEDIATO NA CENTRAL DE NOTIFICAÇÕES DO IPHONE / ANDROID
+        try {
+          LocalNotifications.schedule({
+            notifications: [
+              {
+                id: hashId(rawDelivery.id),
+                title: "🛵 Nova Corrida Disponível!",
+                body: `${initialStore} • Ganhos: ${initialFeeText || "A calcular"}\nColeta: ${initialPickup}\nEntrega: ${initialDropoff}`,
+                sound: "notification_sound.mp3",
+                actionTypeId: "",
+                extra: {
+                  deliveryId: rawDelivery.id,
+                  route: `/driver?deliveryId=${rawDelivery.id}`,
+                },
+              },
+            ],
+          }).catch(() => {});
+        } catch {}
       }
 
       // Central de notificações interna do app (imediata)

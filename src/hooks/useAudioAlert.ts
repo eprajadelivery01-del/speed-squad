@@ -3,21 +3,20 @@ import { Capacitor } from "@capacitor/core";
 import { DeliveryOverlay } from "../plugins/DeliveryOverlay";
 
 // ═══════════════════════════════════════════════════════════════════
-// Singleton Audio — idêntico ao padrão do Lojista (pronto-agora-hub)
+// Singleton Audio — Reprodução ÚNICA (Sem loop contínuo persistente)
 // Regra #8: Arquivo oficial = /notification_sound.mp3 (432 KB)
 // ═══════════════════════════════════════════════════════════════════
 const ALERT_SOUND_URL = "/notification_sound.mp3";
 
 let globalAudio: HTMLAudioElement | null = null;
 let isUnlocked = false;
-let vibrationInterval: any = null;
-let activeNotification: Notification | null = null;
 let lastPlayPromise: Promise<void> | null = null;
-let pendingLoop = false; // Flag: se true, dispara som assim que o usuário clicar
+let pendingPlay = false;
 
 if (typeof window !== "undefined") {
   globalAudio = new Audio();
   globalAudio.src = ALERT_SOUND_URL + "?v=" + Date.now();
+  globalAudio.loop = false;
   globalAudio.load();
 
   // ── Unlock automático no primeiro toque/clique ──
@@ -25,11 +24,11 @@ if (typeof window !== "undefined") {
   const unlockGlobalAudio = () => {
     if (isUnlocking || !globalAudio) return;
 
-    // Se já está desbloqueado mas tem som pendente, dispara o loop agora
-    if (isUnlocked && pendingLoop) {
-      pendingLoop = false;
-      globalAudio.loop = true;
+    if (isUnlocked && pendingPlay) {
+      pendingPlay = false;
+      globalAudio.loop = false;
       globalAudio.volume = 1.0;
+      globalAudio.currentTime = 0;
       globalAudio.play().catch(() => {});
       return;
     }
@@ -43,7 +42,7 @@ if (typeof window !== "undefined") {
     lastPlayPromise = p;
     p.then(() => {
         try {
-          if (!pendingLoop) {
+          if (!pendingPlay) {
             globalAudio!.pause();
             globalAudio!.currentTime = 0;
           }
@@ -53,11 +52,12 @@ if (typeof window !== "undefined") {
         isUnlocking = false;
         if (lastPlayPromise === p) lastPlayPromise = null;
 
-        // Se enquanto esperava o unlock uma corrida chegou, toca agora
-        if (pendingLoop) {
-          pendingLoop = false;
-          globalAudio!.loop = true;
+        // Se uma corrida chegou enquanto aguardava unlock, toca uma única vez
+        if (pendingPlay) {
+          pendingPlay = false;
+          globalAudio!.loop = false;
           globalAudio!.volume = 1.0;
+          globalAudio!.currentTime = 0;
           globalAudio!.play().catch(() => {});
         }
       })
@@ -68,16 +68,15 @@ if (typeof window !== "undefined") {
       });
   };
 
-  // Não remove os listeners — mantém sempre ativos para capturar retry de pendingLoop
   window.addEventListener("click", unlockGlobalAudio);
   window.addEventListener("touchstart", unlockGlobalAudio);
   window.addEventListener("keydown", unlockGlobalAudio);
 }
 
 /**
- * Dispara vibração física no dispositivo do usuário (Haptics)
+ * Dispara vibração física única no dispositivo do usuário (Haptics)
  */
-export function triggerDeviceVibration(pattern: number[] = [500, 200, 500, 200, 800]) {
+export function triggerDeviceVibration(pattern: number[] = [500, 200, 500]) {
   const canVibrate = Capacitor.isNativePlatform() || isUnlocked;
   if (canVibrate && typeof navigator !== "undefined" && "vibrate" in navigator) {
     try {
@@ -115,61 +114,39 @@ export function useAudioAlert() {
       });
   }, []);
 
+  // ── Reprodução ÚNICA do alerta sonoro oficial ──
   const playAlert = useCallback(() => {
     if (globalAudio) {
-      globalAudio.currentTime = 0;
-      globalAudio.volume = 1.0;
-      const p = globalAudio.play();
-      lastPlayPromise = p;
-      p.then(() => {
-          isUnlocked = true;
-          if (lastPlayPromise === p) lastPlayPromise = null;
-        })
-        .catch((e) => {
-          if (lastPlayPromise === p) lastPlayPromise = null;
-          console.warn("[AudioAlert] Falha ao tocar alerta sonoro:", e);
-        });
+      try {
+        globalAudio.loop = false;
+        globalAudio.currentTime = 0;
+        globalAudio.volume = 1.0;
+        const p = globalAudio.play();
+        lastPlayPromise = p;
+        p.then(() => {
+            isUnlocked = true;
+            pendingPlay = false;
+            if (lastPlayPromise === p) lastPlayPromise = null;
+          })
+          .catch((e) => {
+            if (lastPlayPromise === p) lastPlayPromise = null;
+            pendingPlay = true;
+            console.warn("[AudioAlert] Alerta sonoro pendente para o próximo toque:", e.message || e);
+          });
+      } catch (err) {
+        console.warn("[AudioAlert] Erro ao disparar áudio:", err);
+      }
     }
     triggerDeviceVibration();
   }, []);
 
-  // ── startLoop: Idêntico ao Lojista — sem currentTime=0 reset ──
+  // ── startLoop alias seguro: executa reprodução única (sem loop) ──
   const startLoop = useCallback(() => {
-    console.log("[AudioAlert] Tocando som oficial de notificação...");
-    if (globalAudio) {
-      // Se já está tocando em loop, não interrompe
-      if (!globalAudio.paused && globalAudio.loop) {
-        globalAudio.volume = 1.0;
-        return;
-      }
-      globalAudio.loop = true;
-      globalAudio.volume = 1.0;
-      const p = globalAudio.play();
-      lastPlayPromise = p;
-      p.then(() => {
-          isUnlocked = true;
-          pendingLoop = false;
-          if (lastPlayPromise === p) lastPlayPromise = null;
-        })
-        .catch((e) => {
-          if (lastPlayPromise === p) lastPlayPromise = null;
-          // Play bloqueado pelo navegador — marca como pendente para disparar no próximo clique
-          pendingLoop = true;
-          console.warn("[AudioAlert] Som pendente — tocará ao clicar na página.", e.message || e);
-        });
-    }
-
-    // Vibração contínua independente do estado do áudio
-    if (!vibrationInterval) {
-      triggerDeviceVibration();
-      vibrationInterval = setInterval(() => {
-        triggerDeviceVibration();
-      }, 3500);
-    }
-  }, []);
+    playAlert();
+  }, [playAlert]);
 
   const stopLoop = useCallback(() => {
-    pendingLoop = false;
+    pendingPlay = false;
     DeliveryOverlay.stopNativeAudio().catch(() => {});
     if (globalAudio) {
       const performPause = () => {
@@ -188,11 +165,6 @@ export function useAudioAlert() {
       } else {
         performPause();
       }
-    }
-
-    if (vibrationInterval) {
-      clearInterval(vibrationInterval);
-      vibrationInterval = null;
     }
   }, []);
 

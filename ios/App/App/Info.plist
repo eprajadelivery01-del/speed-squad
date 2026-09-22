@@ -76,10 +76,8 @@
 	<string>O É Pra Já Entregador necessita de permissão de notificações ativas para alertar imediatamente sobre novas corridas na central do aparelho mesmo com o aplicativo fechado ou em segundo plano.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>location</string>
 		<string>remote-notification</string>
 		<string>fetch</string>
-		<string>audio</string>
 	</array>
 </dict>
 </plist>
