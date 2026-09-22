@@ -8,7 +8,6 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { PushNotifications } from "@capacitor/push-notifications";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
@@ -221,10 +220,9 @@ export function useDriverNotifications() {
       }
     }
 
-    // Register Push Notifications for Firebase Cloud Messaging
+    // Register Push Notifications via Firebase Cloud Messaging exclusively
     if (Capacitor.isNativePlatform()) {
-      let regListener: any = null;
-      let errListener: any = null;
+      let tokenListener: any = null;
       let actListener: any = null;
       let receivedListener: any = null;
       let refreshListener: PluginListenerHandle | null = null;
@@ -232,6 +230,12 @@ export function useDriverNotifications() {
       try {
         const syncFcmToken = async (tokenVal: string) => {
           if (!tokenVal) return;
+          // Proteção contra tokens APNs brutos (64 caracteres hexadecimais)
+          if (/^[0-9a-fA-F]{64}$/.test(tokenVal.trim())) {
+            console.warn("[FCM Entregador] Token APNs bruto ignorado (aguardando token FCM do Firebase):", tokenVal.slice(0, 10));
+            return;
+          }
+
           console.log("[FCM Entregador] Sincronizando token:", tokenVal.slice(0, 15) + "...");
           localStorage.setItem("driver_fcm_token", tokenVal);
           localStorage.setItem("fcm_token", tokenVal);
@@ -329,31 +333,13 @@ export function useDriverNotifications() {
           }
         };
 
-        // Escuta novas identificações do FCM
-        regListener = PushNotifications.addListener("registration", async (token) => {
-          console.log("FCM/APNs Token recebido:", token.value);
-          if (Capacitor.getPlatform() === "ios") {
-            try {
-              const fcmRes = await FirebaseMessaging.getToken();
-              if (fcmRes?.token) {
-                console.log("[FCM][ENTREGADOR][iOS] FCM registration token obtido com sucesso:", fcmRes.token.slice(0, 12));
-                syncFcmToken(fcmRes.token);
-                return;
-              }
-            } catch (errFcm) {
-              console.warn("[FCM][ENTREGADOR][iOS] Falha ao obter token via FirebaseMessaging:", errFcm);
-            }
-          }
-          syncFcmToken(token.value);
-        });
-
         // Listener nativo do Firebase Messaging para tokenReceived
-        FirebaseMessaging.addListener("tokenReceived", ({ token }) => {
+        tokenListener = FirebaseMessaging.addListener("tokenReceived", ({ token }) => {
           if (token) {
             console.log("[FCM][ENTREGADOR] tokenReceived via FirebaseMessaging:", token.slice(0, 12));
             syncFcmToken(token);
           }
-        }).catch(() => {});
+        });
 
         DeliveryOverlay.getPendingFcmToken().then(({ token }) => {
           if (token) syncFcmToken(token);
@@ -371,32 +357,32 @@ export function useDriverNotifications() {
           syncFcmToken(cachedToken);
         }
 
-        // Solicita permissões e registra no PushNotifications nativo (iOS / Android)
-        const initPushPermissions = async () => {
+        // Solicita permissões e obtém token FCM exclusivamente via FirebaseMessaging
+        const initFcmPermissions = async () => {
           try {
-            let perm = await PushNotifications.checkPermissions();
-            if (perm.receive !== "granted" && (perm as any).display !== "granted") {
-              perm = await PushNotifications.requestPermissions();
+            let perm = await FirebaseMessaging.checkPermissions();
+            if (perm.receive !== "granted") {
+              perm = await FirebaseMessaging.requestPermissions();
             }
-            if (perm.receive === "granted" || (perm as any).display === "granted") {
-              await PushNotifications.register();
-              console.log("[Push Entregador] Registrado com sucesso no serviço nativo");
+            if (perm.receive === "granted") {
+              const fcmRes = await FirebaseMessaging.getToken();
+              if (fcmRes?.token) {
+                console.log("[FCM][ENTREGADOR] Token FCM obtido com sucesso:", fcmRes.token.slice(0, 12));
+                syncFcmToken(fcmRes.token);
+              }
             }
           } catch (e) {
-            console.warn("[Push Entregador] Erro ao registrar push nativo:", e);
+            console.warn("[FCM][ENTREGADOR] Erro ao obter permissões/token FCM:", e);
           }
         };
-        initPushPermissions();
+        initFcmPermissions();
 
-        errListener = PushNotifications.addListener("registrationError", (error: any) => {
-          console.error("Erro no PushNotifications.register:", error);
-        });
-
-        actListener = PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-          console.log("[FCM_NATIVE_CLICK] Push action performed:", action);
-          const data = action.notification?.data;
-          const deliveryId = data?.deliveryId || data?.delivery_id;
-          const targetRoute = data?.route || (deliveryId ? `/driver?deliveryId=${deliveryId}` : "/driver");
+        // Listener para ações de clique em push recebido via FirebaseMessaging
+        actListener = FirebaseMessaging.addListener("notificationActionPerformed", (action) => {
+          console.log("[FCM_NATIVE_CLICK] Push action performed via FirebaseMessaging:", action);
+          const data = (action.notification?.data as any) || {};
+          const deliveryId = data.deliveryId || data.delivery_id;
+          const targetRoute = data.route || (deliveryId ? `/driver?deliveryId=${deliveryId}` : "/driver");
           if (targetRoute && typeof window !== "undefined") {
             console.log("[FCM_NATIVE_CLICK] Navegando para a rota da entrega:", targetRoute);
             window.location.href = targetRoute;
@@ -416,9 +402,11 @@ export function useDriverNotifications() {
           }).catch(() => {});
         } catch {}
 
-        receivedListener = PushNotifications.addListener("pushNotificationReceived", async (notification) => {
-          console.log("[FCM_NATIVE_RECEIVED] Push received:", notification);
-          const deliveryId = notification.data?.deliveryId;
+        // Listener para notificação push recebida em foreground via FirebaseMessaging
+        receivedListener = FirebaseMessaging.addListener("notificationReceived", async (event) => {
+          console.log("[FCM_NATIVE_RECEIVED] Push notification received via FirebaseMessaging:", event);
+          const data = (event.notification?.data as any) || {};
+          const deliveryId = data.deliveryId || data.delivery_id;
           if (deliveryId) {
             // Dedup: FCM + realtime + polling podem chegar juntos; só o primeiro anuncia.
             if (!isOnlineRef.current) return;
@@ -429,18 +417,18 @@ export function useDriverNotifications() {
             seenIdsRef.current.add(deliveryId);
             activeAlertsRef.current.add(deliveryId);
             try {
-              const { data } = await supabase
+              const { data: dData } = await supabase
                 .from("deliveries")
                 .select("*, companies(name, address), orders(delivery_fee)")
                 .eq("id", deliveryId)
                 .single();
 
-              if (!data || (data.status !== "pending" && data.status !== "broadcasted") || data.driver_id) {
+              if (!dData || (dData.status !== "pending" && dData.status !== "broadcasted") || dData.driver_id) {
                 console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
                 return;
               }
 
-              const d = data as any;
+              const d = dData as any;
               const storeName = await fetchRealStoreName(d);
               const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.address || storeName || "Local de Coleta";
               const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || "Endereço do cliente";
@@ -494,8 +482,7 @@ export function useDriverNotifications() {
       }
 
       return () => {
-        safeRemoveListener(regListener);
-        safeRemoveListener(errListener);
+        safeRemoveListener(tokenListener);
         safeRemoveListener(actListener);
         safeRemoveListener(receivedListener);
         safeRemoveListener(refreshListener);

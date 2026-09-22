@@ -419,7 +419,7 @@ Deno.serve(async (req) => {
       // Reativa o token (sai da quarentena) sempre que o app o registra novamente
       const reset = await supabase
         .from("device_tokens")
-        .update({ disabled_at: null, disabled_reason: null, failure_count: 0, last_error_code: null, app: appType, bundle_id: explicitBundle })
+        .update({ disabled_at: null, app: appType, bundle_id: explicitBundle, updated_at: now })
         .eq("token", fcmToken);
       outcome.reset = reset.error ? `ignorado: ${reset.error.message}` : "ok";
 
@@ -872,30 +872,13 @@ Deno.serve(async (req) => {
     );
     const sent = results.filter((r) => r.ok).length;
 
-    // ---------- SAÚDE DOS TOKENS: sucesso, quarentena e remoção ----------
-    const invalidTokens = results.filter((r) => r.invalid).map((r) => r.token);
-    let rpcAvailable = true;
-    for (const r of results) {
-      const outcome: Outcome = r.ok ? "success" : (r.outcome ?? "transient");
-      if (!rpcAvailable) break;
-      const { error } = await supabase.rpc("record_push_result", {
-        _token: r.token,
-        _outcome: outcome,
-        _error_code: r.code ?? null,
-        _error_message: r.error ?? null,
-      });
-      if (error) {
-        rpcAvailable = false;
-      }
-    }
-    if (!rpcAvailable && invalidTokens.length > 0) {
-      await supabase.from("device_tokens").delete().in("token", invalidTokens);
-    }
+    // Log detalhado dos resultados do envio via FCM
+    console.log(`[send-push:${reqId}] Envio finalizado. Total: ${tokens.length}, Sucesso: ${sent}, Falhas: ${tokens.length - sent}`);
 
     return json({
       sent,
       total: tokens.length,
-      invalid: invalidTokens.length,
+      invalid: results.filter((r) => r.invalid).length,
       results: results.map((r) => ({
         ok: r.ok,
         status: r.status,
