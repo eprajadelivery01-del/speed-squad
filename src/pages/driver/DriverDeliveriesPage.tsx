@@ -60,24 +60,48 @@ export default function DriverDeliveriesPage() {
     };
   }, [queryClient]);
 
+  // Realtime subscription for immediate sync on status changes
+  useEffect(() => {
+    if (!driverId) return;
+
+    const channel = supabase
+      .channel(`driver-deliveries-page-${driverId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "deliveries" },
+        (payload) => {
+          const rec = (payload.new || payload.old) as any;
+          if (rec?.driver_id === driverId || !rec?.driver_id) {
+            queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [driverId, queryClient]);
+
   const { data: myData, isLoading: loadingDeliveries } = useDeliveries({
     driverId: driverId || undefined,
     enabled: !!driverId,
-    pageSize: 15,
-    staleTime: 10000,
-    refetchOnWindowFocus: false,
+    pageSize: 50,
+    staleTime: 5000,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
   const rawMyDeliveries = myData?.data ?? [];
   const myDeliveries = useUniqueDeliveries(rawMyDeliveries);
 
   // Filter "Andamento": accepted and being worked on
   const inProgressDeliveries = myDeliveries.filter(d =>
-    ["accepted", "collecting", "in_transit"].includes(d.status)
+    ["accepted", "collecting", "in_transit", "in_route", "delivering"].includes(d.status)
   );
 
   // Filter "Histórico": completed or cancelled (limitado a 10 entregas)
   const historyDeliveries = myDeliveries
-    .filter(d => ["delivered", "cancelled"].includes(d.status))
+    .filter(d => ["delivered", "completed", "cancelled"].includes(d.status))
     .slice(0, 10);
 
   const handleAction = (deliveryId: string, currentStatus: string) => {

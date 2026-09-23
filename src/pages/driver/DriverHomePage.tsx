@@ -40,6 +40,7 @@ export default function DriverHomePage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isQueryingRef = useRef(false);
   const lastCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const lastGpsDbUpdateRef = useRef<number>(0);
   const todayStartIso = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -174,12 +175,16 @@ export default function DriverHomePage() {
       setIsDetecting(false);
       isQueryingRef.current = false;
 
-      const { error: locError } = await supabase.from("delivery_drivers").update({
-        latitude: lat,
-        longitude: lng,
-        updated_at: new Date().toISOString(),
-      }).eq("id", drivId);
-      if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
+      const now = Date.now();
+      if (now - lastGpsDbUpdateRef.current >= 15000) {
+        lastGpsDbUpdateRef.current = now;
+        const { error: locError } = await supabase.from("delivery_drivers").update({
+          latitude: lat,
+          longitude: lng,
+          updated_at: new Date().toISOString(),
+        }).eq("id", drivId);
+        if (locError) console.error("Erro ao atualizar GPS no BD:", locError);
+      }
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -227,13 +232,17 @@ export default function DriverHomePage() {
             setCity(detectedCity);
           }
 
-          const { error: locError } = await supabase.from("delivery_drivers").update({
-            latitude: lat,
-            longitude: lng,
-            updated_at: new Date().toISOString(),
-          }).eq("id", drivId);
-          if (locError && !locError.message?.includes("Failed to fetch") && !locError.message?.includes("Load failed")) {
-            console.warn("Aviso GPS:", locError.message);
+          const now = Date.now();
+          if (now - lastGpsDbUpdateRef.current >= 15000) {
+            lastGpsDbUpdateRef.current = now;
+            const { error: locError } = await supabase.from("delivery_drivers").update({
+              latitude: lat,
+              longitude: lng,
+              updated_at: new Date().toISOString(),
+            }).eq("id", drivId);
+            if (locError && !locError.message?.includes("Failed to fetch") && !locError.message?.includes("Load failed")) {
+              console.warn("Aviso GPS:", locError.message);
+            }
           }
         },
         (err) => {

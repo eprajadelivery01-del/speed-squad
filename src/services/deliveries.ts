@@ -36,8 +36,10 @@ const APP_TO_DB_STATUS: Record<string, string> = {
 
 const DB_TO_APP_STATUS: Record<string, DeliveryStatus> = {
   completed: "delivered",
+  delivered: "delivered",
   in_route: "in_transit",
   in_transit: "in_transit" as any,
+  delivering: "in_transit" as any,
   collecting: "collecting" as any,
   accepted: "accepted" as any,
 };
@@ -137,7 +139,7 @@ export function useDeliveries(params?: UseDeliveriesParams) {
       if (error) throw error;
 
       const normalizedData = await Promise.all((data ?? []).map(async (delivery: any) => {
-        const storeTitle = await fetchRealStoreName(delivery);
+        const storeTitle = delivery.companies?.name || await fetchRealStoreName(delivery);
         return {
           ...delivery,
           companies: {

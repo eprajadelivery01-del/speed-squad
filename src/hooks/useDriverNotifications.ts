@@ -13,6 +13,7 @@ import { App } from "@capacitor/app";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
 import { safeRpc } from "@/lib/safeRpc";
+import { translateDeliveryError } from "@/lib/errorMessages";
 
 const hashId = (str: string | number) => {
   const s = String(str);
@@ -139,6 +140,7 @@ export function useDriverNotifications() {
     }
 
     // 3. Atualiza no Supabase imediatamente para 'accepted'
+    let acceptSucceeded = false;
     if (driverIdToUse) {
       try {
         const { data, error } = await safeRpc("update_delivery_status_safe", {
@@ -147,22 +149,65 @@ export function useDriverNotifications() {
           p_driver_id: driverIdToUse,
         });
 
-        if (error || (data as any)?.success === false) {
+        if (!error && (data as any)?.success !== false) {
+          acceptSucceeded = true;
+        } else {
+          const errMsg = (data as any)?.error || (data as any)?.message || error || "";
+          const isAlreadyTaken = String(errMsg).toLowerCase().includes("já foi aceita") || 
+                                 String(errMsg).toLowerCase().includes("já aceita") || 
+                                 String(errMsg).toLowerCase().includes("already accepted");
+
+          if (isAlreadyTaken) {
+            // Reverte estado local imediatamente para a corrida não sumir sem aviso
+            const accepted = getAcceptedDeliveries();
+            accepted.delete(deliveryId);
+            try { localStorage.setItem("accepted_deliveries", JSON.stringify(Array.from(accepted))); } catch {}
+            declineDeliveryLocally(deliveryId);
+
+            toast({
+              title: "⚡ Corrida já aceita",
+              description: "Outro entregador aceitou esta corrida milissegundos antes. Aguarde a próxima!",
+              variant: "destructive",
+            });
+            queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+            return;
+          }
+
           console.warn("[GlobalAccept] safeRpc retornou erro/falha, aplicando fallback direto:", error || data);
-          await supabase
+          const { error: directErr } = await supabase
             .from("deliveries")
             .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
             .eq("id", deliveryId);
+
+          if (!directErr) {
+            acceptSucceeded = true;
+          }
         }
       } catch (e) {
         console.warn("[GlobalAccept] Falha no safeRpc:", e);
         try {
-          await supabase
+          const { error: directErr } = await supabase
             .from("deliveries")
             .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
             .eq("id", deliveryId);
+          if (!directErr) acceptSucceeded = true;
         } catch { }
       }
+    }
+
+    if (!acceptSucceeded) {
+      const accepted = getAcceptedDeliveries();
+      accepted.delete(deliveryId);
+      try { localStorage.setItem("accepted_deliveries", JSON.stringify(Array.from(accepted))); } catch {}
+      declineDeliveryLocally(deliveryId);
+
+      toast({
+        title: "⚡ Corrida não disponível",
+        description: "Esta corrida já foi aceita por outro entregador ou não pôde ser confirmada.",
+        variant: "destructive",
+      });
+      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+      return;
     }
 
     // 4. Invalida as queries do React Query para a aba de entregas atualizar instantaneamente
@@ -876,6 +921,9 @@ export function useDriverNotifications() {
               }
               updateNotificationStatus(d.id, "accepted");
             }
+
+            // Garante que qualquer atualização de status reflita instantaneamente na lista de entregas
+            queryClient.invalidateQueries({ queryKey: ["deliveries"] });
           }
         )
         .subscribe();
