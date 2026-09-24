@@ -252,6 +252,7 @@ async function sendToToken(
               sound: "notification_sound.mp3",
               badge: 1,
               "content-available": 1,
+              contentAvailable: true,
               "mutable-content": 1,
               category: `delivery-${data.deliveryId || "new"}`
             },
@@ -299,6 +300,7 @@ async function sendToToken(
               sound: iosSound,
               badge: 1,
               "content-available": 1,
+              contentAvailable: true,
               "mutable-content": 1,
               category: notifTag
             },
