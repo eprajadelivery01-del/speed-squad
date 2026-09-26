@@ -468,20 +468,21 @@ export function useDriverNotifications() {
                 .eq("id", deliveryId)
                 .single();
 
-              if (!dData || (dData.status !== "pending" && dData.status !== "broadcasted") || dData.driver_id) {
+              // Se a entrega existe no BD e já foi aceita ou cancelada, ignora
+              if (dData && ((dData.status !== "pending" && dData.status !== "broadcasted") || dData.driver_id)) {
                 console.log("FCM ignorado: Corrida já foi aceita ou cancelada.");
                 return;
               }
 
-              const d = dData as any;
-              const storeName = await fetchRealStoreName(d);
-              const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.address || storeName || "Local de Coleta";
-              const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || "Endereço do cliente";
+              const d = (dData || {}) as any;
+              const storeName = dData ? await fetchRealStoreName(d) : (data.storeName || data.store_name || "É Pra Já Delivery");
+              const immediatePickup = d.pickup_address || d.origin_address || d.store_address || d.companies?.address || data.pickup || data.pickup_address || (storeName !== "É Pra Já Delivery" ? storeName : "Retirada na Loja");
+              const immediateDropoff = d.delivery_address || d.dropoff_address || d.address || data.dropoff || data.delivery_address || "Endereço do cliente";
 
               const orderFee = d.orders?.delivery_fee ? Number(d.orders.delivery_fee) : 0;
-              const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0);
+              const immediateValue = orderFee > 0 ? orderFee : Math.max(Number(d.delivery_fee) || 0, Number(d.value) || 0, Number(d.price) || 0, Number(d.total_value) || 0, Number(data.fee) || 0);
 
-              const fcmFee = `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}`;
+              const fcmFee = immediateValue > 0 ? `R$ ${Number(immediateValue).toFixed(2).replace(".", ",")}` : (data.fee || "A calcular");
               addNotificationRef.current({
                 type: "delivery",
                 title: "Nova corrida disponível",
@@ -499,7 +500,7 @@ export function useDriverNotifications() {
                         id: hashId(deliveryId),
                         title: "🛵 Nova Corrida Disponível!",
                         body: `${storeName} • Ganhos: ${fcmFee}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}`,
-                        sound: "notification_sound.mp3",
+                        sound: "default",
                         actionTypeId: "",
                         extra: {
                           deliveryId,
@@ -643,7 +644,7 @@ export function useDriverNotifications() {
                 id: hashId(rawDelivery.id),
                 title: "🛵 Nova Corrida Disponível!",
                 body: `${initialStore} • Ganhos: ${initialFeeText || "A calcular"}\nColeta: ${initialPickup}\nEntrega: ${initialDropoff}`,
-                sound: "notification_sound.mp3",
+                sound: "default",
                 actionTypeId: "",
                 extra: {
                   deliveryId: rawDelivery.id,
