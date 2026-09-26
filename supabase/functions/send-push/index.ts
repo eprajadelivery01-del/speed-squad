@@ -134,6 +134,7 @@ async function sendToToken(
   body: string,
   data: Record<string, string>,
   isIosToken = false,
+  badgeCount = 1,
 ): Promise<SendResult> {
   // Identificação explícita dos aplicativos:
   // Marketplace → app: 'marketplace', bundleId: 'br.com.epraja.appFma'
@@ -259,7 +260,7 @@ async function sendToToken(
             aps: {
               alert: { title, body },
               sound: "default",
-              badge: 1,
+              badge: badgeCount,
             },
           },
         },
@@ -303,7 +304,7 @@ async function sendToToken(
             aps: {
               alert: { title, body },
               sound: "default",
-              badge: 1,
+              badge: badgeCount,
             },
           },
         },
@@ -386,6 +387,18 @@ Deno.serve(async (req) => {
     const action = String(body.action ?? "send");
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    let sa: ServiceAccount | null = null;
+    if (SA_RAW) {
+      try {
+        const parsed = JSON.parse(SA_RAW) as ServiceAccount;
+        if (parsed.private_key && parsed.client_email && parsed.project_id) {
+          sa = parsed;
+        }
+      } catch (e) {
+        console.error(`[send-push:${reqId}] Erro ao parsear FIREBASE_SERVICE_ACCOUNT_JSON:`, e);
+      }
+    }
+
     const selectTokens = async (column: string, value: string) => {
       const active = await supabase
         .from("device_tokens").select("token").eq(column, value).is("disabled_at", null);
@@ -402,6 +415,66 @@ Deno.serve(async (req) => {
         return json({ error: `cleanup falhou: ${error.message}` }, 500);
       }
       return json({ cleanup: data });
+    }
+
+    // ---------- DIAGNÓSTICO DE TOKENS ----------
+    if (action === "inspect_tokens") {
+      const { data: dTokens } = await supabase
+        .from("device_tokens")
+        .select("token, user_id, platform, app, bundle_id, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      const { data: dDrivers } = await supabase
+        .from("delivery_drivers")
+        .select("id, user_id, is_online, fcm_token, updated_at")
+        .eq("is_online", true);
+
+      // Busca todos os tokens da plataforma iOS em device_tokens
+      const { data: allIosTokens } = await supabase
+        .from("device_tokens")
+        .select("*")
+        .eq("platform", "ios")
+        .order("updated_at", { ascending: false });
+
+      // Busca entregadores com token APNs ou que possam ser do iOS
+      const { data: allDrivers } = await supabase
+        .from("delivery_drivers")
+        .select("id, user_id, full_name, is_online, fcm_token, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(10);
+
+      return json({ device_tokens: dTokens, online_drivers: dDrivers, allIosTokens, allDrivers });
+    }
+
+    // ---------- TESTE DE PUSH DIRETO COM BADGE PARA IPHONE DO MOTORISTA ----------
+    if (action === "test_ios_driver") {
+      const targetUserId = body.userId || "939b0b9f-d41b-45ea-86b4-9403db1a7f9b";
+      const { data: dTokens } = await supabase
+        .from("device_tokens")
+        .select("token, platform")
+        .eq("user_id", targetUserId);
+      const iosTokens = (dTokens || []).filter((t: any) => t.platform === "ios").map((t: any) => t.token);
+      if (body.token && !iosTokens.includes(body.token)) {
+        iosTokens.push(body.token);
+      }
+      const testTitle = String(body.title || "🏍️ NOVA CORRIDA DISPONÍVEL!");
+      const testBody = String(body.body || "Toque para abrir e aceitar no app É Pra Já Entregador");
+      const badgeCount = typeof body.badge === "number" ? body.badge : 2;
+      const testExtra = {
+        type: "delivery",
+        eventType: "delivery_available",
+        app: "entregador",
+        bundleId: "br.com.epraja.entregador",
+        deliveryId: "test-live-" + Date.now(),
+        route: "/driver",
+      };
+      const accessToken = await getAccessToken(sa!);
+      const resList = [];
+      for (const t of iosTokens) {
+        const r = await sendToToken(reqId, sa!, accessToken, t, testTitle, testBody, testExtra, true, badgeCount);
+        resList.push(r);
+      }
+      return json({ test: true, iosTokens, badgeCount, results: resList });
     }
 
     // ---------- REGISTRO / ATUALIZAÇÃO DO TOKEN FCM ----------
@@ -490,18 +563,6 @@ Deno.serve(async (req) => {
     }
 
     // ---------- ENVIO ----------
-    let sa: ServiceAccount | null = null;
-    if (SA_RAW) {
-      try {
-        const parsed = JSON.parse(SA_RAW) as ServiceAccount;
-        if (parsed.private_key && parsed.client_email && parsed.project_id) {
-          sa = parsed;
-        }
-      } catch (e) {
-        console.error(`[send-push:${reqId}] Erro ao parsear FIREBASE_SERVICE_ACCOUNT_JSON:`, e);
-      }
-    }
-
     if (!sa) {
       return json({ error: "Configuração do Firebase ausente: configure o secret FIREBASE_SERVICE_ACCOUNT_JSON no painel do Supabase." }, 500);
     }
@@ -628,11 +689,25 @@ Deno.serve(async (req) => {
         return json({ sent: 0, total: 0, warning: "Nenhum entregador online com token FCM" });
       }
 
+      // Calcula corridas em aberto para atualizar o badge numérico vermelho no iOS (ex: 2 corridas -> badge 2)
+      let deliveryBadge = 1;
+      try {
+        const { count: availableCount } = await supabase
+          .from("deliveries")
+          .select("*", { count: "exact", head: true })
+          .or("status.eq.broadcasted,status.eq.available,status.eq.pending");
+        if (availableCount && availableCount > 0) {
+          deliveryBadge = availableCount;
+        }
+      } catch (errBadge) {
+        console.warn(`[send-push:${reqId}] Falha ao calcular badge de entregas:`, errBadge);
+      }
+
       const accessToken = await getAccessToken(sa);
       const results = await Promise.all(
         allDriverTokens.map((t: string) => {
           const isIos = tokenPlatformMap.get(t) === "ios";
-          return sendToToken(reqId, sa, accessToken, t, title, message, extra, isIos);
+          return sendToToken(reqId, sa, accessToken, t, title, message, extra, isIos, deliveryBadge);
         }),
       );
       const sent = results.filter((r) => r.ok).length;
@@ -932,8 +1007,9 @@ Deno.serve(async (req) => {
     }
 
     const accessToken = await getAccessToken(sa);
+    const badgeParam = typeof body.badge === "number" ? body.badge : 1;
     const results = await Promise.all(
-      tokens.map((t) => sendToToken(reqId, sa, accessToken, t, title, message, extra)),
+      tokens.map((t) => sendToToken(reqId, sa, accessToken, t, title, message, extra, false, badgeParam)),
     );
     const sent = results.filter((r) => r.ok).length;
 
