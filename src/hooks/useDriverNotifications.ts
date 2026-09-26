@@ -268,6 +268,7 @@ export function useDriverNotifications() {
     // Register Push Notifications via Firebase Cloud Messaging exclusively
     if (Capacitor.isNativePlatform()) {
       let tokenListener: any = null;
+      let apnsListener: any = null;
       let actListener: any = null;
       let receivedListener: any = null;
       let refreshListener: PluginListenerHandle | null = null;
@@ -275,12 +276,6 @@ export function useDriverNotifications() {
       try {
         const syncFcmToken = async (tokenVal: string) => {
           if (!tokenVal) return;
-          // Proteção contra tokens APNs brutos (64 caracteres hexadecimais)
-          if (/^[0-9a-fA-F]{64}$/.test(tokenVal.trim())) {
-            console.warn("[FCM Entregador] Token APNs bruto ignorado (aguardando token FCM do Firebase):", tokenVal.slice(0, 10));
-            return;
-          }
-
           console.log("[FCM Entregador] Sincronizando token:", tokenVal.slice(0, 15) + "...");
           localStorage.setItem("driver_fcm_token", tokenVal);
           localStorage.setItem("fcm_token", tokenVal);
@@ -386,6 +381,28 @@ export function useDriverNotifications() {
           }
         });
 
+        // Listener para token APNs no iOS - quando a Apple entrega o token APNs nativo
+        if (Capacitor.getPlatform() === "ios") {
+          apnsListener = FirebaseMessaging.addListener("apnsTokenReceived" as any, async (res: any) => {
+            const rawToken = res?.token;
+            console.log("[APNs][ENTREGADOR] apnsTokenReceived da Apple:", rawToken ? rawToken.slice(0, 12) : res);
+            try {
+              // Dá um pequeno tempo para o Firebase iOS SDK associar o token APNs e gerar o FCM
+              await new Promise(r => setTimeout(r, 600));
+              const fcmRes = await FirebaseMessaging.getToken();
+              if (fcmRes?.token) {
+                console.log("[FCM][ENTREGADOR] Token FCM gerado com sucesso após APNs:", fcmRes.token.slice(0, 12));
+                syncFcmToken(fcmRes.token);
+              } else if (rawToken) {
+                syncFcmToken(rawToken);
+              }
+            } catch (errApns) {
+              console.warn("[APNs] Erro ao obter token FCM após apnsTokenReceived:", errApns);
+              if (rawToken) syncFcmToken(rawToken);
+            }
+          });
+        }
+
         DeliveryOverlay.getPendingFcmToken().then(({ token }) => {
           if (token) syncFcmToken(token);
         }).catch(() => { });
@@ -402,7 +419,7 @@ export function useDriverNotifications() {
           syncFcmToken(cachedToken);
         }
 
-        // Solicita permissões e obtém token FCM exclusivamente via FirebaseMessaging
+        // Solicita permissões e obtém token FCM com retry progressivo (essencial no iOS)
         const initFcmPermissions = async () => {
           try {
             let perm = await FirebaseMessaging.checkPermissions();
@@ -410,13 +427,37 @@ export function useDriverNotifications() {
               perm = await FirebaseMessaging.requestPermissions();
             }
             if (perm.receive === "granted") {
-              const fcmRes = await FirebaseMessaging.getToken();
-              if (fcmRes?.token) {
-                console.log("[FCM][ENTREGADOR] Token FCM obtido com sucesso:", fcmRes.token.slice(0, 12));
-                syncFcmToken(fcmRes.token);
+              const isIOS = Capacitor.getPlatform() === "ios";
+              const maxAttempts = isIOS ? 8 : 3;
+              for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                  const fcmRes = await FirebaseMessaging.getToken();
+                  if (fcmRes?.token && fcmRes.token.length > 20) {
+                    console.log("[FCM][ENTREGADOR] Token FCM obtido com sucesso:", fcmRes.token.slice(0, 12));
+                    syncFcmToken(fcmRes.token);
+                    if (isIOS) {
+                      toast({
+                        title: "🏍️ Notificações iOS Ativas",
+                        description: `Dispositivo conectado! (${fcmRes.token.slice(0, 8)}...)`,
+                      });
+                    }
+                    return;
+                  }
+                } catch (errToken: any) {
+                  console.warn(`[FCM][ENTREGADOR] Tentativa ${attempt}/${maxAttempts} para obter token:`, errToken?.message || errToken);
+                  if (attempt < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 1000 * Math.min(attempt, 3)));
+                  } else if (isIOS) {
+                    toast({
+                      variant: "destructive",
+                      title: "Aviso Notificações iOS",
+                      description: `Aguardando registro no APNs da Apple: ${errToken?.message || "tentando reconectar"}`,
+                    });
+                  }
+                }
               }
             }
-          } catch (e) {
+          } catch (e: any) {
             console.warn("[FCM][ENTREGADOR] Erro ao obter permissões/token FCM:", e);
           }
         };
@@ -529,6 +570,7 @@ export function useDriverNotifications() {
 
       return () => {
         safeRemoveListener(tokenListener);
+        safeRemoveListener(apnsListener);
         safeRemoveListener(actListener);
         safeRemoveListener(receivedListener);
         safeRemoveListener(refreshListener);

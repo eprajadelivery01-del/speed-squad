@@ -564,6 +564,52 @@ export default function DriverHomePage() {
           </button>
         </div>
 
+        {/* Teste Rápido de Notificação & Badge no iPhone */}
+        {Capacitor.isNativePlatform() && (
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                🍎 Teste Push & Badge iPhone
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Dispara notificação com banner e badge vermelho 2
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  toast({
+                    title: "🚀 Enviando push de teste...",
+                    description: "Saia do app ou bloqueie a tela do iPhone AGORA para ver o banner e o badge!",
+                  });
+                  const res = await supabase.functions.invoke("send-push", {
+                    body: {
+                      action: "test_ios_driver",
+                      userId: user?.id,
+                      token: localStorage.getItem("driver_fcm_token"),
+                      badge: 2,
+                    },
+                  });
+                  console.log("[TESTE PUSH IPHONE]", res);
+                  toast({
+                    title: "✅ Push Disparado com Sucesso!",
+                    description: "Verifique a tela de bloqueio do iPhone e o número 2 no ícone do app!",
+                  });
+                } catch (e: any) {
+                  toast({
+                    variant: "destructive",
+                    title: "Erro no disparo de teste",
+                    description: e?.message || "Falha de conexão",
+                  });
+                }
+              }}
+              className="px-3.5 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow hover:opacity-90 active:scale-95 transition-all"
+            >
+              Disparar
+            </button>
+          </div>
+        )}
+
         {/* City Auto-detected */}
         {isOnline && (
           <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-2.5">
