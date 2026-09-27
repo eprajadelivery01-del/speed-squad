@@ -360,13 +360,13 @@ export function useDriverNotifications() {
               if (checkData) {
                 const row = checkData as any;
                 console.log("[PUSH REGISTER VERIFIED]", {
-                  id: checkData.id,
-                  user_id: checkData.user_id,
-                  platform: checkData.platform,
-                  app: checkData.app,
-                  bundle_id: checkData.bundle_id,
-                  disabled_at: checkData.disabled_at,
-                  updated_at: checkData.updated_at,
+                  id: row.id,
+                  user_id: row.user_id,
+                  platform: row.platform,
+                  app: row.app,
+                  bundle_id: row.bundle_id,
+                  disabled_at: row.disabled_at,
+                  updated_at: row.updated_at,
                   hasToken: true,
                 });
               }
