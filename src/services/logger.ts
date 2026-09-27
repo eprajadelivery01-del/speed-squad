@@ -123,7 +123,13 @@ export function initializeGlobalErrorHandlers(appName: string) {
 
     // Silencia ReferenceErrors de código em cache desatualizado no dispositivo do entregador.
     // Exemplo: "driverRecord is not defined", "DeliveryOverlay is not defined", etc.
-    if (msg.includes("is not defined") || msg.includes("Cannot read properties of undefined")) {
+    if (
+      msg.includes("is not defined") ||
+      msg.includes("Cannot read properties of undefined") ||
+      msg.includes("UNIMPLEMENTED") ||
+      msg.includes("not implemented") ||
+      msg.includes("implementation unavailable for")
+    ) {
       return;
     }
 
@@ -150,7 +156,12 @@ export function initializeGlobalErrorHandlers(appName: string) {
     originalConsoleError.apply(console, args);
 
     // Skip nested reporting to prevent loops
-    if (isReporting) return;
+    if (
+      isReporting ||
+      msg.includes("UNIMPLEMENTED") ||
+      msg.includes("not implemented") ||
+      msg.includes("implementation unavailable for")
+    ) return;
 
     reportErrorToTelegram({
       error_message: `[Console Error] ${msg.slice(0, 1000)}`,
