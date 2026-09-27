@@ -9,7 +9,7 @@ import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
-import { App } from "@capacitor/app";
+import { App } from "@/plugins/CapacitorApp";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
 import { safeRpc } from "@/lib/safeRpc";
