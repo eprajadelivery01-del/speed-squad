@@ -887,7 +887,8 @@ export function useDriverNotifications() {
         }
       };
 
-      intervalRef.current = setInterval(pollDeliveries, 8000);
+      // Dispara uma busca inicial ao iniciar
+      pollDeliveries();
 
       // Listener de retorno ao app para forçar fetch imediato caso o WebSocket tenha morrido no background
       appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
