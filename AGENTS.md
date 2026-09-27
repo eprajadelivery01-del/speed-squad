@@ -1,3 +1,3 @@
 # Project Architecture Rules
 
-- Access the native Capacitor App lifecycle through `src/plugins/CapacitorApp.ts`, because the publisher's cached `@capacitor/app` package may omit its compiled web entry.
+- Access native Capacitor plugins through local typed wrappers in `src/plugins`, because the publisher's cached plugin packages may omit compiled web entries.
