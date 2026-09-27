@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAudioAlert } from "@/hooks/useAudioAlert";
 import { translateDeliveryError } from "@/lib/errorMessages";
 import { Capacitor } from "@capacitor/core";
-import { App } from "@capacitor/app";
+import { App } from "@/plugins/CapacitorApp";
 import { DeliveryOverlay } from "@/plugins/DeliveryOverlay";
 import { declineDeliveryLocally, acceptDeliveryLocally, getAcceptedDeliveries, getDeclinedDeliveries, safeRemoveListener } from "@/hooks/useDriverNotifications";
 import { fetchRealStoreName } from "@/hooks/useStoreNameFetcher";
