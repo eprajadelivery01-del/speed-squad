@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { registerPlugin } from '@capacitor/core';
+
+// Bridge direto ao plugin nativo StatusBar (evita depender do pacote JS no build web)
+const Style = { Dark: 'DARK', Light: 'LIGHT', Default: 'DEFAULT' } as const;
+const StatusBar = registerPlugin<{
+  setStyle(opts: { style: string }): Promise<void>;
+  setBackgroundColor(opts: { color: string }): Promise<void>;
+}>('StatusBar');
 
 type Theme = 'light' | 'dark';
 
