@@ -358,6 +358,7 @@ export function useDriverNotifications() {
                 .maybeSingle();
 
               if (checkData) {
+                const row = checkData as any;
                 console.log("[PUSH REGISTER VERIFIED]", {
                   id: checkData.id,
                   user_id: checkData.user_id,

@@ -57,7 +57,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const fetchMarketingNotifications = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from("marketing_notifications")
+        .from("marketing_notifications" as any)
         .select("*")
         .eq("target_audience", "drivers")
         .eq("status", "active")
