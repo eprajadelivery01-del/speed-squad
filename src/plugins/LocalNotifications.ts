@@ -9,7 +9,10 @@ interface NotificationSchema extends NotificationDescriptor {
   body: string;
   sound?: string;
   actionTypeId?: string;
-  extra?: Record<string, unknown> | null;
+  extra?: {
+    deliveryId?: string;
+    route?: string;
+  } | null;
 }
 
 interface LocalNotificationAction {
