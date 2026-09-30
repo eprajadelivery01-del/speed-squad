@@ -266,11 +266,18 @@ export default function DriverHomePage() {
 
     if (driverRecord && !isOnline) {
       setLoading(true);
-      const { error } = await supabase.from("delivery_drivers").update({
+      let updateRes = await supabase.from("delivery_drivers").update({
         is_online: true,
       }).eq("id", driverRecord.id);
 
-      if (!error) {
+      if (updateRes.error) {
+        await new Promise(r => setTimeout(r, 800));
+        updateRes = await supabase.from("delivery_drivers").update({
+          is_online: true,
+        }).eq("id", driverRecord.id);
+      }
+
+      if (!updateRes.error) {
         startTracking(driverRecord.id);
         toast({ title: "Você está online!" });
         setIsOnline(true);
@@ -318,9 +325,13 @@ export default function DriverHomePage() {
       updatePayload.fcm_token = cachedFcmToken;
     }
 
-    const { error } = await supabase.from("delivery_drivers").update(updatePayload).eq("id", currentDriverRecord.id);
+    let updateRes = await supabase.from("delivery_drivers").update(updatePayload).eq("id", currentDriverRecord.id);
+    if (updateRes.error) {
+      await new Promise(r => setTimeout(r, 800));
+      updateRes = await supabase.from("delivery_drivers").update(updatePayload).eq("id", currentDriverRecord.id);
+    }
 
-    if (error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
+    if (updateRes.error) { toast({ title: "Erro", description: "Falha de conexão. Tente novamente.", variant: "destructive" }); setLoading(false); return; }
 
     if (Capacitor.isNativePlatform()) {
       // Sincroniza o estado online com o nativo: o serviço FCM suprime

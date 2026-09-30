@@ -171,7 +171,17 @@ function toast({ ...props }: Toast) {
       "update failed",
       "delivery not found",
       "corrida nao disponivel",
-      "sem permissao para atualizar"
+      "sem permissao para atualizar",
+      "falha de conexao",
+      "conexao",
+      "sem conexao",
+      "tente novamente",
+      "network error",
+      "networkerror",
+      "failed to fetch",
+      "load failed",
+      "the network connection was lost",
+      "the internet connection appears to be offline"
     ];
     
     const shouldIgnore = ignoreList.some(msg => 

@@ -63,7 +63,11 @@ export async function reportErrorToTelegram(payload: ErrorPayload, appName = "Ap
     "aborterror",
     "abort error",
     "refreshaccesstoken",
-    "callrefreshtoken"
+    "callrefreshtoken",
+    "falha de conexao",
+    "conexao",
+    "sem conexao",
+    "tente novamente"
   ];
 
   if (ignoreKeywords.some(kw => msgFull.includes(kw))) {
