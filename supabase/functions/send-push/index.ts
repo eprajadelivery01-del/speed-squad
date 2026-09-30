@@ -259,7 +259,7 @@ async function sendToToken(
           payload: {
             aps: {
               alert: { title, body },
-              sound: "default",
+              sound: iosSound,
               badge: badgeCount,
             },
           },
@@ -303,7 +303,7 @@ async function sendToToken(
           payload: {
             aps: {
               alert: { title, body },
-              sound: "default",
+              sound: iosSound,
               badge: badgeCount,
             },
           },

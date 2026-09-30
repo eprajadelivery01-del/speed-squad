@@ -542,7 +542,7 @@ export function useDriverNotifications() {
                         id: hashId(deliveryId),
                         title: "🛵 Nova Corrida Disponível!",
                         body: `${storeName} • Ganhos: ${fcmFee}\nColeta: ${immediatePickup}\nEntrega: ${immediateDropoff}`,
-                        sound: "default",
+                        sound: "notification_sound.mp3",
                         actionTypeId: "",
                         extra: {
                           deliveryId,
@@ -687,7 +687,7 @@ export function useDriverNotifications() {
                 id: hashId(rawDelivery.id),
                 title: "🛵 Nova Corrida Disponível!",
                 body: `${initialStore} • Ganhos: ${initialFeeText || "A calcular"}\nColeta: ${initialPickup}\nEntrega: ${initialDropoff}`,
-                sound: "default",
+                sound: "notification_sound.mp3",
                 actionTypeId: "",
                 extra: {
                   deliveryId: rawDelivery.id,
