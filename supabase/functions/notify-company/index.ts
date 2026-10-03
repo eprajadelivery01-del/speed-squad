@@ -142,7 +142,7 @@ serve(async (req) => {
               title: titleText,
               body: bodyText
             },
-            sound: 'notification_sound.mp3',
+            sound: 'notification_sound.wav',
             badge: 1,
             "mutable-content": 1
           }
