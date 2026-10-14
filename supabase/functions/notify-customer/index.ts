@@ -80,6 +80,8 @@ serve(async (req) => {
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
+  let adminClient: ReturnType<typeof createClient> | null = null;
+  let fcmToken: string | null = null;
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -88,7 +90,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing Supabase vars' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
@@ -254,7 +256,7 @@ serve(async (req) => {
     }
 
     // Busca token FCM nas tabelas: device_tokens, customers, profiles e users
-    let fcmToken: string | null = null;
+    fcmToken = null;
     const targetIds = [...new Set([customerId, userId].filter(Boolean))] as string[];
 
     if (targetIds.length > 0) {
@@ -448,7 +450,7 @@ serve(async (req) => {
     if (err?.message?.includes('NotRegistered') || err?.code === 'messaging/registration-token-not-registered') {
       console.log(`[notify-customer] Token FCM expirado/inválido. Limpando token obsoleto de customers...`);
       try {
-        await adminClient.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
+        await adminClient?.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
       } catch {}
       return new Response(JSON.stringify({ success: false, message: 'Token FCM obsoleto limpo. Aguardando registro do novo token pelo app.' }), {
         status: 200,
