@@ -176,7 +176,7 @@ serve(async (req) => {
             if (custIds.length > 0) {
               await Promise.allSettled(
                 custIds.map(cid => 
-                  adminClient.from('customers').upsert({
+                  adminClient!.from('customers').upsert({
                     id: cid,
                     fcm_token: fcmToken,
                     name: 'Cliente Marketplace',
@@ -267,7 +267,7 @@ serve(async (req) => {
         .order('updated_at', { ascending: false });
       if (dtData && dtData.length > 0) {
         const found = dtData.find((d: any) => d.token);
-        if (found) fcmToken = found.token;
+        if (found) fcmToken = found.token as string;
       }
 
       if (!fcmToken) {
@@ -324,7 +324,7 @@ serve(async (req) => {
         .limit(10);
       if (allDeviceTokens && allDeviceTokens.length > 0) {
         const found = allDeviceTokens.find((d: any) => d.token && d.token.length > 10);
-        if (found) fcmToken = found.token;
+        if (found) fcmToken = found.token as string;
       }
     }
 
