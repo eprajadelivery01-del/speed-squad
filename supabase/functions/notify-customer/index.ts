@@ -12,7 +12,7 @@ const serviceAccount = {
 
 try {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount)
   });
 } catch (e) {
   // Already initialized
