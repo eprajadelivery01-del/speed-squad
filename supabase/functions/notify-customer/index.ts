@@ -450,7 +450,7 @@ serve(async (req) => {
     if (err?.message?.includes('NotRegistered') || err?.code === 'messaging/registration-token-not-registered') {
       console.log(`[notify-customer] Token FCM expirado/inválido. Limpando token obsoleto de customers...`);
       try {
-        await adminClient?.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
+        if (fcmToken) await adminClient?.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
       } catch {}
       return new Response(JSON.stringify({ success: false, message: 'Token FCM obsoleto limpo. Aguardando registro do novo token pelo app.' }), {
         status: 200,
