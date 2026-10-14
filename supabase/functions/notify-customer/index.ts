@@ -12,7 +12,7 @@ const serviceAccount = {
 
 try {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount)
   });
 } catch (e) {
   // Already initialized
@@ -80,6 +80,8 @@ serve(async (req) => {
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
+  let adminClient: ReturnType<typeof createClient> | null = null;
+  let fcmToken: string | null = null;
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -88,7 +90,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing Supabase vars' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
@@ -174,7 +176,7 @@ serve(async (req) => {
             if (custIds.length > 0) {
               await Promise.allSettled(
                 custIds.map(cid => 
-                  adminClient.from('customers').upsert({
+                  adminClient!.from('customers').upsert({
                     id: cid,
                     fcm_token: fcmToken,
                     name: 'Cliente Marketplace',
@@ -254,7 +256,7 @@ serve(async (req) => {
     }
 
     // Busca token FCM nas tabelas: device_tokens, customers, profiles e users
-    let fcmToken: string | null = null;
+    fcmToken = null;
     const targetIds = [...new Set([customerId, userId].filter(Boolean))] as string[];
 
     if (targetIds.length > 0) {
@@ -265,7 +267,7 @@ serve(async (req) => {
         .order('updated_at', { ascending: false });
       if (dtData && dtData.length > 0) {
         const found = dtData.find((d: any) => d.token);
-        if (found) fcmToken = found.token;
+        if (found) fcmToken = found.token as string;
       }
 
       if (!fcmToken) {
@@ -275,7 +277,7 @@ serve(async (req) => {
           .in('id', targetIds);
         if (custData && custData.length > 0) {
           const found = custData.find((c: any) => c.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
 
@@ -286,7 +288,7 @@ serve(async (req) => {
           .in('user_id', targetIds);
         if (custUserData && custUserData.length > 0) {
           const found = custUserData.find((c: any) => c.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
 
@@ -297,7 +299,7 @@ serve(async (req) => {
           .in('id', targetIds);
         if (profData && profData.length > 0) {
           const found = profData.find((p: any) => p.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
 
@@ -308,7 +310,7 @@ serve(async (req) => {
           .in('id', targetIds);
         if (usrData && usrData.length > 0) {
           const found = usrData.find((u: any) => u.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
     }
@@ -322,7 +324,7 @@ serve(async (req) => {
         .limit(10);
       if (allDeviceTokens && allDeviceTokens.length > 0) {
         const found = allDeviceTokens.find((d: any) => d.token && d.token.length > 10);
-        if (found) fcmToken = found.token;
+        if (found) fcmToken = found.token as string;
       }
     }
 
@@ -335,7 +337,7 @@ serve(async (req) => {
         .limit(20);
       if (allCust && allCust.length > 0) {
         const found = allCust.find((c: any) => c.fcm_token && c.fcm_token.length > 10);
-        if (found) fcmToken = found.fcm_token;
+        if (found) fcmToken = found.fcm_token as string;
       }
     }
 
@@ -448,7 +450,7 @@ serve(async (req) => {
     if (err?.message?.includes('NotRegistered') || err?.code === 'messaging/registration-token-not-registered') {
       console.log(`[notify-customer] Token FCM expirado/inválido. Limpando token obsoleto de customers...`);
       try {
-        await adminClient.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
+        if (fcmToken) await adminClient?.from('customers').update({ fcm_token: null }).eq('fcm_token', fcmToken);
       } catch {}
       return new Response(JSON.stringify({ success: false, message: 'Token FCM obsoleto limpo. Aguardando registro do novo token pelo app.' }), {
         status: 200,
