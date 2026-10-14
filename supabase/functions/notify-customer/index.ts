@@ -277,7 +277,7 @@ serve(async (req) => {
           .in('id', targetIds);
         if (custData && custData.length > 0) {
           const found = custData.find((c: any) => c.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
 
@@ -288,7 +288,7 @@ serve(async (req) => {
           .in('user_id', targetIds);
         if (custUserData && custUserData.length > 0) {
           const found = custUserData.find((c: any) => c.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
 
@@ -299,7 +299,7 @@ serve(async (req) => {
           .in('id', targetIds);
         if (profData && profData.length > 0) {
           const found = profData.find((p: any) => p.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
 
@@ -310,7 +310,7 @@ serve(async (req) => {
           .in('id', targetIds);
         if (usrData && usrData.length > 0) {
           const found = usrData.find((u: any) => u.fcm_token);
-          if (found) fcmToken = found.fcm_token;
+          if (found) fcmToken = found.fcm_token as string;
         }
       }
     }
@@ -337,7 +337,7 @@ serve(async (req) => {
         .limit(20);
       if (allCust && allCust.length > 0) {
         const found = allCust.find((c: any) => c.fcm_token && c.fcm_token.length > 10);
-        if (found) fcmToken = found.fcm_token;
+        if (found) fcmToken = found.fcm_token as string;
       }
     }
 
