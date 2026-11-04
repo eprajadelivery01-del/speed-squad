@@ -202,6 +202,20 @@ export function useUpdateDeliveryStatus() {
         throw error;
       }
       if (data && (data as any).success === false) {
+        // Se a ação for de aceite e a corrida já estiver associada a este próprio motorista,
+        // trata como sucesso idempotente (ex: Java nativo confirmou milissegundos antes)
+        if (status === "accepted" && driverId) {
+          const { data: currentDel } = await supabase
+            .from("deliveries")
+            .select("driver_id, status")
+            .eq("id", id)
+            .maybeSingle();
+
+          if (currentDel?.driver_id === driverId) {
+            console.log("[useUpdateDeliveryStatus] Corrida já confirmada para este entregador:", id);
+            return;
+          }
+        }
         throw new Error((data as any).error || (data as any).message || JSON.stringify(data) || "Erro ao atualizar entrega.");
       }
 

@@ -139,7 +139,7 @@ export function useDriverNotifications() {
       } catch { }
     }
 
-    // 3. Atualiza no Supabase imediatamente para 'accepted'
+    // 3. Atualiza no Supabase imediatamente para 'accepted' com proteção anti-roubo (Anti-Steal Lock)
     let acceptSucceeded = false;
     if (driverIdToUse) {
       try {
@@ -152,12 +152,33 @@ export function useDriverNotifications() {
         if (!error && (data as any)?.success !== false) {
           acceptSucceeded = true;
         } else {
-          const errMsg = (data as any)?.error || (data as any)?.message || error || "";
-          const isAlreadyTaken = String(errMsg).toLowerCase().includes("já foi aceita") || 
-                                 String(errMsg).toLowerCase().includes("já aceita") || 
-                                 String(errMsg).toLowerCase().includes("already accepted");
+          const rawMsg = String((data as any)?.error || (data as any)?.message || error || "");
+          const normalizedMsg = rawMsg
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
 
-          if (isAlreadyTaken) {
+          const isAlreadyTaken =
+            normalizedMsg.includes("ja foi aceita") ||
+            normalizedMsg.includes("ja aceita") ||
+            normalizedMsg.includes("ja tem um entregador") ||
+            normalizedMsg.includes("already accepted");
+
+          // Verifica se a corrida já pertence a este próprio entregador (idempotência com o aceite nativo do Java)
+          const { data: currentDel } = await supabase
+            .from("deliveries")
+            .select("driver_id, status")
+            .eq("id", deliveryId)
+            .maybeSingle();
+
+          if (currentDel?.driver_id === driverIdToUse) {
+            console.log("[GlobalAccept] Corrida confirmada com sucesso para este entregador:", deliveryId);
+            acceptSucceeded = true;
+          } else if (
+            isAlreadyTaken ||
+            (currentDel?.driver_id && currentDel.driver_id !== driverIdToUse) ||
+            (currentDel && !["pending", "broadcasted"].includes(currentDel.status))
+          ) {
             // Reverte estado local imediatamente para a corrida não sumir sem aviso
             const accepted = getAcceptedDeliveries();
             accepted.delete(deliveryId);
@@ -173,24 +194,45 @@ export function useDriverNotifications() {
             return;
           }
 
-          console.warn("[GlobalAccept] safeRpc retornou erro/falha, aplicando fallback direto:", error || data);
-          const { error: directErr } = await supabase
+          // Fallback seguro: NUNCA faz update cego! Exige estritamente que a corrida ainda esteja livre
+          // ou já pertença a este entregador, prevenindo 100% de roubo de corrida (Bug 024)
+          console.warn("[GlobalAccept] safeRpc retornou erro/falha, aplicando fallback protegido:", error || data);
+          const { data: updatedRows, error: directErr } = await supabase
             .from("deliveries")
-            .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
-            .eq("id", deliveryId);
+            .update({
+              status: "accepted",
+              driver_id: driverIdToUse,
+              accepted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", deliveryId)
+            .or(`driver_id.is.null,driver_id.eq.${driverIdToUse}`)
+            .in("status", ["pending", "broadcasted", "accepted"])
+            .select("id");
 
-          if (!directErr) {
+          if (!directErr && updatedRows && updatedRows.length > 0) {
             acceptSucceeded = true;
           }
         }
       } catch (e) {
         console.warn("[GlobalAccept] Falha no safeRpc:", e);
         try {
-          const { error: directErr } = await supabase
+          const { data: updatedRows, error: directErr } = await supabase
             .from("deliveries")
-            .update({ status: "accepted", driver_id: driverIdToUse, updated_at: new Date().toISOString() })
-            .eq("id", deliveryId);
-          if (!directErr) acceptSucceeded = true;
+            .update({
+              status: "accepted",
+              driver_id: driverIdToUse,
+              accepted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", deliveryId)
+            .or(`driver_id.is.null,driver_id.eq.${driverIdToUse}`)
+            .in("status", ["pending", "broadcasted", "accepted"])
+            .select("id");
+
+          if (!directErr && updatedRows && updatedRows.length > 0) {
+            acceptSucceeded = true;
+          }
         } catch { }
       }
     }

@@ -473,8 +473,8 @@ public class IncomingCallActivity extends Activity {
         String userToken = prefs.getString("user_token", "");
 
         if (driverId.isEmpty()) {
-            Log.e(TAG, "Sem driver_id no SharedPreferences.");
-            return acceptViaPatch(deliveryId, userToken);
+            Log.w(TAG, "Sem driver_id no SharedPreferences nativo. Delegando aceite para o fluxo JavaScript.");
+            return false;
         }
 
         try {
@@ -501,29 +501,38 @@ public class IncomingCallActivity extends Activity {
             int responseCode = conn.getResponseCode();
             Log.d(TAG, "RPC response: " + responseCode);
             conn.disconnect();
-            return responseCode >= 200 && responseCode < 300;
+            if (responseCode >= 200 && responseCode < 300) {
+                return true;
+            }
+            // Se o RPC falhar por qualquer motivo de rede/timeout, tenta o fallback REST protegido (Anti-Steal)
+            return acceptViaPatch(deliveryId, driverId, userToken);
 
         } catch (Exception e) {
             Log.e(TAG, "Erro no aceite HTTP nativo: " + e.getMessage());
-            return false;
+            return acceptViaPatch(deliveryId, driverId, userToken);
         }
     }
 
-    private boolean acceptViaPatch(String deliveryId, String token) {
+    private boolean acceptViaPatch(String deliveryId, String driverId, String token) {
+        if (driverId == null || driverId.isEmpty()) {
+            return false;
+        }
         try {
+            // Anti-Steal Lock: Exige que a corrida esteja livre (driver_id=is.null) e com status pendente/broadcasted
             URL url = new URL(SUPABASE_URL + "/rest/v1/deliveries?id=eq." + deliveryId + "&status=in.(pending,broadcasted)&driver_id=is.null");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("PATCH");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("apikey", SUPABASE_ANON_KEY);
             conn.setRequestProperty("Authorization", "Bearer " + (token.isEmpty() ? SUPABASE_ANON_KEY : token));
-            conn.setRequestProperty("Prefer", "return=minimal");
+            conn.setRequestProperty("Prefer", "return=representation");
             conn.setDoOutput(true);
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
 
             JSONObject body = new JSONObject();
             body.put("status", "accepted");
+            body.put("driver_id", driverId);
 
             byte[] bodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
             OutputStream os = conn.getOutputStream();
