@@ -933,21 +933,25 @@ export function useDriverNotifications() {
       pollDeliveries();
 
       // Listener de retorno ao app para forçar fetch imediato caso o WebSocket tenha morrido no background
-      appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          if (Capacitor.isNativePlatform()) {
-            DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
-              if (deliveryId) {
-                console.log("[NativeAccept] Pending delivery accepted on resume:", deliveryId);
-                acceptDeliveryGlobalRef.current(deliveryId);
-              }
-            }).catch(() => { });
+      try {
+        appStateListener = await App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) {
+            if (Capacitor.isNativePlatform()) {
+              DeliveryOverlay.getPendingAcceptedDelivery().then(({ deliveryId }) => {
+                if (deliveryId) {
+                  console.log("[NativeAccept] Pending delivery accepted on resume:", deliveryId);
+                  acceptDeliveryGlobalRef.current(deliveryId);
+                }
+              }).catch(() => { });
+            }
+            if (isOnlineRef.current) {
+              pollDeliveries();
+            }
           }
-          if (isOnlineRef.current) {
-            pollDeliveries();
-          }
-        }
-      });
+        });
+      } catch (e) {
+        console.warn("[Notify] Falha ao registrar listener appStateChange:", e);
+      }
 
 
       // Realtime — INSERT
