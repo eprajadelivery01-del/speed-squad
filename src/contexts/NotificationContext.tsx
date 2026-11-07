@@ -53,81 +53,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 1. Busca campanhas de marketing ativas destinadas aos motoristas
+  // O app do entregador é estritamente operacional (corridas, pedidos e chat).
+  // NUNCA busca ou exibe campanhas promocionais de comida/marketing do marketplace.
   const fetchMarketingNotifications = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("marketing_notifications" as any)
-        .select("*")
-        .eq("target_audience", "drivers")
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(30);
-
-      if (error) {
-        console.warn("[DriverNotifications] Erro ao carregar marketing_notifications:", error.message);
-        return;
-      }
-
-      const readIds = getReadIds();
-      const clearedIds = getClearedIds();
-      const now = Date.now();
-
-      const items: Notification[] = (data || [])
-        .filter((item: any) => {
-          // Filtragem estrita de segurança: apenas drivers
-          const audience = String(item.target_audience || "").trim().toLowerCase();
-          if (audience !== "drivers") return false;
-          // Ignora se estiver agendado para o futuro
-          const createdAtTime = new Date(item.created_at).getTime();
-          if (!isNaN(createdAtTime) && createdAtTime > now + 60000) return false;
-          // Ignora se o usuário tiver limpado esta notificação
-          if (clearedIds.has(item.id)) return false;
-          return true;
-        })
-        .map((item: any) => ({
-          id: item.id,
-          type: "marketing" as const,
-          title: item.title || "Novidade!",
-          description: item.message || "",
-          emoji: item.emoji || "📣",
-          image_url: item.image_url || null,
-          coupon_code: item.coupon_code || null,
-          timestamp: new Date(item.created_at || Date.now()),
-          read: readIds.has(item.id),
-        }));
-
-      setMarketingNotifs(items);
-    } catch (e) {
-      console.warn("[DriverNotifications] Exceção ao buscar marketing_notifications:", e);
-    }
-  }, [getReadIds, getClearedIds]);
+    setMarketingNotifs([]);
+  }, []);
 
   useEffect(() => {
-    fetchMarketingNotifications();
-
-    // 2. Ouve em tempo real novas campanhas publicadas pelo Admin
-    const channelName = `driver-mkt-channel-${Math.random().toString(36).substring(2, 8)}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "marketing_notifications" },
-        (payload) => {
-          const record: any = payload.new || payload.old;
-          if (!record) return;
-          const audience = String(record.target_audience || "").trim().toLowerCase();
-          if (audience === "drivers") {
-            fetchMarketingNotifications();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchMarketingNotifications]);
+    // Entregadores não recebem notificações de marketing de comida do marketplace
+    setMarketingNotifs([]);
+  }, []);
 
   const addNotification = (notif: Omit<Notification, "id" | "timestamp" | "read">) => {
     const newNotif: Notification = {
