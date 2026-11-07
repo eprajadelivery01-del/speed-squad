@@ -198,25 +198,48 @@ export function useUpdateDeliveryStatus() {
         p_driver_id: driverId || null,
       });
 
-      if (error) {
-        throw error;
-      }
-      if (data && (data as any).success === false) {
-        // Se a ação for de aceite e a corrida já estiver associada a este próprio motorista,
-        // trata como sucesso idempotente (ex: Java nativo confirmou milissegundos antes)
-        if (status === "accepted" && driverId) {
-          const { data: currentDel } = await supabase
-            .from("deliveries")
-            .select("driver_id, status")
-            .eq("id", id)
-            .maybeSingle();
+      if (!error && data && (data as any).success === true) {
+        // Sucesso garantido pelo RPC
+      } else if (status === "accepted" && driverId) {
+        // Se a ação for de aceite, aplica verificação atômica anti-roubo estrita
+        // 1. Primeiro verifica se a corrida já pertence a este próprio motorista (idempotência)
+        const { data: currentDel } = await supabase
+          .from("deliveries")
+          .select("driver_id, status")
+          .eq("id", id)
+          .maybeSingle();
 
-          if (currentDel?.driver_id === driverId) {
-            console.log("[useUpdateDeliveryStatus] Corrida já confirmada para este entregador:", id);
-            return;
+        if (currentDel?.driver_id === driverId) {
+          console.log("[useUpdateDeliveryStatus] Corrida já confirmada para este entregador:", id);
+        } else {
+          // 2. Tenta fallback atômico estrito: SÓ pode aceitar se driver_id for estritamente NULL e status pending/broadcasted
+          const { data: updatedRows, error: directErr } = await supabase
+            .from("deliveries")
+            .update({
+              status: "accepted",
+              driver_id: driverId,
+              accepted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", id)
+            .is("driver_id", null)
+            .in("status", ["pending", "broadcasted"])
+            .select("id");
+
+          if (!directErr && updatedRows && updatedRows.length > 0) {
+            console.log("[useUpdateDeliveryStatus] Corrida aceita com sucesso via fallback atômico:", id);
+          } else {
+            // A corrida não estava livre (já aceita por outro entregador)
+            throw new Error("Esta corrida já foi aceita por outro entregador.");
           }
         }
-        throw new Error((data as any).error || (data as any).message || JSON.stringify(data) || "Erro ao atualizar entrega.");
+      } else {
+        if (error) {
+          throw error;
+        }
+        if (data && (data as any).success === false) {
+          throw new Error((data as any).error || (data as any).message || JSON.stringify(data) || "Erro ao atualizar entrega.");
+        }
       }
 
       // Atualiza também o status na tabela orders para manter total sincronia e disparar o Realtime do cliente

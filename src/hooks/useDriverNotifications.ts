@@ -206,8 +206,8 @@ export function useDriverNotifications() {
               updated_at: new Date().toISOString()
             })
             .eq("id", deliveryId)
-            .or(`driver_id.is.null,driver_id.eq.${driverIdToUse}`)
-            .in("status", ["pending", "broadcasted", "accepted"])
+            .is("driver_id", null)
+            .in("status", ["pending", "broadcasted"])
             .select("id");
 
           if (!directErr && updatedRows && updatedRows.length > 0) {
@@ -226,8 +226,8 @@ export function useDriverNotifications() {
               updated_at: new Date().toISOString()
             })
             .eq("id", deliveryId)
-            .or(`driver_id.is.null,driver_id.eq.${driverIdToUse}`)
-            .in("status", ["pending", "broadcasted", "accepted"])
+            .is("driver_id", null)
+            .in("status", ["pending", "broadcasted"])
             .select("id");
 
           if (!directErr && updatedRows && updatedRows.length > 0) {
@@ -849,6 +849,16 @@ export function useDriverNotifications() {
           const { data: { session } } = await supabase.auth.getSession();
           const userToken = session?.access_token ?? "";
           DeliveryOverlay.saveDriverContext({ driverId, userToken }).catch(() => { });
+
+          // Sincroniza continuamente sempre que o token for renovado pelo SDK
+          const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+            if (newSession?.access_token) {
+              DeliveryOverlay.saveDriverContext({ driverId, userToken: newSession.access_token }).catch(() => { });
+            }
+          });
+          if (authListener?.subscription) {
+            (window as any).__speedSquadAuthSub = authListener.subscription;
+          }
         } catch (e) {
           console.warn("[Notify] saveDriverContext falhou:", e);
         }
@@ -1105,6 +1115,10 @@ export function useDriverNotifications() {
       safeRemoveListener(appStateListener);
       channelsRef.current.forEach((ch) => supabase.removeChannel(ch));
       channelsRef.current = [];
+      if ((window as any).__speedSquadAuthSub) {
+        try { (window as any).__speedSquadAuthSub.unsubscribe(); } catch { }
+        (window as any).__speedSquadAuthSub = null;
+      }
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [user?.id]);

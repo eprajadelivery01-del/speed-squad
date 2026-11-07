@@ -306,7 +306,7 @@ public class IncomingCallActivity extends Activity {
         // ===== BOTÃO ACEITAR =====
         btnAccept.setOnClickListener(v -> {
             if (isSubmitting || resultHandled) return;
-            setSubmitting(true, "Aceitando...");
+            setSubmitting(true, "Confirmando...");
             stopRinging();
             stopStatusCheckLoop();
             NativeSoundPlayer.stopSound();
@@ -327,26 +327,54 @@ public class IncomingCallActivity extends Activity {
                 OverlayService.instance.hideDeliveryCard(deliveryId);
             }
 
-            // 2. Registra aceite no plugin e dispara eventos para a camada JS/Web
-            DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
-            if (DeliveryOverlayPlugin.instance != null) {
-                DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
-                DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
-            }
+            // Inicia timeout de segurança
+            startResultTimeout();
 
-            // 3. Broadcast nativo de aceite
-            Intent acceptIntent = new Intent(ACTION_CALL_ACCEPTED);
-            acceptIntent.putExtra("deliveryId", deliveryId);
-            acceptIntent.setPackage(getPackageName());
-            sendBroadcast(acceptIntent);
-
-            // 4. Aceite direto nativo (HTTP RPC) em thread de background como garantia
+            // 2. Executa a tentativa de aceite atômico em thread dedicada
             new Thread(() -> {
-                acceptDeliveryViaNativeHttp(deliveryId);
-            }).start();
+                int res = tryNativeAccept(deliveryId);
 
-            // 5. Finaliza a Activity do Popup e direciona para a tela principal
-            finishWithResult(true, "✅ Corrida aceita!");
+                runOnUiThread(() -> {
+                    if (resultHandled) return;
+
+                    if (res == 1) {
+                        // SUCESSO: corrida confirmada com exclusividade para este entregador
+                        DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+                        if (DeliveryOverlayPlugin.instance != null) {
+                            DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+                            DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
+                        }
+
+                        Intent acceptIntent = new Intent(ACTION_CALL_ACCEPTED);
+                        acceptIntent.putExtra("deliveryId", deliveryId);
+                        acceptIntent.setPackage(getPackageName());
+                        sendBroadcast(acceptIntent);
+
+                        finishWithResult(true, "✅ Corrida aceita!");
+                    } else if (res == -1) {
+                        // BLOQUEADO: outro entregador aceitou antes!
+                        if (DeliveryOverlayPlugin.instance != null) {
+                            DeliveryOverlayPlugin.instance.triggerDeliveryDeclined(deliveryId);
+                            DeliveryOverlayPlugin.instance.triggerCallResponse("rejected", deliveryId);
+                        }
+                        finishWithResult(false, "⚡ Corrida já aceita por outro entregador!");
+                    } else {
+                        // INDETERMINADO: sem token nativo ou erro de rede temporário, abre a tela e delega ao JS autenticado
+                        DeliveryOverlayPlugin.setPendingAccepted(deliveryId);
+                        if (DeliveryOverlayPlugin.instance != null) {
+                            DeliveryOverlayPlugin.instance.triggerDeliveryAccepted(deliveryId);
+                            DeliveryOverlayPlugin.instance.triggerCallResponse("accepted", deliveryId);
+                        }
+
+                        Intent acceptIntent = new Intent(ACTION_CALL_ACCEPTED);
+                        acceptIntent.putExtra("deliveryId", deliveryId);
+                        acceptIntent.setPackage(getPackageName());
+                        sendBroadcast(acceptIntent);
+
+                        finishWithResult(true, "Abrindo corrida...");
+                    }
+                });
+            }).start();
         });
 
         // ===== BOTÃO REJEITAR =====
@@ -467,14 +495,20 @@ public class IncomingCallActivity extends Activity {
         }).start();
     }
 
-    private boolean acceptDeliveryViaNativeHttp(String deliveryId) {
+    /**
+     * Retorna:
+     *   1  -> Sucesso confirmado no banco (a corrida foi atribuída com sucesso a este motorista)
+     *  -1  -> Rejeitado / Bloqueado (a corrida já foi aceita por outro motorista)
+     *   0  -> Indeterminado (erro transitório de rede ou credencial, delegando para JS)
+     */
+    private int tryNativeAccept(String deliveryId) {
         SharedPreferences prefs = getSharedPreferences(DeliveryOverlayPlugin.PREFS_NAME, Context.MODE_PRIVATE);
         String driverId  = prefs.getString("driver_id", "");
         String userToken = prefs.getString("user_token", "");
 
         if (driverId.isEmpty()) {
             Log.w(TAG, "Sem driver_id no SharedPreferences nativo. Delegando aceite para o fluxo JavaScript.");
-            return false;
+            return 0;
         }
 
         try {
@@ -485,8 +519,8 @@ public class IncomingCallActivity extends Activity {
             conn.setRequestProperty("apikey", SUPABASE_ANON_KEY);
             conn.setRequestProperty("Authorization", "Bearer " + (userToken.isEmpty() ? SUPABASE_ANON_KEY : userToken));
             conn.setDoOutput(true);
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
 
             JSONObject body = new JSONObject();
             body.put("p_delivery_id", deliveryId);
@@ -499,26 +533,56 @@ public class IncomingCallActivity extends Activity {
             os.close();
 
             int responseCode = conn.getResponseCode();
-            Log.d(TAG, "RPC response: " + responseCode);
-            conn.disconnect();
-            if (responseCode >= 200 && responseCode < 300) {
-                return true;
+            Log.d(TAG, "RPC response code: " + responseCode);
+
+            java.io.InputStream is = (responseCode >= 200 && responseCode < 300)
+                    ? conn.getInputStream()
+                    : conn.getErrorStream();
+            String responseBody = "";
+            if (is != null) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
+                br.close();
+                responseBody = sb.toString().trim();
             }
-            // Se o RPC falhar por qualquer motivo de rede/timeout, tenta o fallback REST protegido (Anti-Steal)
-            return acceptViaPatch(deliveryId, driverId, userToken);
+            conn.disconnect();
+
+            if (responseCode >= 200 && responseCode < 300) {
+                try {
+                    JSONObject json = new JSONObject(responseBody);
+                    boolean success = json.optBoolean("success", false);
+                    if (success) {
+                        return 1;
+                    }
+                    String err = json.optString("error", json.optString("message", "")).toLowerCase();
+                    if (err.contains("ja foi aceita") || err.contains("ja aceita") || err.contains("outro entregador") || err.contains("pertence a outro")) {
+                        Log.w(TAG, "RPC bloqueou aceite concorrente: " + err);
+                        return -1;
+                    }
+                } catch (Exception eJson) {
+                    Log.w(TAG, "Erro parseando retorno RPC: " + eJson.getMessage());
+                }
+            }
+
+            // Fallback: tentar acceptViaPatch protegido contra roubo (anti-steal)
+            return tryAcceptViaPatch(deliveryId, driverId, userToken);
 
         } catch (Exception e) {
             Log.e(TAG, "Erro no aceite HTTP nativo: " + e.getMessage());
-            return acceptViaPatch(deliveryId, driverId, userToken);
+            return tryAcceptViaPatch(deliveryId, driverId, userToken);
         }
     }
 
-    private boolean acceptViaPatch(String deliveryId, String driverId, String token) {
+    private int tryAcceptViaPatch(String deliveryId, String driverId, String token) {
         if (driverId == null || driverId.isEmpty()) {
-            return false;
+            return 0;
         }
         try {
-            // Anti-Steal Lock: Exige que a corrida esteja livre (driver_id=is.null) e com status pendente/broadcasted
+            // Anti-Steal Lock: Exige estritamente que a corrida esteja livre (driver_id=is.null) e com status pendente/broadcasted
             URL url = new URL(SUPABASE_URL + "/rest/v1/deliveries?id=eq." + deliveryId + "&status=in.(pending,broadcasted)&driver_id=is.null");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("PATCH");
@@ -527,8 +591,8 @@ public class IncomingCallActivity extends Activity {
             conn.setRequestProperty("Authorization", "Bearer " + (token.isEmpty() ? SUPABASE_ANON_KEY : token));
             conn.setRequestProperty("Prefer", "return=representation");
             conn.setDoOutput(true);
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
 
             JSONObject body = new JSONObject();
             body.put("status", "accepted");
@@ -540,14 +604,45 @@ public class IncomingCallActivity extends Activity {
             os.close();
 
             int responseCode = conn.getResponseCode();
-            Log.d(TAG, "PATCH response: " + responseCode);
-            conn.disconnect();
-            return responseCode >= 200 && responseCode < 300;
+            Log.d(TAG, "PATCH response code: " + responseCode);
 
+            java.io.InputStream is = (responseCode >= 200 && responseCode < 300)
+                    ? conn.getInputStream()
+                    : conn.getErrorStream();
+            String responseBody = "";
+            if (is != null) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
+                br.close();
+                responseBody = sb.toString().trim();
+            }
+            conn.disconnect();
+
+            if (responseCode >= 200 && responseCode < 300) {
+                if ("[]".equals(responseBody)) {
+                    Log.w(TAG, "PATCH retornou [] (0 linhas atualizadas): a corrida NÃO estava livre. Já aceita por outro!");
+                    return -1;
+                }
+                return 1;
+            }
+
+            return 0;
         } catch (Exception e) {
             Log.e(TAG, "Erro no PATCH direto: " + e.getMessage());
-            return false;
+            return 0;
         }
+    }
+
+    private boolean acceptDeliveryViaNativeHttp(String deliveryId) {
+        return tryNativeAccept(deliveryId) == 1;
+    }
+
+    private boolean acceptViaPatch(String deliveryId, String driverId, String token) {
+        return tryAcceptViaPatch(deliveryId, driverId, token) == 1;
     }
 
     private void stopRinging() {

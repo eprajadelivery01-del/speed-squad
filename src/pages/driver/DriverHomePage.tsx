@@ -396,6 +396,9 @@ export default function DriverHomePage() {
           // Persiste localmente e dispara "delivery-accepted": filtra o card,
           // cancela a notificação nativa e evita toast duplo do realtime.
           acceptDeliveryLocally(deliveryId);
+          if (Capacitor.isNativePlatform()) {
+            DeliveryOverlay.reportCallResult({ success: true, message: "✅ Corrida aceita!" }).catch(() => { });
+          }
           navigate("/driver/deliveries");
         },
         onError: (error: any) => {
@@ -412,6 +415,10 @@ export default function DriverHomePage() {
           // Mark as rejected so it doesn't pop up again
           setRejectedLocalIds(prev => [...prev, deliveryId]);
           declineDeliveryLocally(deliveryId);
+
+          if (Capacitor.isNativePlatform()) {
+            DeliveryOverlay.reportCallResult({ success: false, message: "⚡ Corrida já aceita por outro entregador" }).catch(() => { });
+          }
 
           const { title, description } = translateDeliveryError(error, "accept");
           toast({ title, description, variant: "destructive" });
